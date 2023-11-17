@@ -75,7 +75,8 @@ WITH
 
   --------------------------------------
   -- Get carrier voyages - note this version uses
-  -- vessel database/all vessels to id carriers
+  -- vessel database/all vessels to id carriers instead
+  -- of annual carrier list
   --------------------------------------
   c4_voyages_carrier AS (
   SELECT
@@ -396,7 +397,7 @@ WITH
       event_start,
       event_end,
     FROM
-      `pipe_production_v20201001.published_events_encounters`) a
+      `pipe_production_v20201001.published_events_encounters_v2_v20231116`) a
   INNER JOIN (
     SELECT
       vessel_id,
@@ -429,13 +430,13 @@ WITH
       event_start,
       event_end,
     FROM
-      `pipe_production_v20201001.published_events_loitering`
+      `pipe_production_v20201001.published_events_loitering_v2_v20231116`
     WHERE
       seg_id IN (
       SELECT
         seg_id
       FROM
-        gfw_research.pipe_v20201001_segs
+        gfw_research.research_segs
       WHERE
         good_seg IS TRUE
         AND overlapping_and_short IS FALSE)
@@ -474,8 +475,7 @@ WITH
       event_start,
       event_end
     FROM
-     --- pipe_production_v20201001.proto_events_fishing) a --- proto events fishing changed to published in june 2023
-      pipe_production_v20201001.published_events_fishing) a
+      pipe_production_v20201001.published_events_fishing_v2_v20231116) a
   INNER JOIN (
     SELECT
       vessel_id,
