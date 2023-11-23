@@ -1,0 +1,134 @@
+---
+title: "Recent port activity of Port Program pilot countries"
+author: "Max Schofield"
+date: "2023-11-14"
+output:
+  html_document:
+    df_print: paged
+  df_print: default
+  html_notebook: null
+highlight: pygments
+toc: yes
+toc_float:
+  toc_collapsed: yes
+toc_depth: 2
+editor_options:
+  chunk_output_type: inline
+---
+
+```{=html}
+<style>
+body {
+text-align: left}
+</style>
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, echo=F, warning=F, include=FALSE}
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial") )
+
+# get fishwatch r independently 
+if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+
+# if (!require("extrafont"))
+#   install.packages("extrafont")
+
+# # Unfortunately `extrafont::font_import()` will fail on latest Rttf2pt1 package...
+# # so we need to install old version
+# devtools::install_version("Rttf2pt1", version = "1.3.8")
+# 
+# # Import fonts to R
+# # This will take few minutes
+# extrafont::font_import()
+
+# remove a package causing issues 
+#detach("package:plyr", unload=TRUE)
+```
+
+```{r connection to BQ, echo=F, warning=F, include=FALSE}
+con <- DBI::dbConnect(drv = bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+
+
+
+```{r set date and port parameters, echo=F, warning=F, include=FALSE}
+start_date <- "'2023-09-01 00:00:00 UTC'" 
+end_date <- "'2023-09-30 23:59:59 UTC'" 
+country_iso3 <- "'SEN'"
+port_name <- "'DAKAR'"
+
+# file names
+month <- 'Sep'
+country <- 'SEN'
+
+```
+
+```{r carrier visits all, echo=F, warning=F, include=FALSE}
+
+carrier_voyages_q <- readr::read_file(here::here("queries", "proactive", "recent_carrier_voyages_c2.sql"))
+
+carrier_voyages <- fishwatchr::gfw_query(query = glue::glue(carrier_voyages_q),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+```{r fishing voyages all, echo=F, warning=F, include=FALSE}
+
+fishing_voyages_q <- readr::read_file(here::here("queries","proactive", "recent_fishing_voyages_c2.sql"))
+
+fishing_voyages <- fishwatchr::gfw_query(query = glue::glue(fishing_voyages_q),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r estabish and write out voyages data for cv & fv, echo=F, warning=F, include=FALSE}
+voyages <- bind_rows(carrier_voyages, dplyr::select(fishing_voyages, -flag_1))
+
+voyages %>% 
+  write_csv(here::here("data", "proactive", 
+         paste0(country,"_", month ,"_voyages",str_replace_all(Sys.Date(), '-','_'),".csv")))
+```
+
+
+```{r encounters, echo=F, warning=F, include=FALSE}
+
+fishing_encounters_q <- readr::read_file(here::here("queries", "proactive", "fishing_voyage_encounters.sql"))
+
+fishing_encounters <- fishwatchr::gfw_query(query = glue::glue(fishing_encounters_q),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+# need to filter encounters to fishing/bunker/carrier 
+```
+
+```{r tacking on event data, echo=F, warning=F, include=FALSE}
+
+
+enc_count <- fishing_encounters %>% 
+                  group_by(vessel_id = vessel_1_id) %>%
+                    summarise(encounters = n())
+
+voyages_add <- left_join(voyages, enc_count)
+
+
+```
+
