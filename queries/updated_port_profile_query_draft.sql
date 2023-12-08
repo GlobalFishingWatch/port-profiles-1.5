@@ -19,8 +19,8 @@
   -- 4. voyages where the longest port visit
   --    stop/gap is "long enough" (3
   --    hours currently)
-CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2022-01-01 00:00:00 UTC'));
-CREATE TEMP FUNCTION  start_year() AS (2022);
+CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2020-01-01 00:00:00 UTC'));
+CREATE TEMP FUNCTION  start_year() AS (2020);
   # voyages will be truncated to this end timestamp, if needed
 CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP('2022-12-31 23:59:59 UTC'));
 CREATE TEMP FUNCTION  end_year() AS (2022);
@@ -30,7 +30,7 @@ WITH
   --------------------------------------
   -- Get fishing vessel voyages - using vi_ssvid fishing_list_best
   --------------------------------------
-  c4_voyages_fishing AS (
+  voyages_fishing AS (
   SELECT
     *
   FROM (
@@ -40,11 +40,14 @@ WITH
       FROM
         trip_end) AS year
     FROM
-      pipe_ais_v3_alpha_published.voyages_c4
+      -- pipe_ais_v3_alpha_published.voyages_c3
+      pipe_ais_v3_alpha_internal.voyages_c2
     WHERE
-      trip_end BETWEEN start_date()
-      AND end_date() AND
-      trip_start <= end_date())
+      -- trip_end BETWEEN start_date()
+      -- AND end_date()
+      -- AND trip_start <= end_date()
+      trip_end >= start_date() AND trip_start <= end_date()
+      )
   LEFT JOIN (
     SELECT
       year,
@@ -61,7 +64,11 @@ WITH
       FROM
         gfw_research.vi_ssvid_byyear_v20231001 -- update to latest v (and pipe3 when released)
       WHERE
-        (on_fishing_list_best)
+        (
+          -- on_fishing_list_known OR
+          -- on_fishing_list_sr OR
+          -- on_fishing_list_nn OR
+          on_fishing_list_best)
         AND activity.offsetting IS FALSE
         AND activity.overlap_hours_multinames < 24
         --AND activity.frac_spoofing < 0.01
@@ -78,7 +85,7 @@ WITH
   -- vessel database/all vessels to id carriers instead
   -- of annual carrier list
   --------------------------------------
-  c4_voyages_carrier AS (
+  voyages_carrier AS (
   SELECT
     *
   FROM (
@@ -94,11 +101,14 @@ WITH
         FROM
           trip_end) AS year
       FROM
-        pipe_ais_v3_alpha_published.voyages_c4
+        -- pipe_ais_v3_alpha_published.voyages_c3
+        pipe_ais_v3_alpha_internal.voyages_c2
       WHERE
-        trip_end BETWEEN TIMESTAMP('2022-01-01 00:00:00 UTC')
-        AND TIMESTAMP('2022-12-31 23:59:59 UTC')
-        AND trip_start <= end_date()) voyages
+      --   trip_end BETWEEN start_date()
+      -- AND end_date()
+      --   AND trip_start <= end_date()
+      trip_end >= start_date() AND trip_start <= end_date()
+        ) voyages
     INNER JOIN (
       SELECT
         ssvid,
@@ -131,16 +141,16 @@ WITH
   --------------------------------------
   -- Combine carrier and fishing voyages
   --------------------------------------
-  c4_voyages AS (
+  initial_voyages AS (
   SELECT
     *
   FROM
-    c4_voyages_fishing
+    voyages_fishing
   UNION ALL
   SELECT
     *
   FROM
-    c4_voyages_carrier ),
+    voyages_carrier ),
 
   --------------------------------------
   -- Anchorage names
@@ -172,7 +182,7 @@ WITH
       b.label AS start_label,
       b.iso3 AS start_iso3
     FROM
-      c4_voyages
+      initial_voyages
     LEFT JOIN
       anchorage_names b
     ON
@@ -397,7 +407,7 @@ WITH
       event_start,
       event_end,
     FROM
-      `pipe_production_v20201001.published_events_encounters_v2_v20231116`) a
+      `pipe_production_v20201001.published_events_encounters_v2_v20231203`) a
   INNER JOIN (
     SELECT
       vessel_id,
@@ -430,13 +440,13 @@ WITH
       event_start,
       event_end,
     FROM
-      `pipe_production_v20201001.published_events_loitering_v2_v20231116`
+      `pipe_production_v20201001.published_events_loitering_v2_v20231203`
     WHERE
       seg_id IN (
       SELECT
         seg_id
       FROM
-        gfw_research.research_segs
+        gfw_research.pipe_v20201001_segs
       WHERE
         good_seg IS TRUE
         AND overlapping_and_short IS FALSE)
@@ -475,7 +485,7 @@ WITH
       event_start,
       event_end
     FROM
-      pipe_production_v20201001.published_events_fishing_v2_v20231116) a
+      pipe_production_v20201001.published_events_fishing_v2_v20231203) a
   INNER JOIN (
     SELECT
       vessel_id,
@@ -613,11 +623,12 @@ WITH
         AND callsign.value IS NULL
         AND imo.value IS NULL), TRUE, FALSE) AS poor_id
   FROM
-    pipe_production_v20201001.vessel_info ),
+    pipe_ais_v3_alpha_published.vessel_info ),
+
   --------------------------------------
   -- Filter the voyages to those that
   -- involve 'good' vessel_ids, and
-  -- end between 2013 and 2022
+  -- end between time range of interest
   --------------------------------------
   good_vessel_voyages AS (
   SELECT
@@ -642,35 +653,37 @@ WITH
 
   --------------------------------------
   -- Add end anchorage information from Pew ports
+
+  -- **** leaving this out during port profile 1.5 update although can be easily added back if pew important
+  --------------------------------------
+  -- fishing_vessel_voyages AS (
+  -- SELECT
+  --   *
+  -- FROM
+  --   good_vessel_voyages AS voyages
+  -- LEFT JOIN (
+  --   SELECT
+  --     point_id AS trip_end_anchorage_id,
+  --     port_id,
+  --     cluster_id,
+  --     port_label,
+  --     iso3 AS port_iso3,
+  --     cluster_label,
+  --     point_label,
+  --     port_locode
+  --   FROM
+  --     proj_pew_ports.gfw_ports_database_v20230424 ) AS ports
+  -- USING
+  --   (trip_end_anchorage_id) ),
+
+  --------------------------------------
+  -- Add end anchorage information from GFW ports
   --------------------------------------
   fishing_vessel_voyages AS (
   SELECT
     *
   FROM
-    good_vessel_voyages AS voyages
-  LEFT JOIN (
-    SELECT
-      point_id AS trip_end_anchorage_id,
-      port_id,
-      cluster_id,
-      port_label,
-      iso3 AS port_iso3,
-      cluster_label,
-      point_label,
-      port_locode
-    FROM
-      proj_pew_ports.gfw_ports_database_v20230424 ) AS ports
-  USING
-    (trip_end_anchorage_id) ),
-
-  --------------------------------------
-  -- Add end anchorage information from GFW ports
-  --------------------------------------
-  fishing_vessel_voyages2 AS (
-  SELECT
-    *
-  FROM
-    fishing_vessel_voyages
+    good_vessel_voyages
   LEFT JOIN (
     SELECT
       s2id AS trip_end_anchorage_id,
@@ -688,23 +701,24 @@ WITH
   SELECT
     *
   FROM
-    fishing_vessel_voyages2
+    fishing_vessel_voyages
   INNER JOIN (
     SELECT
       visit_id AS trip_end_visit_id,
       end_timestamp AS end_visit_endtimestamp,
       start_timestamp AS start_visit_starttimestamp,
-      start_lat as start_latitude,
-      start_lon as start_longitude
+      start_lat AS start_latitude,
+      start_lon AS start_longitude
     FROM
-      pipe_production_v20201001.proto_port_visits
+      -- pipe_production_v20201001.proto_port_visits
+      pipe_ais_v3_alpha_published.port_visits
     WHERE
       EXTRACT(YEAR
       FROM
         end_timestamp) >= start_year()
       AND EXTRACT(YEAR
       FROM
-        end_timestamp) <= end_year() )
+        end_timestamp) <= end_year() + 1 )
   USING
     (trip_end_visit_id) ),
 
@@ -729,7 +743,7 @@ WITH
         timestamp,
         LEAD(timestamp) OVER(PARTITION BY visit_id ORDER BY timestamp) AS next_timestamp
       FROM
-        pipe_production_v20201001.proto_port_visits,
+        pipe_ais_v3_alpha_published.port_visits,
         UNNEST(events)
       WHERE
         EXTRACT(YEAR
@@ -764,9 +778,11 @@ WITH
     trip_id,
     start_iso3 AS start_port_iso3,
     start_label AS start_port_label,
-    port_iso3 AS end_port_iso3,
-    port_label AS end_port_label,
-    port_id AS end_port_id,
+    -- port_iso3 AS end_port_iso3,
+    -- port_label AS end_port_label,
+    -- port_id AS end_port_id,
+    end_label,
+    end_iso3,
     trip_end_anchorage_id,
     distance_from_shore_m,
     dock,
@@ -807,8 +823,8 @@ vessels_end_port_iso AS (
 FROM
   total
 WHERE
-  end_port_iso3 != vessel_iso3
-  AND NOT (end_port_iso3 IN (
+  end_iso3 != vessel_iso3
+  AND NOT (end_iso3 IN (
     SELECT
       iso3
     FROM
@@ -818,9 +834,8 @@ WHERE
       iso3
     FROM
       is_eu_iso3))
-  ---AND end_port_iso3 IN ("PER",'CHL','COL','ECU', 'ARG', 'URY', 'PAN', 'NIC', 'GTM', 'HND', 'SLV','BRA', 'CRI','MEX')
-  ---AND end_port_iso3 IN ("ARG", "BEL", "BRA", "CHL", "COL", "CRI", "ECU", "SLV", "GTM", "GUF", "GUY", "HND", "MEX", "NIC", "PAN", "PER", "SUR", "URY", "VEN")
-  AND end_port_iso3 IN ("CHL", "COL", "CRI", "ECU", "SLV", "GTM", "HND", "MEX", "NIC", "PAN", "PER")
+
+  AND end_label IN ("CONAKRY")
   AND ssvid NOT IN ("334455660","100001001","721","23456","345","100000016","100000008") -- wrong MMSI number associate with Peru
   ),
 -- filter for ports of interest
@@ -856,9 +871,9 @@ SELECT
   -- trip_id,
   start_port_iso3,
   start_port_label,
-  end_port_iso3,
-  end_port_label,
-  end_port_id,
+  end_iso3,
+  end_label,
+  -- end_port_id,
   trip_end_anchorage_id,
   distance_from_shore_m,
   dock,
@@ -875,4 +890,3 @@ SELECT
   FROM
     add_ssvid_info
 
-*/
