@@ -91,6 +91,7 @@ carrier_voyages <- fishwatchr::gfw_query(query = glue::glue(carrier_voyages_q),
                                  run_query = TRUE,
                                  con = con)$data
 ```
+
 ```{r fishing voyages all, echo=F, warning=F, include=FALSE}
 
 fishing_voyages_q <- readr::read_file(here::here("queries","proactive", "recent_fishing_voyages_c2.sql"))
@@ -101,34 +102,273 @@ fishing_voyages <- fishwatchr::gfw_query(query = glue::glue(fishing_voyages_q),
 ```
 
 ```{r estabish and write out voyages data for cv & fv, echo=F, warning=F, include=FALSE}
-voyages <- bind_rows(carrier_voyages, dplyr::select(fishing_voyages, -flag_1))
+voyages <- bind_rows(carrier_voyages, fishing_voyages)
 
 voyages %>% 
   write_csv(here::here("data", "proactive", 
          paste0(country,"_", month ,"_voyages",str_replace_all(Sys.Date(), '-','_'),".csv")))
 ```
 
+```{r basic flag statistics on voyages, echo=F, warning=F, include=FALSE}
 
-```{r encounters, echo=F, warning=F, include=FALSE}
+fishing_voyages %>%
+  group_by(flag) %>%
+  summarize(vessels = n()) %>%
+  plot_donut_chart(group_var = flag,
+                   value_var = vessels,
+                   donut_title = 'Fishing vessels by\nflag',
+                   add_labels = T,
+                   show_legend = F,
+                   label_frac = 0.1,
+                   show_caption = T) 
 
-fishing_encounters_q <- readr::read_file(here::here("queries", "proactive", "fishing_voyage_encounters.sql"))
+ggsave( filename = here::here('outputs', 'figures', paste0(country,"_", month,"_", "fishing_flags_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+```
 
-fishing_encounters <- fishwatchr::gfw_query(query = glue::glue(fishing_encounters_q),
+```{r basic gear statistics on voyages, echo=F, warning=F, include=FALSE}
+
+fishing_voyages %>%
+  group_by(gear) %>%
+  summarize(vessels = n()) %>%
+  plot_donut_chart(group_var = gear,
+                   value_var = vessels,
+                   donut_title = 'Fishing vessels by\ngear',
+                   add_labels = T,
+                   show_legend = F,
+                   label_frac = 0.1,
+                   show_caption = T) 
+
+ggsave( filename = here::here('outputs', 'figures', paste0(country,"_", month,"_", "fishing_gears_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+```
+
+
+```{r voyage activity, echo=F, warning=F, include=FALSE}
+
+fishing_voyages_activity_q <- readr::read_file(here::here("queries","proactive", "fishing_voyage_activity.sql"))
+
+fishing_data <- fishwatchr::gfw_query(query = glue::glue(fishing_voyages_activity_q),
                                  run_query = TRUE,
                                  con = con)$data
 
-# need to filter encounters to fishing/bunker/carrier 
 ```
 
-```{r tacking on event data, echo=F, warning=F, include=FALSE}
+```{r voyage activity longline maps, echo=F, warning=F, include=FALSE}
+# sense check the data 
+fishing_data %>%
+    group_by(ssvid) %>%
+      summarise(positions = n(), 
+                min_date = min(timestamp), 
+                max_date = max(timestamp))
+
+# add fishing hours variable 
+fishing_data$fishing_hours <- ifelse(fishing_data$nnet_score   > 0.5 , fishing_data$hours, 0) 
+fishing_data$fishing_hours[is.na(fishing_data$fishing_hours)] <- 0
+
+# bin the data
+fishing_data$lat_bin <- round(fishing_data$lat/0.5)*0.5
+fishing_data$lon_bin <- round(fishing_data$lon/0.5)*0.5
+
+# count positions in each lat lon bin
+longline_raster <- 
+  # filter out low speeds while vessel in port 
+  filter(fishing_data, gear %in% c('drifting_longlines','set_longlines')) %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        hours = sum(hours),
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+# set upper limit
+up_lim <- 500 
+#set plot center 
+new_center <- 40
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=40 +wktext"
+
+# set plot limits bound on the data
+bounding_atl <- transform_box(xlim = c(-60, 0),
+                          ylim = c(30, -15),
+                          output_crs = best_proj)
+
+# # # Specify custom x-axis breaks and labels
+# custom_breaks <- c(150, 170, -170)
+# custom_labels <- c("150° E", "170° E","170° W")
+
+atl_full <- longline_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    # geom_sf(pipa, fill=NA, colour='green')+
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                      # limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atl$box_out[['xmin']], bounding_atl$box_out[['xmax']]),
+      ylim = c(bounding_atl$box_out[['ymin']], bounding_atl$box_out[['ymax']]),
+      crs = bounding_atl$out_crs) +
+    # scale_x_continuous(breaks = custom_breaks, labels = custom_labels)+
+    labs(fill = 'Fishing Hours') +
+    theme_gfw_map(theme = 'light') 
 
 
-enc_count <- fishing_encounters %>% 
-                  group_by(vessel_id = vessel_1_id) %>%
-                    summarise(encounters = n())
+fishwatchr::add_little_globe(atl_full,
+                             main_box = bounding_atl,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
 
-voyages_add <- left_join(voyages, enc_count)
-
+ggsave(filename = here::here('outputs', 'figures', paste0(country,"_", month,"_", "longline_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 20, 
+       height = 20,
+       bg = '#f7f7f7')
 
 ```
 
+
+```{r voyage activity trawl maps, echo=F, warning=F, include=FALSE}
+# count positions in each lat lon bin
+trawl_raster <- 
+  # filter out low speeds while vessel in port 
+  filter(fishing_data, gear %in% c('trawlers', 'fishing')) %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        hours = sum(hours),
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+# set upper limit
+up_lim <- 500 
+#set plot center 
+new_center <- 17
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=17 +wktext"
+
+# set plot limits bound on the data
+bounding_wa <- transform_box(xlim = c(-20, -13),
+                          ylim = c(20, 7.5),
+                          output_crs = best_proj)
+
+# # # Specify custom x-axis breaks and labels
+# custom_breaks <- c(150, 170, -170)
+# custom_labels <- c("150° E", "170° E","170° W")
+
+trawl_full <- trawl_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    # geom_sf(pipa, fill=NA, colour='green')+
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                      # limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_wa$box_out[['xmin']], bounding_wa$box_out[['xmax']]),
+      ylim = c(bounding_wa$box_out[['ymin']], bounding_wa$box_out[['ymax']]),
+      crs = bounding_wa$out_crs) +
+    # scale_x_continuous(breaks = custom_breaks, labels = custom_labels)+
+    labs(fill = 'Fishing Hours') +
+    theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(trawl_full,
+                             main_box = bounding_wa,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+ggsave(filename = here::here('outputs', 'figures', paste0(country,"_", month,"_", "trawl_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 20, 
+       height = 20,
+       bg = '#f7f7f7')
+
+```
+
+```{r voyage activity purse seine maps, echo=F, warning=F, include=FALSE}
+# count positions in each lat lon bin
+ps_raster <- 
+  # filter out low speeds while vessel in port 
+  filter(fishing_data, gear %in% c('tuna_purse_seines')) %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        hours = sum(hours),
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+#set plot center 
+new_center <- 40
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=40 +wktext"
+
+# set plot limits bound on the data
+bounding_ps <- transform_box(xlim = c(-40, -13),
+                          ylim = c(25, 7.5),
+                          output_crs = best_proj)
+
+ps_full <- ps_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    # geom_sf(pipa, fill=NA, colour='green')+
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                      # limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_ps$box_out[['xmin']], bounding_ps$box_out[['xmax']]),
+      ylim = c(bounding_ps$box_out[['ymin']], bounding_ps$box_out[['ymax']]),
+      crs = bounding_ps$out_crs) +
+    labs(fill = 'Fishing Hours')  +
+    theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(ps_full,
+                             main_box = bounding_ps,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+ggsave(filename = here::here('outputs', 'figures', paste0(country,"_", month,"_", "ps_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 20, 
+       height = 20,
+       bg = '#f7f7f7')
+
+```

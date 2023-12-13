@@ -28,9 +28,8 @@ CREATE TEMP FUNCTION port() AS ('DAKAR');
 CREATE TEMP FUNCTION country() AS ('SEN');
 -- voyages will be truncated to this end timestamp, if needed
 
-
-  --------------------------------------
- --------------------------------------
+--------------------------------------
+--------------------------------------
 WITH
   --------------------------------------
   -- Get all voyages -
@@ -47,13 +46,14 @@ WITH
 
 
   -- find FV
-  carriers AS (
+  fv AS (
     SELECT
     DISTINCT
-      identity.ssvid,
+      identity.ssvid AS identity_ssvid,
       identity.n_shipname AS vessel_name,
       identity.flag AS flag,
-      'carrier' AS vessel_class
+      'fishing' AS vessel_class,
+      feature_geartype AS gear,
     FROM
       pipe_ais_v3_alpha_published.identity_all_vessels_v20231001,
       UNNEST(activity),
@@ -61,10 +61,10 @@ WITH
       UNNEST(feature.geartype) AS feature_geartype
     WHERE
       MATCHED IS TRUE
-      AND is_carrier IS TRUE
-      AND feature_geartype IN ('reefer', 'specialized_reefer')
+      AND is_fishing IS TRUE
       AND first_timestamp < end_date()
       AND last_timestamp > start_date()
+      AND flag != country()
     ),
 
   all_anchorages AS (
@@ -74,9 +74,6 @@ WITH
       label,
       sublabel,
     FROM `world-fishing-827.anchorages.named_anchorages_v20230925`
-    -- WHERE
-    --   iso3 = country()
-    --   AND label = port()
   ),
 
   dak_anchorages AS (
@@ -95,13 +92,13 @@ WITH
      SELECT
       DISTINCT *
     FROM all_voyages voyages
-    INNER JOIN carriers cv ON voyages.ssvid = cv.ssvid
+    INNER JOIN fv fv ON voyages.ssvid = fv.identity_ssvid
     LEFT JOIN (SELECT s2id, iso3 AS start_iso3, label AS start_lab, sublabel AS start_sublab FROM all_anchorages) s_anc ON voyages.trip_start_anchorage_id = s_anc.s2id
     LEFT JOIN (SELECT s2id, iso3 AS end_iso3, label AS end_lab, sublabel AS end_sublab FROM all_anchorages) anc ON voyages.trip_end_anchorage_id = anc.s2id
     WHERE
       trip_end_anchorage_id IN (SELECT s2id FROM dak_anchorages)
-      -- AND end_iso3 = country()
-      -- AND end_lab = port()
+      AND end_iso3 = country()
+      AND end_lab = port()
     ORDER by trip_end
   ),
 
@@ -268,7 +265,7 @@ WITH
     (vessel_id,
       trip_id)
   GROUP BY
-    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26),
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26, 27),
 
   --------------------------------------
   -- label voyage if it had at least
@@ -288,7 +285,7 @@ WITH
     (vessel_id,
       trip_id)
   GROUP BY
-    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28),
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29),
 
   --------------------------------------
   -- label voyage if it had at least
@@ -308,7 +305,7 @@ WITH
     (vessel_id,
       trip_id)
   GROUP BY
-    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30),
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),
 
   --------------------------------------
   -- label voyage if it had at least
@@ -328,7 +325,7 @@ WITH
   -- this will not be robust to vssels with two trips in the month
     (vessel_id)
   GROUP BY
-    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32),
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33),
 
 --------------------------------------
   -- label if voyages represents a 'real'
@@ -372,5 +369,24 @@ WITH
   WHERE
     true_voyage IS TRUE )
 
-SELECT * FROM initial_true_voyages
-
+SELECT
+  ssvid,
+  vessel_name,
+  gear,
+  trip_start,
+  trip_end,
+  lon,
+  lat,
+  timestamp,
+  speed_knots,
+  heading,
+  nnet_score,
+  hours,
+FROM
+  `world-fishing-827.pipe_ais_v3_alpha_published.messages`
+INNER JOIN (
+  SELECT vessel_name, gear, ssvid, trip_start, trip_end
+  FROM initial_true_voyages) USING (ssvid)
+WHERE
+  timestamp BETWEEN TIMESTAMP('2020-01-01 00:00:00 UTC') AND TIMESTAMP('2023-09-30 23:59:59 UTC')
+  AND timestamp BETWEEN trip_start AND trip_end
