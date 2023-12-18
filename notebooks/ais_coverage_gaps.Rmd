@@ -1,0 +1,623 @@
+---
+title: "AIS coverage around ports "
+author: "Max Schofield"
+date: "2023-12-18"
+output:
+  html_document:
+    df_print: paged
+  df_print: default
+  html_notebook: null
+highlight: pygments
+toc: yes
+toc_float:
+  toc_collapsed: yes
+toc_depth: 2
+editor_options:
+  chunk_output_type: inline
+---
+
+```{=html}
+<style>
+body {
+text-align: left}
+</style>
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, echo=F, warning=F, include=FALSE}
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial") )
+
+# get fishwatch r independently 
+if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+
+# if (!require("extrafont"))
+#   install.packages("extrafont")
+
+# # Unfortunately `extrafont::font_import()` will fail on latest Rttf2pt1 package...
+# # so we need to install old version
+# devtools::install_version("Rttf2pt1", version = "1.3.8")
+# 
+# # Import fonts to R
+# # This will take few minutes
+# extrafont::font_import()
+
+# remove a package causing issues 
+#detach("package:plyr", unload=TRUE)
+```
+
+```{r connection to BQ, echo=F, warning=F, include=FALSE}
+con <- DBI::dbConnect(drv = bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+
+# Satelitte Coverage 
+## All Data Types
+
+```{r download ais research messages West Africa, echo=F, warning=F}
+q_coverage <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_test.sql"))
+
+west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r Satelitte coverage Senegal, echo=F, warning=F}
+
+head(west_africa_full)
+
+sat_perf <- west_africa_full %>% mutate(sat_prop = sat_pos / segments )
+
+# set upper limit
+up_lim <- 1000 
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-21, -15),
+                          ylim = c(10.5, 16.5),
+                          output_crs = best_proj)
+  
+atlantic_map <- sat_perf %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'sat_prop',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = sat_prop)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Satelitte coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_cov.png"), width = 10, height = 12)
+
+```
+## Class A
+
+```{r download type A proto messages, echo=F, warning=F}
+q_coverage_v2 <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_type.sql"))
+
+west_africa_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
+                                               type = "'A'"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+```{r Class A Satelitte coverage Senegal, echo=F, warning=F}
+
+sat_perf <- west_africa_class_a %>% mutate(sat_prop = sat_pos / segments )
+
+# set upper limit
+up_lim <- 1000 
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-21, -15),
+                          ylim = c(10.5, 16.5),
+                          output_crs = best_proj)
+  
+atlantic_map <- sat_perf %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'sat_prop',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = sat_prop)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Satelitte coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_A_cov.png"), width = 10, height = 12)
+
+```
+
+```{r Class B Satelitte coverage Senegal, echo=F, warning=F}
+
+west_africa_class_b <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
+                                               type = "'B'"),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+sat_perf <- west_africa_class_b %>% mutate(sat_prop = sat_pos / segments )
+
+# set upper limit
+up_lim <- 1000 
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-21, -15),
+                          ylim = c(10.5, 16.5),
+                          output_crs = best_proj)
+  
+atlantic_map <- sat_perf %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'sat_prop',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = sat_prop)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Satelitte coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov.png"), width = 10, height = 12)
+
+```
+
+# Terrestrial Coverage
+
+```{r Terrestrial coverage Senegal, echo=F, warning=F}
+
+head(west_africa_full)
+
+ter_perf <- west_africa_full %>% mutate(ter_prop = ter_pos / segments )
+
+# set upper limit
+up_lim <- 1000 
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-21, -15),
+                          ylim = c(10.5, 16.5),
+                          output_crs = best_proj)
+  
+atlantic_map <- ter_perf %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'ter_prop',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = ter_prop)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Satelitte coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_terr_ais_cov.png"), width = 10, height = 12)
+
+```
+
+
+<!-- different AIS gap visualizations -->
+
+# AIS Gap images
+
+```{r AIS coverage tables, echo=F, warning=F}
+gap_locations <- readr::read_file(file = here::here("queries", ".", "ais_gap_locations.sql"))
+
+wa_gap_locations <- fishwatchr::gfw_query(query = gap_locations,
+                                 run_query = TRUE,
+                                 con = con)$data
+
+
+```
+
+<!-- move to looking at vessel level coverage -->
+ # Vessel level AIS coverage  
+
+```{r look at vessel daily ais coverage, echo=F, warning=F}
+# vessel_ais_q <- readr::read_file(file = here::here("queries", ".", "vessel_ais_coverage.sql"))
+vessel_ais_q <- readr::read_file(file = here::here("queries", ".", "vessel_ais_coverage_all.sql"))
+
+daily_voi_ais <- fishwatchr::gfw_query(query = vessel_ais_q,
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r look at metrics, echo=F, warning=F}
+
+daily_voi_ais$frac_hours <- daily_voi_ais$n_ais_hours / daily_voi_ais$n_voyage_hours 
+daily_voi_ais$year <- year(daily_voi_ais$trip_start)
+
+n_distinct(daily_voi_ais$vessel_id)
+head(daily_voi_ais)
+
+# look at coverage by vessel
+vessel_level <- daily_voi_ais %>% 
+  group_by(ssvid, vessel_id, geartype) %>% 
+    summarise(
+      days = n_distinct(date),
+      average_daily_frac_ais = mean(frac_hours),
+      ttl_hours = sum(n_ais_hours),
+      ttl_voyage_hours = sum(n_voyage_hours),
+      ttl_frac_ais = ttl_hours / ttl_voyage_hours
+    ) %>% 
+    arrange(ttl_frac_ais)
+
+# look at coverage by geartype
+gear_average <- vessel_level %>% 
+    ungroup() %>% 
+      group_by(geartype) %>% 
+        summarise(vessels = n_distinct(vessel_id), 
+                  average_cov = mean(ttl_frac_ais))
+  
+```
+
+# Trawlers
+
+## question: Do we want all the vessels activity or just on trips that go to Senegal? 
+
+
+```{r top 5 trawl vessels, echo=F, warning=F}
+# look at coverage graphs for worst performing vessels 
+top5_trawlers <- filter(vessel_level, days > 50, geartype == 'trawlers')$ssvid[1:5] 
+
+# single vessel plot
+# daily_voi_ais %>%
+#   filter(ssvid == top5_trawlers[1]) %>%
+#     mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
+#       ggplot() +
+#       geom_line(aes(date, frac_hours)) +
+#       geom_point(aes(date, frac_hours)) +
+#       geom_smooth(aes(date, frac_hours)) +
+#       lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31'))) +
+#       labs(y='Proportion of time on AIS', x = 'Date', title = paste('MMSI ', top5_trawlers[1]))
+# 
+
+daily_voi_ais %>%
+  filter(ssvid %in% top5_trawlers) %>%
+    mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
+      ggplot() +
+      geom_line(aes(date, frac_hours)) +
+      geom_point(aes(date, frac_hours)) +
+      geom_smooth(aes(date, frac_hours)) +
+      lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31')), y=c(0,1)) +
+      labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing trawlers') +
+      facet_wrap(vars(ssvid))
+
+ggsave(filename = here::here('figures',"trawl_b5_vessels_coverage_2019_2021.png"),
+        width = 30, height = 20, units = "cm")
+```
+
+```{r look at coverage for bottom 30 trawl vessels by gear, echo=F, warning=F}
+
+plot_dat <- daily_voi_ais %>% 
+  filter(geartype == 'trawlers', trip_start > as.Date('2019-01-01'))  %>% 
+    group_by(ssvid) %>% 
+      summarise(ttl_voyage_hours = sum(n_voyage_hours), 
+                ttl_ais_hours = sum(n_ais_hours),
+                days = n_distinct(date)) %>%
+        mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
+          filter(days > 30) %>%
+            ungroup() %>%
+              top_n(-30, frac_hours) %>% 
+                gather(key = "source", value = "hours", ttl_ais_hours, ttl_voyage_hours) %>%
+                  dplyr::mutate(freq_lab = ifelse(source %in% c("ttl_ais_hours"), NA, frac_hours)) 
+
+
+ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE), 
+                            y=hours, fill=source)) + 
+  geom_bar(stat='identity',position='identity', alpha=0.75) +
+  scale_fill_manual(values=gfw_palette('primary')[1:2], labels=c('AIS hours', 'Voyage Hours'))+
+  geom_text(aes(label=round(freq_lab,1)),size = 2, position_stack="stack",nudge_y = 100) +
+  coord_flip() +
+  labs(y='Hours',
+       x='MMSI',
+       fill='', 
+       title='AIS usage of Trawl Vessels', 
+       subtitle = '30 vessels with lowest AIS usage fraction') +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+      
+ggsave(filename = here::here('figures',"trawl_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+```
+
+```{r look at table of AIS usage, echo=F, warning=F}
+top3_bot_3 <- bind_rows(daily_voi_ais %>% 
+  filter(geartype == 'trawlers', trip_start > as.Date('2019-01-01'))  %>% 
+    group_by(ssvid) %>% 
+      summarise(ttl_voyage_hours = sum(n_voyage_hours), 
+                ttl_ais_hours = sum(n_ais_hours),
+                ttl_voyage_days = sum(n_voyage_hours)/24, 
+                ttl_ais_days = sum(n_ais_hours)/24,
+                days = n_distinct(date)) %>%
+        mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
+          filter(days > 30) %>%
+            ungroup() %>%
+              top_n(3, frac_hours), 
+  daily_voi_ais %>% 
+  filter(geartype == 'trawlers', trip_start > as.Date('2019-01-01'))  %>% 
+    group_by(ssvid) %>% 
+      summarise(ttl_voyage_hours = sum(n_voyage_hours), 
+                ttl_ais_hours = sum(n_ais_hours),
+                ttl_voyage_days = sum(n_voyage_hours)/24, 
+                ttl_ais_days = sum(n_ais_hours)/24,
+                days = n_distinct(date)) %>%
+        mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
+          filter(days > 30) %>%
+            ungroup() %>%
+              top_n(-3, frac_hours))
+
+
+```
+
+# Tuna Purse Seine
+
+```{r look at metrics tuna ps, echo=F, warning=F}
+# look at coverage graphs for worst performing vessels 
+top5_ps <- filter(vessel_level, days > 300, geartype == 'tuna_purse_seines')$ssvid[1:5] 
+
+daily_voi_ais %>%
+  filter(ssvid %in% top5_ps) %>%
+    mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
+      ggplot() +
+      geom_line(aes(date, frac_hours)) +
+      geom_point(aes(date, frac_hours)) +
+      geom_smooth(aes(date, frac_hours)) +
+      lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31')), y=c(0,1)) +
+      labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing longliners') +
+      facet_wrap(vars(ssvid))
+
+ggsave(filename = here::here('figures',"tps_b5_vessels_coverage_2019_2021.png"),
+        width = 30, height = 20, units = "cm")
+```
+```{r look at coverage for bottom tps 30 vessels by gear, echo=F, warning=F}
+
+plot_dat <- daily_voi_ais %>% 
+  filter(geartype == 'tuna_purse_seines', trip_start > as.Date('2019-01-01'))  %>% 
+    group_by(ssvid) %>% 
+      summarise(ttl_voyage_hours = sum(n_voyage_hours), 
+                ttl_ais_hours = sum(n_ais_hours),
+                days = n_distinct(date)) %>%
+        mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
+          filter(days > 30) %>%
+            ungroup() %>%
+              top_n(-30, frac_hours) %>% 
+                gather(key = "source", value = "hours", ttl_ais_hours, ttl_voyage_hours) %>%
+                  dplyr::mutate(freq_lab = ifelse(source %in% c("ttl_ais_hours"), NA, frac_hours)) 
+
+
+ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE), 
+                            y=hours, fill=source)) + 
+  geom_bar(stat='identity',position='identity', alpha=0.5) +
+  scale_fill_manual(values=gfw_palette('primary')[1:2], labels=c('AIS hours', 'Voyage Hours'))+
+  geom_text(aes(label=round(freq_lab,1)),size = 2, position_stack="stack",nudge_y = 100) +
+  coord_flip() +
+  labs(y='Hours',
+       x='MMSI',
+       fill='', 
+       title='AIS usage of Tuna Purse Seine Vessels', 
+       subtitle = '30 vessels with lowest AIS usage fraction') +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+      
+ggsave(filename = here::here('figures',"tps_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+```
+
+# Drifting Longlines 
+
+```{r look at metrics tuna, echo=F, warning=F}
+# look at coverage graphs for worst performing vessels 
+top5_longliners <- filter(vessel_level, days > 300, geartype == 'drifting_longlines')$ssvid[1:5] 
+
+daily_voi_ais %>%
+  filter(ssvid %in% top5_longliners) %>%
+    mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
+      ggplot() +
+      geom_line(aes(date, frac_hours)) +
+      geom_point(aes(date, frac_hours)) +
+      geom_smooth(aes(date, frac_hours)) +
+      lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31')), y=c(0,1)) +
+      labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing longliners') +
+      facet_wrap(vars(ssvid))
+
+ggsave(filename = here::here('figures',"ll_b5_vessels_coverage_2019_2021.png"),
+        width = 30, height = 20, units = "cm")
+```
+```{r look at coverage for bottom ll 30 vessels by gear, echo=F, warning=F}
+
+plot_dat <- daily_voi_ais %>% 
+  filter(geartype == 'drifting_longlines', trip_start > as.Date('2019-01-01'))  %>% 
+    group_by(ssvid) %>% 
+      summarise(ttl_voyage_hours = sum(n_voyage_hours), 
+                ttl_ais_hours = sum(n_ais_hours),
+                days = n_distinct(date)) %>%
+        mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
+          filter(days > 30) %>%
+            ungroup() %>%
+              top_n(-30, frac_hours) %>% 
+                gather(key = "source", value = "hours", ttl_ais_hours, ttl_voyage_hours) %>%
+                  dplyr::mutate(freq_lab = ifelse(source %in% c("ttl_ais_hours"), NA, frac_hours)) 
+
+
+ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE), 
+                            y=hours, fill=source)) + 
+  geom_bar(stat='identity',position='identity', alpha=0.5) +
+  scale_fill_manual(values=gfw_palette('primary')[1:2], labels=c('AIS hours', 'Voyage Hours'))+
+  geom_text(aes(label=round(freq_lab,1)),size = 2, position_stack="stack",nudge_y = 100) +
+  coord_flip() +
+  labs(y='Hours',
+       x='MMSI',
+       fill='', 
+       title='AIS usage of drifting longline Vessels', 
+       subtitle = '30 vessels with lowest AIS usage fraction') +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+      
+ggsave(filename = here::here('figures',"ll_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+```
+
+# Carriers
+
+```{r look at metrics carrier, echo=F, warning=F}
+# look at coverage graphs for worst performing vessels 
+top5_carrier <- filter(vessel_level, days > 300, geartype == 'carrier')$ssvid[1:5] 
+
+daily_voi_ais %>%
+  filter(ssvid %in% top5_carrier) %>%
+    mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
+      ggplot() +
+      geom_line(aes(date, frac_hours)) +
+      geom_point(aes(date, frac_hours)) +
+      geom_smooth(aes(date, frac_hours)) +
+      lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31')), y=c(0,1)) +
+      labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing longliners') +
+      facet_wrap(vars(ssvid))
+
+ggsave(filename = here::here('figures',"carrier_b5_vessels_coverage_2019_2021.png"),
+        width = 30, height = 20, units = "cm")
+```
+
+```{r look at coverage for bottom carrier 30 vessels by gear, echo=F, warning=F}
+
+plot_dat <- daily_voi_ais %>% 
+  filter(geartype == 'carrier', trip_start > as.Date('2019-01-01'))  %>% 
+    group_by(ssvid) %>% 
+      summarise(ttl_voyage_hours = sum(n_voyage_hours), 
+                ttl_ais_hours = sum(n_ais_hours),
+                days = n_distinct(date)) %>%
+        mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
+          filter(days > 30) %>%
+            ungroup() %>%
+              top_n(-30, frac_hours) %>% 
+                gather(key = "source", value = "hours", ttl_ais_hours, ttl_voyage_hours) %>%
+                  dplyr::mutate(freq_lab = ifelse(source %in% c("ttl_ais_hours"), NA, frac_hours)) 
+
+
+ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE), 
+                            y=hours, fill=source)) + 
+  geom_bar(stat='identity',position='identity', alpha=0.5) +
+  scale_fill_manual(values=gfw_palette('primary')[1:2], labels=c('AIS hours', 'Voyage Hours'))+
+  geom_text(aes(label=round(freq_lab,1)),size = 2, position_stack="stack",nudge_y = 100) +
+  coord_flip() +
+  labs(y='Hours',
+       x='MMSI',
+       fill='', 
+       title='AIS usage of fish carrier Vessels', 
+       subtitle = '30 vessels with lowest AIS usage fraction') +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+      
+ggsave(filename = here::here('figures',"carrier_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+```
+
+
+
