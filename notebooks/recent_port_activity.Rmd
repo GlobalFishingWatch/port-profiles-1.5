@@ -94,7 +94,7 @@ carrier_voyages <- fishwatchr::gfw_query(query = glue::glue(carrier_voyages_q),
 
 ```{r fishing voyages all, echo=F, warning=F, include=FALSE}
 
-fishing_voyages_q <- readr::read_file(here::here("queries","proactive", "recent_fishing_voyages_c2.sql"))
+fishing_voyages_q <- readr::read_file(here::here("queries","proactive", "recent_fishing_voyages_c2_v2.sql"))
 
 fishing_voyages <- fishwatchr::gfw_query(query = glue::glue(fishing_voyages_q),
                                  run_query = TRUE,
