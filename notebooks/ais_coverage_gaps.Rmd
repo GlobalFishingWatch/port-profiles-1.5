@@ -75,7 +75,17 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
 ```{r download ais research messages West Africa, echo=F, warning=F}
 q_coverage <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_test.sql"))
 
-west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
+# west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
+#                                  run_query = TRUE,
+#                                  con = con)$data
+
+west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
+                  start_date = "'2023-01-01'",
+                  end_date = "'2023-07-01'", 
+                  min_lat = "10", 
+                  max_lat = "17", 
+                  min_lon = "-21", 
+                  max_lon = "-15"),
                                  run_query = TRUE,
                                  con = con)$data
 ```
@@ -138,10 +148,17 @@ ggsave(here::here("outputs", "figures", "senegal_sat_ais_cov.png"), width = 10, 
 q_coverage_v2 <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_type.sql"))
 
 west_africa_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
-                                               type = "'A'"),
+                  start_date = "'2023-01-01'",
+                  end_date = "'2023-07-01'", 
+                  min_lat = "10", 
+                  max_lat = "17", 
+                  min_lon = "-21", 
+                  max_lon = "-15", 
+                  type = "'A'"),
                                  run_query = TRUE,
                                  con = con)$data
 ```
+
 ```{r Class A Satelitte coverage Senegal, echo=F, warning=F}
 
 sat_perf <- west_africa_class_a %>% mutate(sat_prop = sat_pos / segments )
@@ -189,14 +206,20 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_A_cov.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_A_cov_v2.png"), width = 10, height = 12)
 
 ```
 
 ```{r Class B Satelitte coverage Senegal, echo=F, warning=F}
 
 west_africa_class_b <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
-                                               type = "'B'"),
+                  start_date = "'2023-01-01'",
+                  end_date = "'2023-07-01'", 
+                  min_lat = "10", 
+                  max_lat = "17", 
+                  min_lon = "-21", 
+                  max_lon = "-15",
+                  type = "'B'"),
                                  run_query = TRUE,
                                  con = con)$data
 
@@ -245,7 +268,7 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov_v2.png"), width = 10, height = 12)
 
 ```
 

@@ -4,12 +4,13 @@
 -- missing values when positions aren't received.
 
 ---SET your dates of interest
-CREATE TEMP FUNCTION minimum() AS (TIMESTAMP('2023-01-01'));
-CREATE TEMP FUNCTION maximum() AS (TIMESTAMP('2023-03-01'));
-CREATE TEMP FUNCTION min_lat() AS (-6);
-CREATE TEMP FUNCTION max_lat() AS (22);
-CREATE TEMP FUNCTION min_lon() AS (-30);
-CREATE TEMP FUNCTION max_lon() AS (20);
+CREATE TEMP FUNCTION minimum() AS (TIMESTAMP({start_date}));
+CREATE TEMP FUNCTION maximum() AS (TIMESTAMP({end_date}));
+CREATE TEMP FUNCTION min_lat() AS ({min_lat});
+CREATE TEMP FUNCTION max_lat() AS ({max_lat});
+CREATE TEMP FUNCTION min_lon() AS ({min_lon});
+CREATE TEMP FUNCTION max_lon() AS ({max_lon});
+CREATE TEMP FUNCTION type() AS ({type});
 
 WITH aoi AS (
   SELECT
@@ -32,10 +33,9 @@ WITH aoi AS (
     `pipe_production_v20201001.proto_messages_interpolated`
   WHERE
     TIMESTAMP_TRUNC(timestamp, DAY) BETWEEN minimum() AND maximum()
-    -- filter to voi
     AND lat BETWEEN min_lat() AND max_lat()
     AND lon BETWEEN min_lon() AND max_lon()
-    AND type = {type}
+    AND type = type()
 )
 
 SELECT

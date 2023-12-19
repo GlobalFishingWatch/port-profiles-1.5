@@ -1,0 +1,58 @@
+---
+title: "Port Catchment"
+author: "Max Schofield"
+date: "2023-12-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, echo=F, warning=F, include=FALSE}
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial") )
+
+# get fishwatch r independently 
+if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+```
+
+```{r connection to BQ, echo=F, warning=F, include=FALSE}
+con <- DBI::dbConnect(drv = bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+
+# Port Catchment Areas
+## Dakar, Senegal 
+
+```{r download ais research messages West Africa, echo=F, warning=F}
+q_coverage <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_test.sql"))
+
+# west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
+#                                  run_query = TRUE,
+#                                  con = con)$data
+
+west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
+                  start_date = "'2023-01-01'",
+                  end_date = "'2023-07-01'", 
+                  min_lat = "10", 
+                  max_lat = "17", 
+                  min_lon = "-21", 
+                  max_lon = "-15"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
