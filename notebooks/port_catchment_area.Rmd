@@ -36,23 +36,529 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
                       use_legacy_sql = FALSE)
 ```
 
+```{r sav fao major shape as sf object}
+fao_major <- sf::read_sf(here::here('data','geodata','FAO_AREAS_NOCOASTLINE','FAO_AREAS_NOCOASTLINE.shp')) %>%
+  filter(F_LEVEL == 'MAJOR')
+```
+
 # Port Catchment Areas
 ## Dakar, Senegal 
 
 ```{r download ais research messages West Africa, echo=F, warning=F}
-q_coverage <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_test.sql"))
-
-# west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
+# q_coverage <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_test.sql"))
+# 
+# # west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
+# #                                  run_query = TRUE,
+# #                                  con = con)$data
+# 
+# west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
+#                   start_date = "'2023-01-01'",
+#                   end_date = "'2023-07-01'", 
+#                   min_lat = "10", 
+#                   max_lat = "17", 
+#                   min_lon = "-21", 
+#                   max_lon = "-15"),
 #                                  run_query = TRUE,
 #                                  con = con)$data
-
-west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
-                  start_date = "'2023-01-01'",
-                  end_date = "'2023-07-01'", 
-                  min_lat = "10", 
-                  max_lat = "17", 
-                  min_lon = "-21", 
-                  max_lon = "-15"),
-                                 run_query = TRUE,
-                                 con = con)$data
 ```
+
+# Dakar 
+
+
+```{r map data Dakar}
+fishing_before_dakar <- fishwatchr::gfw_query("
+    SELECT 
+      * EXCEPT(events)  
+    FROM `world-fishing-827.scratch_max.fishing_before_dakar_010623`
+    WHERE main_flag != 'SEN'",
+  run_query = TRUE,
+  con = con
+)$data
+
+bbox <- transform_box(
+  xlim = c(-60, 15),
+  ylim = c(-20, 30),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+```
+
+```{r Port Catchment Map Dakar}
+(dakar_fishing_catchment <- fishing_before_dakar %>%
+    #group_by(port_id,lat_bin,lon_bin) %>%
+    #summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+    #fishwatchr::gfw_project_raster(x = 'lon_bin',
+    #                               y = 'lat_bin',
+    #                               fill = 'fishing_hours',
+    #                               output_crs = bbox$out_crs) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    #scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+    # geom_sf(data = outline %>% sf::st_make_valid(.) %>% 
+    #           sf::st_union(.) %>% 
+    #           sf::st_set_crs(., value = 4326) %>%
+    #           sf::st_transform(., crs = fishwatchr::gfw_projections("Equal Earth")$proj_string),
+    #         fill = NA,
+    #         color = 'orange') + 
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Dakar, Senegal"))
+)
+
+ggsave(dakar_fishing_catchment, 
+       filename = here::here('outputs','figures','dakar_fishingcatchment_map_v20230919.pdf'),
+       device = cairo_pdf,
+       width = 150,
+       height = 250,
+       units = 'mm',
+       dpi = 600)
+
+ggsave(dakar_fishing_catchment, 
+       filename = here::here('outputs','figures','dakar_fishingcatchment_map_v20230919.png'),
+       device = 'png',
+       width = 150,
+       height = 250,
+       units = 'mm',
+       dpi = 600)
+```
+
+# Heatmap by flag
+
+```{r concept flag map fishing points, warning=F, echo=F}
+
+# look at top flags 
+fishing_before_dakar %>% group_by(main_flag) %>% summarise(fishing_events=n()) %>% arrange(desc(fishing_events))
+
+# top flags df
+top_flags <- filter(fishing_before_dakar, main_flag %in% c('CHN','TWN', 'ESP', 'KOR', 'FRA', 'ITA'))
+
+dakar_flag_catchment <- top_flags %>%
+    #group_by(port_id,lat_bin,lon_bin) %>%
+    #summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+    #fishwatchr::gfw_project_raster(x = 'lon_bin',
+    #                               y = 'lat_bin',
+    #                               fill = 'fishing_hours',
+    #                               output_crs = bbox$out_crs) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'grey80') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    #scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+    # geom_sf(data = outline %>% sf::st_make_valid(.) %>% 
+    #           sf::st_union(.) %>% 
+    #           sf::st_set_crs(., value = 4326) %>%
+    #           sf::st_transform(., crs = fishwatchr::gfw_projections("Equal Earth")$proj_string),
+    #         fill = NA,
+    #         color = 'orange') + 
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Dakar, Senegal")) +
+  facet_wrap(~main_flag)
+
+ggsave(dakar_flag_catchment, 
+       filename = here::here('outputs','figures','dakar_fishingcatchment_flag_map.png'),
+       device = 'png',
+       width = 300,
+       height = 200,
+       units = 'mm',
+       dpi = 600)
+```
+
+```{r concept flag heatmap, warning=F, echo=F}
+
+top_flags$lat_bin <- round(top_flags$lat_mean/0.5)*0.5
+top_flags$lon_bin <- round(top_flags$lon_mean/0.5)*0.5
+top_flags$fishing_hours <- as.numeric(difftime(top_flags$event_end, top_flags$event_start, units='secs')) / 3600   
+
+
+dakar_chn_catchment_heatmap <- filter(top_flags, main_flag == 'CHN') %>%
+    group_by(main_flag, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = log10(fishing_hours)),interpolate = TRUE) +
+    scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'grey80') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    #scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+    # geom_sf(data = outline %>% sf::st_make_valid(.) %>% 
+    #           sf::st_union(.) %>% 
+    #           sf::st_set_crs(., value = 4326) %>%
+    #           sf::st_transform(., crs = fishwatchr::gfw_projections("Equal Earth")$proj_string),
+    #         fill = NA,
+    #         color = 'orange') + 
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("CHN fishing before entering Dakar, Senegal"), fill = 'Fishing Hours')
+
+ggsave(dakar_chn_catchment_heatmap, 
+       filename = here::here('outputs','figures','dakar_chn_fishingcatchment_flag_heatmap.png'),
+       device = 'png',
+       width = 150,
+       height = 100,
+       units = 'mm',
+       dpi = 600)
+
+
+
+# set bounding box
+bounding_1 <- transform_box(xlim = c(bbox[1,"x_min"], bbox[1, "x_max"]),
+                            ylim = c(bbox[1, "y_min"], bbox[1, "y_max"]),
+                            output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string)
+              
+
+# map of gridded fishing effort
+#
+# 
+# 
+# a <- f_days_2019_rast %>% 
+#   ggplot() +
+#   geom_raster(aes(x = lon_bin,
+#                       y = lat_bin,
+#                       fill = fishing_days),
+#                       hjust = 0.05,
+#                       vjust = 0.05) +
+#   geom_gfw_eez(center = 170) +
+#   geom_sf(data = eez_ffa, fill = NA, color = gfw_palette('orange')[1], alpha = 0.6) +
+#   geom_gfw_land(center = 170) +
+#       labs(title = "From 15/10 to 15/11, 2019") +
+#       scale_fill_gradientn(colours = gfw_palette("map_effort_dark"),
+#                            # limits = c(0, 200),
+#                            oob = scales::squish,
+#                            na.value = NA,
+#                            name = "Fishing days"
+#                            # name = exp_title
+#                           ) +
+#       scale_x_continuous(breaks = c(140, 160, 180, -160, -140), expand = c(0, 0)) +
+#       scale_y_continuous(expand = c(0,0)) +
+#       theme_gfw_map() +
+#       theme(plot.title = element_text(size = 12),
+#             plot.subtitle = element_text(size = 10),
+#             axis.title = element_blank(),
+#             axis.text = element_text(size = 8),
+#             legend.text = element_text(size = 10),
+#             legend.title = element_text(size = 12)) +
+#       coord_sf(xlim = c(bounding_1$box_out[['xmin']], bounding_1$box_out[['xmax']]), 
+#                ylim = c(bounding_1$box_out[['ymin']], bounding_1$box_out[['ymax']]), 
+#                crs = bounding_1$out_crs)
+# legend <- get_legend(a)
+# a <- a + theme(legend.position="none")
+# 
+# b<- f_days_2020_rast %>% 
+#   ggplot() +
+#   geom_raster(aes(x = lon_bin,
+#                       y = lat_bin,
+#                       fill = fishing_days),
+#                       hjust = 0.05,
+#                       vjust = 0.05) +
+#   geom_gfw_eez(center = 170) +
+#   geom_sf(data = eez_ffa, fill = NA, color = gfw_palette('orange')[1], alpha = 0.6) +
+#   geom_gfw_land(center = 170) +
+#       labs(title = "From 15/10 to 15/11, 2020") +
+#       scale_fill_gradientn(colours = gfw_palette("map_effort_dark"),
+#                            # limits = c(0, 200),
+#                            oob = scales::squish,
+#                            na.value = NA,
+#                            name = "Fishing days"
+#                            # name = exp_title
+#                           ) +
+#       scale_x_continuous(breaks = c(140, 160, 180, -160, -140), expand = c(0, 0)) +
+#       scale_y_continuous(expand = c(0,0)) +
+#       theme_gfw_map() +
+#       theme(plot.title = element_text(size = 12),
+#             plot.subtitle = element_text(size = 10),
+#             axis.title = element_blank(),
+#             axis.text = element_text(size = 8),
+#             legend.text = element_text(size = 10),
+#             legend.title = element_text(size = 12)) +
+#       coord_sf(xlim = c(bounding_1$box_out[['xmin']], bounding_1$box_out[['xmax']]), 
+#                ylim = c(bounding_1$box_out[['ymin']], bounding_1$box_out[['ymax']]), 
+#                crs = bounding_1$out_crs)+
+#   theme(legend.position="none")
+# 
+# c<- f_days_2021_rast %>% 
+#   ggplot() +
+#   geom_raster(aes(x = lon_bin,
+#                       y = lat_bin,
+#                       fill = fishing_days),
+#                       hjust = 0.05,
+#                       vjust = 0.05) +
+#   geom_gfw_eez(center = 170) +
+#   geom_sf(data = eez_ffa, fill = NA, color = gfw_palette('orange')[1], alpha = 0.6) +
+#   geom_gfw_land(center = 170) +
+#       labs(title = "From 15/10 to 15/11, 2021") +
+#       scale_fill_gradientn(colours = gfw_palette("map_effort_dark"),
+#                            # limits = c(0, 200),
+#                            oob = scales::squish,
+#                            na.value = NA,
+#                            name = "Fishing days"
+#                            # name = exp_title
+#                           ) +
+#       scale_x_continuous(breaks = c(140, 160, 180, -160, -140), expand = c(0, 0)) +
+#       scale_y_continuous(expand = c(0,0)) +
+#       theme_gfw_map() +
+#       theme(plot.title = element_text(size = 12),
+#             plot.subtitle = element_text(size = 10),
+#             axis.title = element_blank(),
+#             axis.text = element_text(size = 8),
+#             legend.text = element_text(size = 10),
+#             legend.title = element_text(size = 12)) +
+#       coord_sf(xlim = c(bounding_1$box_out[['xmin']], bounding_1$box_out[['xmax']]), 
+#                ylim = c(bounding_1$box_out[['ymin']], bounding_1$box_out[['ymax']]), 
+#                crs = bounding_1$out_crs)+
+#   theme(legend.position="none")
+# 
+# d<- f_days_2022_rast %>% 
+#   ggplot() +
+#   geom_raster(aes(x = lon_bin,
+#                       y = lat_bin,
+#                       fill = fishing_days),
+#                       hjust = 0.05,
+#                       vjust = 0.05) +
+#   geom_gfw_eez(center = 170) +
+#   geom_sf(data = eez_ffa, fill = NA, color = gfw_palette('orange')[1], alpha = 0.6) +
+#   geom_gfw_land(center = 170) +
+#       labs(title = "From 15/10 to 15/11, 2022") +
+#       scale_fill_gradientn(colours = gfw_palette("map_effort_dark"),
+#                            # limits = c(0, 200),
+#                            oob = scales::squish,
+#                            na.value = NA,
+#                            name = "Fishing days"
+#                            # name = exp_title
+#                           ) +
+#       scale_x_continuous(breaks = c(140, 160, 180, -160, -140), expand = c(0, 0)) +
+#       scale_y_continuous(expand = c(0,0)) +
+#       theme_gfw_map() +
+#       theme(plot.title = element_text(size = 12),
+#             plot.subtitle = element_text(size = 10),
+#             axis.title = element_blank(),
+#             axis.text = element_text(size = 8),
+#             legend.text = element_text(size = 10),
+#             legend.title = element_text(size = 12)) +
+#       coord_sf(xlim = c(bounding_1$box_out[['xmin']], bounding_1$box_out[['xmax']]), 
+#                ylim = c(bounding_1$box_out[['ymin']], bounding_1$box_out[['ymax']]), 
+#                crs = bounding_1$out_crs)+
+#   theme(legend.position="none")
+# 
+# 
+# 
+# p <- grid.arrange(a, b, legend, ncol=1, nrow=3, 
+#              heights = c(1.2, 1.2, 0.2), top=textGrob("Fishing days during the previous 4 years at the same period"))
+# 
+# ggsave(plot = p, 
+#        filename = here::here('outputs', 'figures', 'op_ceclant_1030', 'patrolperiod', 'fishing_days_grid_aoi_patrolperiod_en.png'), 
+#        units = 'cm', 
+#        width = 15, 
+#        height = 15,
+#        bg = '#f7f7f7')
+# 
+# p <- grid.arrange(c, d, legend, ncol=1, nrow=3, 
+#              heights = c(1.2, 1.2, 0.2), top=textGrob("Fishing days during the previous 4 years at the same period"))
+# 
+# ggsave(plot = p, 
+#        filename = here::here('outputs', 'figures', 'op_ceclant_1030', 'patrolperiod', 'fishing_days_grid_aoi_patrolperiod_en2.png'), 
+#        units = 'cm', 
+#        width = 15, 
+#        height = 15,
+#        bg = '#f7f7f7')
+```
+
+# Maps by gear
+
+```{r concept map gear, warning=F, echo=F}
+
+# look at top gears 
+fishing_before_dakar %>% group_by(main_class) %>% summarise(fishing_events=n()) %>% arrange(desc(fishing_events))
+
+dakar_gear_catchment <- fishing_before_dakar %>%
+    #group_by(port_id,lat_bin,lon_bin) %>%
+    #summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+    #fishwatchr::gfw_project_raster(x = 'lon_bin',
+    #                               y = 'lat_bin',
+    #                               fill = 'fishing_hours',
+    #                               output_crs = bbox$out_crs) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'grey80') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    #scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+    # geom_sf(data = outline %>% sf::st_make_valid(.) %>% 
+    #           sf::st_union(.) %>% 
+    #           sf::st_set_crs(., value = 4326) %>%
+    #           sf::st_transform(., crs = fishwatchr::gfw_projections("Equal Earth")$proj_string),
+    #         fill = NA,
+    #         color = 'orange') + 
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Dakar, Senegal")) +
+  facet_wrap(~main_class)
+
+ggsave(dakar_gear_catchment, 
+       filename = here::here('outputs','figures','dakar_fishingcatchment_gear_map.png'),
+       device = 'png',
+       width = 300,
+       height = 200,
+       units = 'mm',
+       dpi = 600)
+```
+
+
+
+# Mombasa 
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| warning: false
+
+#bbox <- transform_box(
+#  xlim = c(-180, -130),
+#  ylim = c(30, 75),
+#  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+#)
+
+#fishing_before_port <- fishwatchr::gfw_query(
+#  here::here("queries", "fishing_before_portstop.sql"),
+#  run_query = TRUE,
+#  con = con,
+#  port_id = 'SEN-6672050'
+#)$data
+
+#port_catchment_all(df = fishing_before_port,
+#                   port_ids = 'SEN-6672050',
+#                   fleet = 'domestic',
+#                   bbox = bbox)
+
+#| eval: false
+#| echo: false
+
+fishing_before_mombasa <- fishwatchr::gfw_query(
+  here::here("queries", "fishing_before_mombasa_v2.sql"),
+  run_query = TRUE,
+  con = con
+)$data
+
+bbox <- transform_box(
+  xlim = c(35, 70),
+  ylim = c(-15, 10),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+
+(dakar_fishing_catchment <- fishing_before_mombasa %>%
+    #group_by(port_id,lat_bin,lon_bin) %>%
+    #summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+    #fishwatchr::gfw_project_raster(x = 'lon_bin',
+    #                               y = 'lat_bin',
+    #                               fill = 'fishing_hours',
+    #                               output_crs = bbox$out_crs) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'grey80') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    #scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+    # geom_sf(data = outline %>% sf::st_make_valid(.) %>% 
+    #           sf::st_union(.) %>% 
+    #           sf::st_set_crs(., value = 4326) %>%
+    #           sf::st_transform(., crs = fishwatchr::gfw_projections("Equal Earth")$proj_string),
+    #         fill = NA,
+    #         color = 'orange') + 
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Mombasa, Kenya"))
+)
+
+ggsave(dakar_fishing_catchment, 
+       filename = here::here('outputs','figures','mombasa_fishingcatchment_map_v20230918_no_Ken.pdf'),
+       device = cairo_pdf,
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+
+ggsave(dakar_fishing_catchment, 
+       filename = here::here('outputs','figures','mombasa_fishingcatchment_map_v20230918_no_Ken.png'),
+       device = 'png',
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
+
+
