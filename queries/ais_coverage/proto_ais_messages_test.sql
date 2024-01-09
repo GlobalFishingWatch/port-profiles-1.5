@@ -4,12 +4,12 @@
 -- missing values when positions aren't received.
 
 ---SET your dates of interest
-CREATE TEMP FUNCTION minimum() AS (TIMESTAMP('2023-01-01'));
-CREATE TEMP FUNCTION maximum() AS (TIMESTAMP('2023-03-01'));
-CREATE TEMP FUNCTION min_lat() AS (-6);
-CREATE TEMP FUNCTION max_lat() AS (22);
-CREATE TEMP FUNCTION min_lon() AS (-30);
-CREATE TEMP FUNCTION max_lon() AS (20);
+CREATE TEMP FUNCTION minimum() AS (TIMESTAMP({start_date}));
+CREATE TEMP FUNCTION maximum() AS (TIMESTAMP({end_date}));
+CREATE TEMP FUNCTION min_lat() AS ({min_lat});
+CREATE TEMP FUNCTION max_lat() AS ({max_lat});
+CREATE TEMP FUNCTION min_lon() AS ({min_lon});
+CREATE TEMP FUNCTION max_lon() AS ({max_lon});
 
 WITH aoi AS (
   SELECT
@@ -44,7 +44,7 @@ SELECT
   sum(satellite_pos) AS sat_pos_ttl,
   sum(sat_tf) AS sat_pos,
   count(seg_id) AS segments,
-  sum(terrestrial_pos) AS ter_pos,
+  sum(ter_tf) AS ter_pos,
   sum(terrestrial_pos) AS ter_pos_ttl,
 FROM
   aoi

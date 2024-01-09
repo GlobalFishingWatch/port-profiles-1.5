@@ -94,7 +94,8 @@ west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
 
 head(west_africa_full)
 
-sat_perf <- west_africa_full %>% mutate(sat_prop = sat_pos / segments )
+sat_perf <- west_africa_full %>% mutate(sat_prop = sat_pos / segments,
+                                        sat_prop_alt = sat_pos_ttl /segments)
 
 # set upper limit
 up_lim <- 1000 
@@ -161,7 +162,8 @@ west_africa_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
 
 ```{r Class A Satelitte coverage Senegal, echo=F, warning=F}
 
-sat_perf <- west_africa_class_a %>% mutate(sat_prop = sat_pos / segments )
+sat_perf <- west_africa_class_a %>% mutate(sat_prop = sat_pos / segments,
+                                        sat_prop_alt = sat_pos_ttl /segments )
 
 # set upper limit
 up_lim <- 1000 

@@ -45,7 +45,7 @@ SELECT
   sum(satellite_pos) AS sat_pos_ttl,
   sum(sat_tf) AS sat_pos,
   count(seg_id) AS segments,
-  sum(terrestrial_pos) AS ter_pos,
+  sum(ter_tf) AS ter_pos,
   sum(terrestrial_pos) AS ter_pos_ttl,
 FROM
   aoi
