@@ -328,7 +328,173 @@ fishwatchr::add_little_globe(atlantic_map,
 ggsave(here::here("outputs", "figures", "senegal_terr_ais_cov.png"), width = 10, height = 12)
 
 ```
+# AIS coverage Alternate
 
+```{r download type A proto messages, echo=F, warning=F}
+q_coverage_v3 <- readr::read_file(file = here::here("queries", "ais_coverage", "AIS_coverage_Tyler.sql"))
+
+WA_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v3,
+                  start_date = "'2023-01-01'",
+                  end_date = "'2023-07-01'", 
+                  min_lat = "10", 
+                  max_lat = "17", 
+                  min_lon = "-21", 
+                  max_lon = "-15", 
+                  type = "'A'"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r Test different coverage metrics class A, echo=F, warning=F}
+
+head(west_africa_full)
+
+class_a <- filter(WA_class_a, type=='A')
+
+# set upper limit
+up_lim <- 1000 
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-21, -15),
+                          ylim = c(10.5, 16.5),
+                          output_crs = best_proj)
+  
+atlantic_map <- class_a %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'satellite_reception',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = satellite_reception)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Class A coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_classA_ais_cov_v2.png"), width = 10, height = 12)
+
+```
+
+```{r Test different coverage metrics class B, echo=F, warning=F}
+
+class_a <- filter(WA_class_a, type=='B')
+
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-20.5, -15),
+                          ylim = c(10, 16.5),
+                          output_crs = best_proj)
+  
+atlantic_map <- class_a %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'satellite_reception',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = satellite_reception)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Class B coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_classB_ais_cov_v2.png"), width = 10, height = 12)
+
+```
+
+```{r Test different coverage metrics Terrestrial, echo=F, warning=F}
+
+class_a <- filter(WA_class_a, type=='A')
+
+#set plot center 
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+# set plot limits for Pacific 
+bounding_atlantic <- transform_box(xlim = c(-20.5, -15),
+                          ylim = c(13.5, 16.1),
+                          output_crs = best_proj)
+  
+atlantic_map <- class_a %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'terrestrial_reception',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = terrestrial_reception)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Terrestrial coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "senegal_terrestrial_ais_cov_v2.png"), width = 10, height = 12)
+
+```
 
 <!-- different AIS gap visualizations -->
 
