@@ -19,11 +19,11 @@
   -- 4. voyages where the longest port visit
   --    stop/gap is "long enough" (3
   --    hours currently)
-CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2021-01-01 00:00:00 UTC'));
-CREATE TEMP FUNCTION  start_year() AS (2021);
+CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2020-01-01 00:00:00 UTC'));
+CREATE TEMP FUNCTION  start_year() AS (2020);
   # voyages will be truncated to this end timestamp, if needed
-CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP('2023-12-31 23:59:59 UTC'));
-CREATE TEMP FUNCTION  end_year() AS (2023);
+CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP('2022-12-31 23:59:59 UTC'));
+CREATE TEMP FUNCTION  end_year() AS (2022);
 
 --------------------------------------
 WITH
@@ -48,7 +48,7 @@ WITH
        best_flag AS vessel_iso3,
        '1' as class_confidence,
        'fishing' AS vessel_class,
-       best_vessel_class AS gear
+       best_vessel_class AS gear_type
      FROM
       `world-fishing-827.gfw_research.fishing_vessels_ssvid_v20231201` -- **** update to pipe 3 when released ******
      WHERE
@@ -66,7 +66,7 @@ WITH
       IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
       '2' as class_confidence,
       'fishing' AS vessel_class,
-      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear
+      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
     FROM
       `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
     WHERE on_fishing_list_best AND
@@ -91,7 +91,7 @@ WITH
       IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
       '3' as class_confidence,
       'fishing' AS vessel_class,
-      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear
+      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
     FROM
       `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
     WHERE (
@@ -169,7 +169,7 @@ WITH
       IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
       '1' as class_confidence,
       'bunker' AS vessel_class,
-      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear,
+      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type,
       activity.first_timestamp,
       activity.last_timestamp
     FROM
@@ -192,7 +192,7 @@ WITH
       IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
       '2' as class_confidence,
       'bunker' AS vessel_class,
-      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear,
+      IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type,
       activity.first_timestamp,
       activity.last_timestamp
     FROM
@@ -215,7 +215,7 @@ WITH
       'flag' AS vessel_iso3,
       '3' AS class_confidence,
       'bunker' AS vessel_class,
-      'geartype' AS gear,
+      'geartype' AS gear_type,
       first_timestamp,
       last_timestamp
     FROM
@@ -273,7 +273,7 @@ WITH
         bunkers.vessel_iso3,
         bunkers.class_confidence,
         bunkers.vessel_class,
-        bunkers.gear
+        bunkers.gear_type
       FROM (
         SELECT
           *,
@@ -301,7 +301,7 @@ WITH
       'flag' AS vessel_iso3,
       '1' AS class_confidence,
       'carrier' AS vessel_class,
-      'geartype' AS gear,
+      'geartype' AS gear_type,
       first_timestamp,
       last_timestamp
     FROM
@@ -324,7 +324,7 @@ WITH
       best.best_flag AS vessel_iso3,
       '2' AS class_confidence,
       'carrier' AS vessel_class,
-      best.best_vessel_class AS gear,
+      best.best_vessel_class AS gear_type,
       activity.first_timestamp,
       activity.last_timestamp
     FROM `gfw_research.vi_ssvid_v20231201`
@@ -344,7 +344,7 @@ WITH
       best.best_flag AS vessel_iso3,
       '3' AS class_confidence,
       'carrier' AS vessel_class,
-      best.best_vessel_class AS gear,
+      best.best_vessel_class AS gear_type,
       activity.first_timestamp,
       activity.last_timestamp
     FROM `gfw_research.vi_ssvid_v20231201`
@@ -401,7 +401,7 @@ WITH
         carriers.vessel_iso3,
         carriers.class_confidence,
         carriers.vessel_class,
-        carriers.gear
+        carriers.gear_type
       FROM (
         SELECT
           *,
@@ -441,33 +441,29 @@ WITH
     FROM
       carrier_voyages
   ),
-    -- ) select * from initial_voyages  /*
-    -- ) select * from initial_voyages where trip_id IN ('900380585-201595d5f-f4bc-bb34-b739-c53e80bc365b-018055d43808', '366899490-acd73a672-2f4a-cf6f-707b-780028b06e64-0182b85ea7fe', '412364192-06f0cdec5-59ac-87ad-6f89-abf40c05a111-0189d02f7b40', '273569400-cf2ecce11-119f-80fe-d997-3ade30f368c7-0183d9c05888') order by class_confidence /*
-    -- ) select trip_id, count(*) as n from initial_voyages group by trip_id order by n desc /*
 
   --------------------------------------
   -- Remove any duplicates between categories (fishing, bunker, carrier) by
   -- selecting duplicate vessel with the higher confidence level
-  -- note if vessel has the same conf level
+  -- note if vessel has the same conf level, selecting fishing, then carrier, then bunker...
   --------------------------------------
-
-  voyage_duplicates AS(
+  total_voyages AS(
     SELECT DISTINCT
       year,
       ssvid,
       vessel_id,
       FIRST_VALUE (vessel_iso3) OVER (
         PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class) AS vessel_iso3,
+        ORDER BY class_confidence ASC, vessel_class DESC) AS vessel_iso3,
       FIRST_VALUE (class_confidence) OVER (
         PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class) AS class_confidence,
+        ORDER BY class_confidence ASC, vessel_class DESC) AS class_confidence,
       FIRST_VALUE (vessel_class) OVER (
         PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class) AS vessel_class,
-      FIRST_VALUE (gear) OVER (
+        ORDER BY class_confidence ASC, vessel_class DESC) AS vessel_class,
+      FIRST_VALUE (gear_type) OVER (
         PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class) AS gear,
+        ORDER BY class_confidence ASC, vessel_class DESC) AS gear_type,
       trip_id,
       trip_start,
       trip_end,
@@ -478,8 +474,774 @@ WITH
       trip_start_confidence,
       trip_end_confidence,
   FROM initial_voyages
- ),
+  ),
 
-  /*
+  --------------------------------------
+  -- Anchorage names
+  --------------------------------------
+  anchorage_names AS (
+  SELECT
+    s2id,
+    label,
+    iso3
+  FROM
+    `anchorages.named_anchorages_v20230925`
+    ),
+
+  --------------------------------------
+  -- Add names to voyages (start and end)
+  --------------------------------------
+  named_voyages AS (
+  SELECT
+    * EXCEPT(s2id, label, iso3),
+    c.label AS end_label,
+    c.iso3 AS end_iso3
+  FROM (
+    SELECT
+      * EXCEPT(s2id, label, iso3),
+      b.label AS start_label,
+      b.iso3 AS start_iso3
+    FROM
+      total_voyages
+    LEFT JOIN
+      anchorage_names b
+    ON
+      trip_start_anchorage_id = s2id)
+  LEFT JOIN
+    anchorage_names c
+  ON
+    trip_end_anchorage_id = s2id),
+
+-------------------------------------------------------------------
+-- The following bit of code is intended to splice together voyages
+-- that pass through the Panama Canal into a single voyage, so as not to inflate assigned
+-- port visits to Panama when the vessel is only using the Canal for transit
+-------------------------------------------------------------------
+
+-- **** consider whether to add same logic for other straits or canals
+
+  ------------------------------------------------
+  -- anchorage ids that represent the Panama Canal
+
+  -- JF - note the named_anchorages table was updated without
+  -- the Panama Canal sublabels so these are saved in a
+  -- separate table for now
+  ------------------------------------------------
+  panama_canal_ids AS (
+    SELECT s2id AS anchorage_id
+    FROM `world-fishing-827.anchorages.panama_canal_v20231004`
+    WHERE sublabel="PANAMA CANAL" -- not strictly necessary as this table filtered to canal already..
+  ),
+
+-------------------------------------------------------------------
+-- Mark whether start anchorage or end anchorage is in Panama canal
+-------------------------------------------------------------------
+  is_end_port_panama AS (
+    SELECT
+    ssvid,
+    vessel_id,
+    vessel_iso3,
+    class_confidence,
+    vessel_class,
+    gear_type,
+    trip_id,
+    trip_start,
+    trip_end,
+    start_iso3,
+    start_label,
+    end_iso3,
+    end_label,
+    trip_start_visit_id,
+    trip_end_visit_id,
+    trip_start_anchorage_id,
+    trip_end_anchorage_id,
+    IF (trip_start_anchorage_id IN (
+      SELECT anchorage_id FROM panama_canal_ids),
+      TRUE, FALSE) current_start_is_panama,
+    IF (trip_end_anchorage_id IN (
+      SELECT anchorage_id FROM panama_canal_ids),
+      TRUE, FALSE) current_end_is_panama,
+    FROM named_voyages
+  ),
+
+------------------------------------------------
+-- Add information about
+-- whether previous and next ports are in Panama
+------------------------------------------------
+  add_prev_next_port AS (
+    SELECT
+    *,
+    IFNULL (
+      LAG (trip_start, 1) OVER (
+        PARTITION BY ssvid
+        ORDER BY trip_start ASC ),
+      TIMESTAMP ("2000-01-01") ) AS prev_trip_start,
+    -- note as structured the prev trip id will be null for each vessels' first voyage in the time period
+    LAG (trip_id, 1) OVER (
+      PARTITION BY ssvid
+      ORDER BY trip_start ASC ) AS prev_trip_id,
+    IFNULL (
+      LEAD (trip_end, 1) OVER (
+        PARTITION BY ssvid
+        ORDER BY trip_start ASC ),
+      TIMESTAMP ("2100-01-01") ) AS next_trip_end,
+    LAG (current_end_is_panama, 1) OVER (
+      PARTITION BY ssvid
+      ORDER BY trip_start ASC ) AS prev_end_is_panama,
+    LEAD (current_end_is_panama, 1) OVER (
+      PARTITION BY ssvid
+      ORDER BY trip_start ASC ) AS next_end_is_panama,
+    LAG (current_start_is_panama, 1) OVER(
+      PARTITION BY ssvid
+      ORDER BY trip_start ASC ) AS prev_start_is_panama,
+    LEAD (current_start_is_panama, 1) OVER(
+      PARTITION BY ssvid
+      ORDER BY trip_start ASC ) AS next_start_is_panama,
+    FROM is_end_port_panama
+  ),
+
+---------------------------------------------------------------------------------
+-- Mark the start and end of the block. The start of the block is the anchorage
+-- just before Panama canal, and the end of the block is the anchorage just after
+-- Panama canal (all consecutive trips within Panama canal will be ignored later).
+-- If there is no Panama canal involved in a trip, the start/end of the block are
+-- the trip start/end of that trip.
+
+-- note there are some trips in which the arrival port is diff than the next departure
+-- (ie one is a canal port and the other not), which makes just classifying based on
+-- current start and end fail - this query requires both current and prev start/end
+---------------------------------------------------------------------------------
+  block_start_end AS (
+    SELECT
+    *,
+          IF (current_start_is_panama AND prev_end_is_panama, NULL, trip_start) AS block_start,
+          IF (current_end_is_panama AND next_start_is_panama, NULL, trip_end) AS block_end
+    FROM add_prev_next_port
+  ),
+
+-------------------------------------------
+-- Find the closest non-Panama ports
+-- by looking ahead and back of the records
+-------------------------------------------
+  look_back_and_ahead AS (
+    SELECT
+    * EXCEPT(block_start, block_end),
+    LAST_VALUE (block_start IGNORE NULLS) OVER (
+      PARTITION BY ssvid
+      ORDER BY trip_start
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS block_start,
+    FIRST_VALUE (block_end IGNORE NULLS) OVER (
+      PARTITION BY ssvid
+      ORDER BY trip_start
+      ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS block_end
+    FROM block_start_end
+  ),
+
+-------------------------------------------------------------------
+-- Within a block, all trips will have the same information
+-- about their block (start / end of the block, anchorage start/end)
+-------------------------------------------------------------------
+  blocks_to_be_collapsed_down AS (
+    SELECT
+    ssvid,
+    block_start,
+    block_end,
+    FIRST_VALUE (vessel_id) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS vessel_id,
+    FIRST_VALUE (vessel_iso3) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS vessel_iso3,
+    FIRST_VALUE (class_confidence) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS class_confidence,
+    FIRST_VALUE (vessel_class) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS vessel_class,
+    FIRST_VALUE (gear_type) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS gear_type,
+    FIRST_VALUE (trip_id) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS trip_id,
+    FIRST_VALUE (start_iso3) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS start_iso3,
+    FIRST_VALUE (start_label) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS start_label,
+    FIRST_VALUE (end_iso3) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_end DESC) AS end_iso3,
+    FIRST_VALUE (end_label) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_end DESC) AS end_label,
+    FIRST_VALUE (trip_start_visit_id) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS trip_start_visit_id,
+    FIRST_VALUE (trip_end_visit_id) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_end DESC) AS trip_end_visit_id,
+    FIRST_VALUE (trip_start_anchorage_id) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS trip_start_anchorage_id,
+    FIRST_VALUE (trip_end_anchorage_id) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_end DESC) AS trip_end_anchorage_id,
+    FROM look_back_and_ahead
+  ),
+
+---------------------------------------------------------------------
+-- Blocks get collapsed down to one row, which means a block of trips
+-- becomes a complete trip
+---------------------------------------------------------------------
+  updated_pan_voyages AS (
+    SELECT
+      ssvid,
+      vessel_id,
+      vessel_iso3,
+      class_confidence,
+      vessel_class,
+      gear_type,
+      trip_id,
+      block_start AS trip_start,
+      block_end AS trip_end,
+      start_iso3,
+      start_label,
+      end_iso3,
+      end_label,
+      trip_start_visit_id,
+      trip_end_visit_id,
+      trip_start_anchorage_id,
+      trip_end_anchorage_id,
+      CASE -- adding flag if voyages is collapsed bc of PAN crossing
+        WHEN count(*) > 1 THEN 1
+        WHEN count(*) = 1 THEN 0
+        END AS pan_crossing
+    FROM blocks_to_be_collapsed_down
+    GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
+  ),
+
+  --------------------------------------
+  -- Identify how many encounters occurred on each voyage
+  --------------------------------------
+  # first union encounters into one table (ie, 2 rows per encounter bc 2 vessel ids)
+  all_encounters AS (
+    SELECT
+      encounter_id,
+      vessel_1_id AS vessel_id,
+      start_time,
+      end_time,
+    FROM `pipe_ais_v3_alpha_published.encounters`
+    WHERE start_time >= TIMESTAMP(DATE_ADD(DATE(start_date()), INTERVAL -3 YEAR)) # pull encounters x years before period of interest
+
+    UNION ALL
+
+    SELECT
+      encounter_id,
+      vessel_2_id as vessel_id,
+      start_time,
+      end_time,
+    FROM `pipe_ais_v3_alpha_published.encounters`
+    WHERE start_time >= TIMESTAMP(DATE_ADD(DATE(start_date()), INTERVAL -3 YEAR)) # pull encounters x years before period of interest
+  ),
+
+# inner join encounter vessel_ids to voyage vessel_ids, filter by time and group to sum per trip_id
+  num_encounters AS (
+    SELECT
+      vessel_id,
+      trip_id,
+      COUNT(*) AS num_encounters
+    FROM (
+      SELECT
+        *
+      FROM
+        all_encounters)
+    INNER JOIN (
+      SELECT
+        vessel_id,
+        trip_id,
+        trip_start,
+        trip_end
+      FROM
+        updated_pan_voyages)
+    USING
+      (vessel_id)
+    WHERE
+      start_time BETWEEN trip_start
+      AND trip_end
+    GROUP BY
+      vessel_id, trip_id
+      ),
+
+  --------------------------------------
+  -- Identify the number of loitering
+  -- events that occurred on each voyage
+  --------------------------------------
+  num_loitering AS (
+  SELECT
+    ssvid,
+    trip_id,
+    COUNT(*) AS num_loitering
+  FROM (
+    SELECT
+      ssvid,
+      loitering_start_timestamp,
+      loitering_end_timestamp,
+    FROM
+      `world-fishing-827.pipe_ais_v3_alpha_published.loitering`
+    WHERE
+      loitering_start_timestamp >= TIMESTAMP(DATE_ADD(DATE(start_date()), INTERVAL -3 YEAR))
+      AND avg_distance_from_shore_nm > 10
+      AND loitering_hours > 2
+      AND avg_speed_knots < 2
+      AND
+      seg_id IN (
+      SELECT
+        seg_id
+      FROM
+        `pipe_ais_v3_alpha_published.segs_activity`
+      WHERE
+        good_seg IS TRUE
+        AND overlapping_and_short IS FALSE)) a
+  INNER JOIN (
+    SELECT
+      ssvid,
+      trip_id,
+      trip_start,
+      trip_end,
+      pan_crossing
+    FROM
+      updated_pan_voyages) b
+  USING
+    (ssvid)
+  WHERE
+    loitering_start_timestamp BETWEEN trip_start
+    AND trip_end
+  GROUP BY
+    ssvid, trip_id
+    ),
+
+  --------------------------------------
+  -- Identify the number of fishing events
+  -- that occurred on each voyage
+  --------------------------------------
+  num_fishing AS(
+  SELECT
+    vessel_id,
+    trip_id,
+    COUNT(*) AS num_fishing
+  FROM (
+    SELECT
+      vessel_id,
+      event_start,
+      event_end
+    FROM
+      `pipe_production_v20201001.published_events_fishing_v2_v20240110`) a
+  INNER JOIN (
+    SELECT
+      vessel_id,
+      trip_id,
+      trip_start,
+      trip_end
+    FROM
+      updated_pan_voyages)
+  USING
+    (vessel_id)
+  WHERE
+    event_start BETWEEN trip_start AND trip_end
+  GROUP BY
+    vessel_id, trip_id
+    ),
+
+  --------------------------------------
+  -- label voyage if it had at least
+  -- one encounter event
+  --------------------------------------
+  add_encounters AS (
+  SELECT
+    a.*,
+    b.num_encounters,
+  IF
+    (b.num_encounters > 0, TRUE, FALSE) AS had_encounter
+  FROM
+    updated_pan_voyages AS a
+  LEFT JOIN
+    num_encounters b
+  USING
+    (vessel_id,
+      trip_id)
+  GROUP BY
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19),
+
+  --------------------------------------
+  -- label voyage if it had at least
+  -- one loitering event
+  --------------------------------------
+  add_loitering AS (
+  SELECT
+    c.*,
+    d.num_loitering,
+  IF
+    (d.num_loitering > 0, TRUE, FALSE) AS had_loitering
+  FROM
+    add_encounters c
+  LEFT JOIN
+    num_loitering d
+  USING
+    (ssvid,
+      trip_id)
+  GROUP BY
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21),
+
+  --------------------------------------
+  -- label voyage if it had at least
+  -- one fishing event
+  --------------------------------------
+  add_fishing AS (
+  SELECT
+    e.*,
+    f.num_fishing,
+  IF
+    (f.num_fishing > 0, TRUE, FALSE) AS had_fishing
+  FROM
+    add_loitering AS e
+  LEFT JOIN
+    num_fishing f
+  USING
+    (vessel_id,
+      trip_id)
+  GROUP BY
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23),
+
+
+  --------------------------------------
+  -- label if voyages represents a 'real'
+  -- voyage
+  --
+  -- 'real': TRUE
+  -- if the start and end
+  -- 'port' are different and the voyage
+  -- is longer than 1 hour
+  -- OR
+  -- if the start end end 'port' are the
+  -- the same, but the voyage had an
+  -- encounter, loitering event, or fishing
+  -- event
+  -- OR
+  -- if the start and end 'port are the
+  -- same, but the voyage is at least 24
+  -- hours
+  -- FALSE: all other voyages
+  --------------------------------------
+  initial_true_voyages AS (
+  SELECT
+    *
+  FROM (
+    SELECT
+      *,
+      CASE
+        WHEN CONCAT(start_label, start_iso3) != CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 1 THEN TRUE
+        WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3)
+      AND (had_encounter IS TRUE
+        OR had_loitering IS TRUE
+        OR had_fishing IS TRUE)
+      AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 2 THEN TRUE
+        WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 24 THEN TRUE
+      ELSE
+      FALSE
+    END
+      AS true_voyage
+    FROM
+      add_fishing)
+  WHERE
+    true_voyage IS TRUE ),
+
+  --------------------------------------
+  -- Identify vessel ids with less than
+  -- one position per two days and
+  -- no identity information.
+  --
+  -- Justification: there are some
+  -- vessels that have vessel_ids with
+  -- no identity information, but which
+  -- represent a quality track.
+  --------------------------------------
+  poor_vessel_ids AS (
+  SELECT
+    *,
+  IF
+    (SAFE_DIVIDE(pos_count,TIMESTAMP_DIFF(last_timestamp, first_timestamp, DAY)) < 0.5
+      AND (shipname.value IS NULL
+        AND callsign.value IS NULL
+        AND imo.value IS NULL), TRUE, FALSE) AS poor_id
+  FROM
+    `pipe_ais_v3_alpha_published.vessel_info` ),
+
+  --------------------------------------
+  -- Filter the voyages to those that
+  -- involve 'good' vessel_ids, and
+  -- end between time range of interest
+  --------------------------------------
+  good_vessel_voyages AS (
+  SELECT
+    *,
+    TIMESTAMP_DIFF(trip_end, trip_start, DAY) AS trip_duration_days
+  FROM
+    initial_true_voyages
+  WHERE
+    EXTRACT(YEAR
+    FROM
+      trip_end) >= start_year()
+    AND EXTRACT(YEAR
+    FROM
+      trip_end) <= end_year()
+    AND vessel_id IN (
+    SELECT
+      vessel_id
+    FROM
+      poor_vessel_ids
+    WHERE
+      poor_id IS FALSE) ),
+
+  --------------------------------------
+  -- Add end anchorage information from Pew ports
+
+  -- **** leaving this out during port profile 1.5 update although can be easily added back if pew important
+  --------------------------------------
+  -- fishing_vessel_voyages AS (
+  -- SELECT
+  --   *
+  -- FROM
+  --   good_vessel_voyages AS voyages
+  -- LEFT JOIN (
+  --   SELECT
+  --     point_id AS trip_end_anchorage_id,
+  --     port_id,
+  --     cluster_id,
+  --     port_label,
+  --     iso3 AS port_iso3,
+  --     cluster_label,
+  --     point_label,
+  --     port_locode
+  --   FROM
+  --     proj_pew_ports.gfw_ports_database_v20230424 ) AS ports
+  -- USING
+  --   (trip_end_anchorage_id) ),
+
+  --------------------------------------
+  -- Add end anchorage information from GFW ports
+  --------------------------------------
+  fishing_vessel_voyages AS (
+  SELECT
+    *
+  FROM
+    good_vessel_voyages
+  LEFT JOIN (
+    SELECT
+      s2id AS trip_end_anchorage_id,
+      distance_from_shore_m,
+      dock
+    FROM
+      `anchorages.named_anchorages_v20230925` ) -- may need to update
+  USING
+    (trip_end_anchorage_id)),
+
+  --------------------------------------
+  -- Add end timestamp to end port visits
+  --------------------------------------
+  add_visit_end AS (
+  SELECT
+    *
+  FROM
+    fishing_vessel_voyages
+  INNER JOIN (
+    SELECT
+      visit_id AS trip_end_visit_id,
+      end_timestamp AS end_visit_endtimestamp,
+      start_timestamp AS start_visit_starttimestamp,
+      start_lat AS start_latitude,
+      start_lon AS start_longitude
+    FROM
+      pipe_ais_v3_alpha_published.port_visits
+    WHERE
+      EXTRACT(YEAR
+      FROM
+        end_timestamp) >= start_year()
+      AND EXTRACT(YEAR
+      FROM
+        end_timestamp) <= end_year() + 1 )
+  USING
+    (trip_end_visit_id) ),
+
+  --------------------------------------
+  -- List of visits that have at least a
+  -- minimum event duration
+  -- Used to remove visits where the port
+  -- stop or port gap are not long enough
+  --------------------------------------
+  has_long_enough_event AS (
+  SELECT
+    trip_end_visit_id,
+    MAX(event_duration_hr) AS longest_event
+  FROM (
+    SELECT
+      *,
+      TIMESTAMP_DIFF(next_timestamp, timestamp, SECOND)/3600 AS event_duration_hr
+    FROM (
+      SELECT
+        visit_id AS trip_end_visit_id,
+        event_type,
+        timestamp,
+        LEAD(timestamp) OVER(PARTITION BY visit_id ORDER BY timestamp) AS next_timestamp
+      FROM
+        pipe_ais_v3_alpha_published.port_visits,
+        UNNEST(events)
+      WHERE
+        EXTRACT(YEAR
+        FROM
+          end_timestamp) >= start_year()
+        AND EXTRACT(YEAR
+        FROM
+          end_timestamp) <= end_year()
+        AND event_type NOT IN ('PORT_ENTRY') )
+    WHERE
+      event_type IN ('PORT_STOP_BEGIN',
+        'PORT_GAP_BEGIN') )
+  GROUP BY
+    1
+  HAVING
+    longest_event > 3 ),
+
+--------------------------------------
+--------------------------------------
+  total AS (
+  SELECT
+    EXTRACT(YEAR
+    FROM
+      trip_end) AS year,
+    ssvid,
+    vessel_id,
+    vessel_iso3,
+    class_confidence,
+    vessel_class,
+    gear_type,
+    trip_id,
+    trip_start,
+    trip_end,
+    trip_duration_days,
+    start_iso3 AS start_port_iso3,
+    start_label AS start_port_label,
+    end_iso3 AS end_port_iso3,
+    end_label AS end_port_label,
+    trip_end_anchorage_id,
+    -- port_id AS end_port_id,
+    -- end_label,
+    -- end_iso3,
+    distance_from_shore_m,
+    dock,
+    trip_end_visit_id,
+    start_visit_starttimestamp,
+    end_visit_endtimestamp,
+    start_latitude,
+    start_longitude,
+    num_encounters,
+    num_loitering,
+    num_fishing
+  FROM
+    add_visit_end
+  WHERE
+    trip_end_visit_id IN (
+    SELECT
+      trip_end_visit_id
+    FROM
+      has_long_enough_event) ),
+
+  --------------------------------------
+  --------------------------------------
+  is_eu_iso3 AS (
+  SELECT
+    DISTINCT iso3
+  FROM
+    `world-fishing-827.gfw_research.country_codes`
+  WHERE
+    is_EU ),
+
+  --------------------------------------
+  -- Only include truly foreign visits
+  -- EU visiting EU is not foreign
+  --------------------------------------
+vessels_end_port_iso AS (
+ SELECT
+  *
+FROM
+  total
+WHERE
+  end_port_iso3 != vessel_iso3
+  AND NOT (end_port_iso3 IN (
+    SELECT
+      iso3
+    FROM
+      is_eu_iso3)
+    AND vessel_iso3 IN (
+    SELECT
+      iso3
+    FROM
+      is_eu_iso3))
+
+-- filter for ports of interest
+  AND end_port_label IN ("CONAKRY")
+  AND ssvid NOT IN ("334455660","100001001","721","23456","345","100000016","100000008") -- wrong MMSI number associate with Peru
+  ) select * from vessels_end_port_iso /*
+
+  --------------------------------------
+  -- add vessel id info from ssvid by year table
+  --------------------------------------
+add_ssvid_info AS (
+SELECT
+  *
+FROM vessels_end_port_iso
+JOIN (
+    SELECT
+      ssvid,
+      year,
+      ais_identity.shipname_mostcommon.value AS shipname,
+      best.best_vessel_class AS best_label,
+    FROM
+      `gfw_research.vi_ssvid_byyear_v20230901`) -- update to latest v
+  USING
+    (ssvid, year))
+
+SELECT
+  ssvid,
+  vessel_iso3 as vessel_flag,
+  shipname as vessel_shipname,
+  vessel_class,
+  best_label as vessel_label,
+  year,
+  trip_start,
+  trip_end,
+  trip_duration_days,
+  -- trip_id,
+  start_port_iso3,
+  start_port_label,
+  end_iso3,
+  end_label,
+  -- end_port_id,
+  trip_end_anchorage_id,
+  distance_from_shore_m,
+  dock,
+  trip_end_visit_id,
+  num_encounters,
+  num_loitering,
+  num_fishing,
+  start_latitude,
+  start_longitude,
+  start_visit_starttimestamp,
+  end_visit_endtimestamp,
+  -- (TIMESTAMP_DIFF(end_visit_endtimestamp, start_visit_starttimestamp, minute)/60) AS port_event_duration_hr,
+  ((TIMESTAMP_DIFF(end_visit_endtimestamp, start_visit_starttimestamp, minute)/60)/24) AS port_event_duration_days
+  FROM
+    add_ssvid_info
 
 */
