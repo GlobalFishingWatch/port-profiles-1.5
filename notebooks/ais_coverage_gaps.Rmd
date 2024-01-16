@@ -94,8 +94,18 @@ west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
 
 head(west_africa_full)
 
-sat_perf <- west_africa_full %>% mutate(sat_prop = sat_pos / segments,
-                                        sat_prop_alt = sat_pos_ttl /segments)
+res <- 0.5
+west_africa_full$lat_bin2 <- round(west_africa_full$lat_bin / res) * res 
+west_africa_full$lon_bin2 <- round(west_africa_full$lon_bin / res) * res
+
+waf <- west_africa_full %>% 
+  group_by(lat_bin2, lon_bin2) %>% 
+    summarise(sat_pos = sum(sat_pos),
+              sat_pos_ttl  = sum(sat_pos_ttl),
+              segments = sum(segments))
+
+sat_perf <- waf %>% mutate(sat_prop = sat_pos / segments,
+                           sat_prop_alt = sat_pos_ttl /segments)
 
 # set upper limit
 up_lim <- 1000 
@@ -110,16 +120,16 @@ bounding_atlantic <- transform_box(xlim = c(-21, -15),
                           ylim = c(10.5, 16.5),
                           output_crs = best_proj)
   
-atlantic_map <- sat_perf %>%
+atlantic_map <- data.frame(sat_perf) %>%
   recenter_raster(raster_df = .,
                   res = 1,
-                  x_lab = 'lon_bin',
-                  y_lab = 'lat_bin',
+                  x_lab = 'lon_bin2',
+                  y_lab = 'lat_bin2',
                   fill_lab = 'sat_prop',
                   center = new_center) %>% 
   ggplot()+
   geom_gfw_outline(center = new_center, theme = "dark") +
-  geom_raster(aes(x= lon_bin, y=lat_bin, fill = sat_prop)) +
+  geom_raster(aes(x= lon_bin2, y=lat_bin2, fill = sat_prop)) +
     geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
     geom_gfw_land(theme = 'dark', center = new_center) +
     scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
@@ -140,7 +150,7 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_cov.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_cov_0.5.png"), width = 10, height = 12)
 
 ```
 ## Class A
@@ -162,8 +172,22 @@ west_africa_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
 
 ```{r Class A Satelitte coverage Senegal, echo=F, warning=F}
 
-sat_perf <- west_africa_class_a %>% mutate(sat_prop = sat_pos / segments,
-                                        sat_prop_alt = sat_pos_ttl /segments )
+res <- 0.5
+west_africa_class_a$lat_bin2 <- round(west_africa_class_a$lat_bin / res) * res
+west_africa_class_a$lon_bin2 <- round(west_africa_class_a$lon_bin / res) * res
+
+waf <- west_africa_class_a %>%
+  group_by(lat_bin2, lon_bin2) %>%
+    summarise(sat_pos = sum(sat_pos),
+              sat_pos_ttl  = sum(sat_pos_ttl),
+              segments = sum(segments)) %>%
+      ungroup() %>%
+        mutate(sat_prop = sat_pos / segments,
+               sat_prop_alt = sat_pos_ttl/segments)
+
+colnames(waf)[colnames(waf) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
+# sat_perf <- waf %>% mutate(sat_prop = sat_pos / segments,
+#                            sat_prop_alt = sat_pos_ttl /segments )
 
 # set upper limit
 up_lim <- 1000 
@@ -178,9 +202,9 @@ bounding_atlantic <- transform_box(xlim = c(-21, -15),
                           ylim = c(10.5, 16.5),
                           output_crs = best_proj)
   
-atlantic_map <- sat_perf %>%
+atlantic_map <- waf %>%
   recenter_raster(raster_df = .,
-                  res = 1,
+                  res = 0.5,
                   x_lab = 'lon_bin',
                   y_lab = 'lat_bin',
                   fill_lab = 'sat_prop',
@@ -208,7 +232,7 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_A_cov_v2.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_A_cov_v0.5.png"), width = 10, height = 12)
 
 ```
 
@@ -224,8 +248,25 @@ west_africa_class_b <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
                   type = "'B'"),
                                  run_query = TRUE,
                                  con = con)$data
+```
 
-sat_perf <- west_africa_class_b %>% mutate(sat_prop = sat_pos / segments )
+```{r Class B Satelitte coverage Senegal map, echo=F, warning=F}
+
+# sat_perf <- west_africa_class_b %>% mutate(sat_prop = sat_pos / segments )
+
+west_africa_class_b$lat_bin2 <- round(west_africa_class_b$lat_bin / res) * res
+west_africa_class_b$lon_bin2 <- round(west_africa_class_b$lon_bin / res) * res
+
+waf_b <- west_africa_class_b %>%
+  group_by(lat_bin2, lon_bin2) %>%
+    summarise(sat_pos = sum(sat_pos),
+              sat_pos_ttl  = sum(sat_pos_ttl),
+              segments = sum(segments)) %>%
+      ungroup() %>%
+        mutate(sat_prop = sat_pos / segments,
+               sat_prop_alt = sat_pos_ttl/segments)
+
+colnames(waf_b)[colnames(waf_b) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
 
 # set upper limit
 up_lim <- 1000 
@@ -240,7 +281,7 @@ bounding_atlantic <- transform_box(xlim = c(-21, -15),
                           ylim = c(10.5, 16.5),
                           output_crs = best_proj)
   
-atlantic_map <- sat_perf %>%
+atlantic_map <- waf_b %>%
   recenter_raster(raster_df = .,
                   res = 1,
                   x_lab = 'lon_bin',
@@ -270,7 +311,7 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov_v2.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov_v0.5.png"), width = 10, height = 12)
 
 ```
 
@@ -280,7 +321,20 @@ ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov_v2.png"), w
 
 head(west_africa_full)
 
-ter_perf <- west_africa_full %>% mutate(ter_prop = ter_pos / segments )
+
+west_africa_class_a$lat_bin2 <- round(west_africa_class_a$lat_bin / res) * res
+west_africa_class_a$lon_bin2 <- round(west_africa_class_a$lon_bin / res) * res
+
+waf_ter <- west_africa_class_a %>%
+  group_by(lat_bin2, lon_bin2) %>%
+    summarise(ter_pos = sum(ter_pos),
+              ter_pos_ttl  = sum(ter_pos_ttl),
+              segments = sum(segments)) %>%
+      ungroup() %>%
+        mutate(ter_prop = ter_pos / segments,
+               ter_prop_alt = ter_pos_ttl/segments)
+
+colnames(waf_ter)[colnames(waf_ter) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
 
 # set upper limit
 up_lim <- 1000 
@@ -295,7 +349,7 @@ bounding_atlantic <- transform_box(xlim = c(-21, -15),
                           ylim = c(10.5, 16.5),
                           output_crs = best_proj)
   
-atlantic_map <- ter_perf %>%
+atlantic_map <- waf_ter %>%
   recenter_raster(raster_df = .,
                   res = 1,
                   x_lab = 'lon_bin',
@@ -325,12 +379,12 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_terr_ais_cov.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "senegal_terr_ais_cov0.5.png"), width = 10, height = 12)
 
 ```
 # AIS coverage Alternate
 
-```{r download type A proto messages, echo=F, warning=F}
+```{r download proto messages tyler, echo=F, warning=F}
 q_coverage_v3 <- readr::read_file(file = here::here("queries", "ais_coverage", "AIS_coverage_Tyler.sql"))
 
 WA_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v3,
@@ -346,6 +400,17 @@ WA_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v3,
 ```
 
 ```{r Test different coverage metrics class A, echo=F, warning=F}
+
+# res <- 0.5
+# WA_class_a$lat_bin2 <- round(WA_class_a$lat_bin / res) * res 
+# WA_class_a$lon_bin2 <- round(WA_class_a$lon_bin / res) * res
+# 
+# waf <- filter(WA_class_a, type=='A') %>% 
+#   group_by(lat_bin2, lon_bin2) %>% 
+#     summarise(sat_pos = sum(sat_pos),
+#               sat_pos_ttl  = sum(sat_pos_ttl),
+#               segments = sum(segments))
+
 
 head(west_africa_full)
 
