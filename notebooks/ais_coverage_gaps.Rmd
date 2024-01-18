@@ -1,5 +1,5 @@
 ---
-title: "AIS coverage around ports "
+title: "AIS coverage around ports"
 author: "Max Schofield"
 date: "2023-12-18"
 output:
@@ -69,43 +69,7 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
                       use_legacy_sql = FALSE)
 ```
 
-# Satelitte Coverage 
-## All Data Types
-
-```{r download ais research messages West Africa, echo=F, warning=F}
-q_coverage <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_test.sql"))
-
-# west_africa_full <- fishwatchr::gfw_query(query = q_coverage,
-#                                  run_query = TRUE,
-#                                  con = con)$data
-
-west_africa_full <- fishwatchr::gfw_query(query = glue::glue(q_coverage,
-                  start_date = "'2023-01-01'",
-                  end_date = "'2023-07-01'", 
-                  min_lat = "10", 
-                  max_lat = "17", 
-                  min_lon = "-21", 
-                  max_lon = "-15"),
-                                 run_query = TRUE,
-                                 con = con)$data
-```
-
-```{r Satelitte coverage Senegal, echo=F, warning=F}
-
-head(west_africa_full)
-
-res <- 0.5
-west_africa_full$lat_bin2 <- round(west_africa_full$lat_bin / res) * res 
-west_africa_full$lon_bin2 <- round(west_africa_full$lon_bin / res) * res
-
-waf <- west_africa_full %>% 
-  group_by(lat_bin2, lon_bin2) %>% 
-    summarise(sat_pos = sum(sat_pos),
-              sat_pos_ttl  = sum(sat_pos_ttl),
-              segments = sum(segments))
-
-sat_perf <- waf %>% mutate(sat_prop = sat_pos / segments,
-                           sat_prop_alt = sat_pos_ttl /segments)
+```{r set parameters for coverage maps, echo=FALSE, warning=FALSE, include=FALSE}
 
 # set upper limit
 up_lim <- 1000 
@@ -119,40 +83,14 @@ best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
 bounding_atlantic <- transform_box(xlim = c(-21, -15),
                           ylim = c(10.5, 16.5),
                           output_crs = best_proj)
-  
-atlantic_map <- data.frame(sat_perf) %>%
-  recenter_raster(raster_df = .,
-                  res = 1,
-                  x_lab = 'lon_bin2',
-                  y_lab = 'lat_bin2',
-                  fill_lab = 'sat_prop',
-                  center = new_center) %>% 
-  ggplot()+
-  geom_gfw_outline(center = new_center, theme = "dark") +
-  geom_raster(aes(x= lon_bin2, y=lat_bin2, fill = sat_prop)) +
-    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
-    geom_gfw_land(theme = 'dark', center = new_center) +
-    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
-                       limits = c(0,1),
-                       oob = scales::squish,
-                       na.value = NA) +   
-    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
-           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
-           crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Satelitte coverage') +
-      theme_gfw_map(theme = 'light') 
 
-
-fishwatchr::add_little_globe(atlantic_map,
-                             main_box = bounding_atlantic,
-                             globe_rel_size = '0.25',
-                             globe_just = 'inside',
-                             globe_position = 'upperright')  
-  
-  
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_cov_0.5.png"), width = 10, height = 12)
-
+# plotting reolution for rasters
+res <- 0.5
 ```
+
+# Satelitte Coverage 
+## All Data Types
+
 ## Class A
 
 ```{r download type A proto messages, echo=F, warning=F}
@@ -172,7 +110,6 @@ west_africa_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
 
 ```{r Class A Satelitte coverage Senegal, echo=F, warning=F}
 
-res <- 0.5
 west_africa_class_a$lat_bin2 <- round(west_africa_class_a$lat_bin / res) * res
 west_africa_class_a$lon_bin2 <- round(west_africa_class_a$lon_bin / res) * res
 
@@ -188,19 +125,6 @@ waf <- west_africa_class_a %>%
 colnames(waf)[colnames(waf) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
 # sat_perf <- waf %>% mutate(sat_prop = sat_pos / segments,
 #                            sat_prop_alt = sat_pos_ttl /segments )
-
-# set upper limit
-up_lim <- 1000 
-#set plot center 
-new_center <- -20
-
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
-
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-21, -15),
-                          ylim = c(10.5, 16.5),
-                          output_crs = best_proj)
   
 atlantic_map <- waf %>%
   recenter_raster(raster_df = .,
@@ -221,7 +145,8 @@ atlantic_map <- waf %>%
     coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
            ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
            crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Satelitte coverage') +
+      labs(fill = 'Proportion', 
+           title = 'Class A Satelitte AIS coverage') +
       theme_gfw_map(theme = 'light') 
 
 
@@ -232,7 +157,7 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_A_cov_v0.5.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "AIS coverage", "senegal_sat_ais_class_A_cov_v0.5.png"), width = 8, height = 10)
 
 ```
 
@@ -267,23 +192,10 @@ waf_b <- west_africa_class_b %>%
                sat_prop_alt = sat_pos_ttl/segments)
 
 colnames(waf_b)[colnames(waf_b) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
-
-# set upper limit
-up_lim <- 1000 
-#set plot center 
-new_center <- -20
-
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
-
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-21, -15),
-                          ylim = c(10.5, 16.5),
-                          output_crs = best_proj)
   
 atlantic_map <- waf_b %>%
   recenter_raster(raster_df = .,
-                  res = 1,
+                  res = 0.5,
                   x_lab = 'lon_bin',
                   y_lab = 'lat_bin',
                   fill_lab = 'sat_prop',
@@ -300,7 +212,8 @@ atlantic_map <- waf_b %>%
     coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
            ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
            crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Satelitte coverage') +
+      labs(fill = 'Proportion', 
+           title = 'Class B Satelitte AIS coverage') +
       theme_gfw_map(theme = 'light') 
 
 
@@ -308,19 +221,15 @@ fishwatchr::add_little_globe(atlantic_map,
                              main_box = bounding_atlantic,
                              globe_rel_size = '0.25',
                              globe_just = 'inside',
-                             globe_position = 'upperright')  
-  
-  
-ggsave(here::here("outputs", "figures", "senegal_sat_ais_class_B_cov_v0.5.png"), width = 10, height = 12)
+                             globe_position = 'upperright')   
+
+ggsave(here::here("outputs", "figures", "AIS coverage", "senegal_sat_ais_class_B_cov_v0.5.png"), width = 8, height = 10)
 
 ```
 
 # Terrestrial Coverage
 
 ```{r Terrestrial coverage Senegal, echo=F, warning=F}
-
-head(west_africa_full)
-
 
 west_africa_class_a$lat_bin2 <- round(west_africa_class_a$lat_bin / res) * res
 west_africa_class_a$lon_bin2 <- round(west_africa_class_a$lon_bin / res) * res
@@ -335,19 +244,6 @@ waf_ter <- west_africa_class_a %>%
                ter_prop_alt = ter_pos_ttl/segments)
 
 colnames(waf_ter)[colnames(waf_ter) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
-
-# set upper limit
-up_lim <- 1000 
-#set plot center 
-new_center <- -20
-
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
-
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-21, -15),
-                          ylim = c(10.5, 16.5),
-                          output_crs = best_proj)
   
 atlantic_map <- waf_ter %>%
   recenter_raster(raster_df = .,
@@ -368,7 +264,8 @@ atlantic_map <- waf_ter %>%
     coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
            ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
            crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Satelitte coverage') +
+      labs(fill = 'Proportion', 
+           title = 'Terrestrial AIS coverage') +
       theme_gfw_map(theme = 'light') 
 
 
@@ -379,187 +276,10 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_terr_ais_cov0.5.png"), width = 10, height = 12)
-
-```
-# AIS coverage Alternate
-
-```{r download proto messages tyler, echo=F, warning=F}
-q_coverage_v3 <- readr::read_file(file = here::here("queries", "ais_coverage", "AIS_coverage_Tyler.sql"))
-
-WA_class_a <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v3,
-                  start_date = "'2023-01-01'",
-                  end_date = "'2023-07-01'", 
-                  min_lat = "10", 
-                  max_lat = "17", 
-                  min_lon = "-21", 
-                  max_lon = "-15", 
-                  type = "'A'"),
-                                 run_query = TRUE,
-                                 con = con)$data
-```
-
-```{r Test different coverage metrics class A, echo=F, warning=F}
-
-# res <- 0.5
-# WA_class_a$lat_bin2 <- round(WA_class_a$lat_bin / res) * res 
-# WA_class_a$lon_bin2 <- round(WA_class_a$lon_bin / res) * res
-# 
-# waf <- filter(WA_class_a, type=='A') %>% 
-#   group_by(lat_bin2, lon_bin2) %>% 
-#     summarise(sat_pos = sum(sat_pos),
-#               sat_pos_ttl  = sum(sat_pos_ttl),
-#               segments = sum(segments))
-
-
-head(west_africa_full)
-
-class_a <- filter(WA_class_a, type=='A')
-
-# set upper limit
-up_lim <- 1000 
-#set plot center 
-new_center <- -20
-
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
-
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-21, -15),
-                          ylim = c(10.5, 16.5),
-                          output_crs = best_proj)
-  
-atlantic_map <- class_a %>%
-  recenter_raster(raster_df = .,
-                  res = 1,
-                  x_lab = 'lon_bin',
-                  y_lab = 'lat_bin',
-                  fill_lab = 'satellite_reception',
-                  center = new_center) %>% 
-  ggplot()+
-  geom_gfw_outline(center = new_center, theme = "dark") +
-  geom_raster(aes(x= lon_bin, y=lat_bin, fill = satellite_reception)) +
-    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
-    geom_gfw_land(theme = 'dark', center = new_center) +
-    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
-                       limits = c(0,1),
-                       oob = scales::squish,
-                       na.value = NA) +   
-    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
-           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
-           crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Class A coverage') +
-      theme_gfw_map(theme = 'light') 
-
-
-fishwatchr::add_little_globe(atlantic_map,
-                             main_box = bounding_atlantic,
-                             globe_rel_size = '0.25',
-                             globe_just = 'inside',
-                             globe_position = 'upperright')  
-  
-  
-ggsave(here::here("outputs", "figures", "senegal_classA_ais_cov_v2.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "AIS coverage", "senegal_terr_ais_cov0.5.png"), width = 8, height = 10)
 
 ```
 
-```{r Test different coverage metrics class B, echo=F, warning=F}
-
-class_a <- filter(WA_class_a, type=='B')
-
-#set plot center 
-new_center <- -20
-
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
-
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-20.5, -15),
-                          ylim = c(10, 16.5),
-                          output_crs = best_proj)
-  
-atlantic_map <- class_a %>%
-  recenter_raster(raster_df = .,
-                  res = 1,
-                  x_lab = 'lon_bin',
-                  y_lab = 'lat_bin',
-                  fill_lab = 'satellite_reception',
-                  center = new_center) %>% 
-  ggplot()+
-  geom_gfw_outline(center = new_center, theme = "dark") +
-  geom_raster(aes(x= lon_bin, y=lat_bin, fill = satellite_reception)) +
-    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
-    geom_gfw_land(theme = 'dark', center = new_center) +
-    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
-                       limits = c(0,1),
-                       oob = scales::squish,
-                       na.value = NA) +   
-    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
-           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
-           crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Class B coverage') +
-      theme_gfw_map(theme = 'light') 
-
-
-fishwatchr::add_little_globe(atlantic_map,
-                             main_box = bounding_atlantic,
-                             globe_rel_size = '0.25',
-                             globe_just = 'inside',
-                             globe_position = 'upperright')  
-  
-  
-ggsave(here::here("outputs", "figures", "senegal_classB_ais_cov_v2.png"), width = 10, height = 12)
-
-```
-
-```{r Test different coverage metrics Terrestrial, echo=F, warning=F}
-
-class_a <- filter(WA_class_a, type=='A')
-
-#set plot center 
-new_center <- -20
-
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
-
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-20.5, -15),
-                          ylim = c(13.5, 16.1),
-                          output_crs = best_proj)
-  
-atlantic_map <- class_a %>%
-  recenter_raster(raster_df = .,
-                  res = 1,
-                  x_lab = 'lon_bin',
-                  y_lab = 'lat_bin',
-                  fill_lab = 'terrestrial_reception',
-                  center = new_center) %>% 
-  ggplot()+
-  geom_gfw_outline(center = new_center, theme = "dark") +
-  geom_raster(aes(x= lon_bin, y=lat_bin, fill = terrestrial_reception)) +
-    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
-    geom_gfw_land(theme = 'dark', center = new_center) +
-    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
-                       limits = c(0,1),
-                       oob = scales::squish,
-                       na.value = NA) +   
-    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
-           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
-           crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Terrestrial coverage') +
-      theme_gfw_map(theme = 'light') 
-
-
-fishwatchr::add_little_globe(atlantic_map,
-                             main_box = bounding_atlantic,
-                             globe_rel_size = '0.25',
-                             globe_just = 'inside',
-                             globe_position = 'upperright')  
-  
-  
-ggsave(here::here("outputs", "figures", "senegal_terrestrial_ais_cov_v2.png"), width = 10, height = 12)
-
-```
 # Measured AIS reception
 
 ```{r download measured ais recepion, echo=F, warning=F}
@@ -571,29 +291,29 @@ measured_ais <- fishwatchr::gfw_query(query = glue::glue(q_measured,
                   min_lat = "10", 
                   max_lat = "17", 
                   min_lon = "-21", 
-                  max_lon = "-15", 
-                  type = "'A'"),
+                  max_lon = "-15"),
                                  run_query = TRUE,
                                  con = con)$data
 ```
+
+
 ```{r Test measured AIS class A, echo=F, warning=F}
 
-class_a <- filter(measured_ais, ais_class == 'A')
+m_class_a <- filter(measured_ais, ais_class == 'A')
 
-# set upper limit
-up_lim <- 1000 
-#set plot center 
-new_center <- -20
+m_class_a$lat_bin2 <- round(m_class_a$lat_bin / res) * res
+m_class_a$lon_bin2 <- round(m_class_a$lon_bin / res) * res
 
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+m_class_a_new_res <- m_class_a %>%
+  group_by(lat_bin2, lon_bin2) %>%
+    summarise(sat_pos_per_day  = sum(sat_pos_per_day ),
+              hours  = sum(hours)) 
 
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-21, -15),
-                          ylim = c(10.5, 16.5),
-                          output_crs = best_proj)
-  
-atlantic_map <- class_a %>%
+colnames(m_class_a_new_res)[colnames(m_class_a_new_res) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
+
+quantile(m_class_a_new_res$sat_pos_per_day)
+
+atlantic_map <- m_class_a_new_res %>%
   recenter_raster(raster_df = .,
                   res = 1,
                   x_lab = 'lon_bin',
@@ -606,13 +326,14 @@ atlantic_map <- class_a %>%
     geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
     geom_gfw_land(theme = 'dark', center = new_center) +
     scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
-                       limits = c(0,900),
+                       limits = c(0,15000),
                        oob = scales::squish,
                        na.value = NA) +   
     coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
            ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
            crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Daily Positions') +
+      labs(fill = 'Daily Positions', 
+           title = 'Class A Satelitte AIS coverage') +
       theme_gfw_map(theme = 'light') 
 
 
@@ -623,28 +344,27 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_A_measure_cov.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures", "AIS coverage", "Class_A_measured_cov_0.5.png"), width = 8, height = 10)
 
 ```
 
 ```{r Test measured AIS class B, echo=F, warning=F}
 
-class_a <- filter(measured_ais, ais_class == 'B')
+m_class_b <- filter(measured_ais, ais_class == 'B')
 
-# set upper limit
-up_lim <- 1000 
-#set plot center 
-new_center <- -20
+m_class_b$lat_bin2 <- round(m_class_b$lat_bin / res) * res
+m_class_b$lon_bin2 <- round(m_class_b$lon_bin / res) * res
 
-# set proj for bounding box
-best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+m_class_b_new_res <- m_class_b %>%
+  group_by(lat_bin2, lon_bin2) %>%
+    summarise(sat_pos_per_day  = sum(sat_pos_per_day ),
+              hours  = sum(hours)) 
 
-# set plot limits for Pacific 
-bounding_atlantic <- transform_box(xlim = c(-21, -15),
-                          ylim = c(10.5, 16.5),
-                          output_crs = best_proj)
-  
-atlantic_map <- class_a %>%
+colnames(m_class_b_new_res)[colnames(m_class_b_new_res) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
+
+quantile(m_class_b_new_res$sat_pos_per_day)
+
+atlantic_map <- m_class_b_new_res %>%
   recenter_raster(raster_df = .,
                   res = 1,
                   x_lab = 'lon_bin',
@@ -657,13 +377,14 @@ atlantic_map <- class_a %>%
     geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
     geom_gfw_land(theme = 'dark', center = new_center) +
     scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
-                       limits = c(0,900),
+                       limits = c(0,3500),
                        oob = scales::squish,
                        na.value = NA) +   
     coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
            ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
            crs = bounding_atlantic$out_crs) +
-      labs(fill = 'Daily Positions') +
+      labs(fill = 'Daily Positions',
+           title = 'Class B Satelitte AIS coverage') +
       theme_gfw_map(theme = 'light') 
 
 
@@ -674,7 +395,58 @@ fishwatchr::add_little_globe(atlantic_map,
                              globe_position = 'upperright')  
   
   
-ggsave(here::here("outputs", "figures", "senegal_B_measure_cov.png"), width = 10, height = 12)
+ggsave(here::here("outputs", "figures","AIS coverage", "Class_B_measure_cov_0.5.png"), width = 8, height = 10)
+
+```
+
+```{r Test measured AIS Terrestrial, echo=F, warning=F}
+
+m_class_ter <- filter(measured_ais, ais_class == 'A')
+
+m_class_ter$lat_bin2 <- round(m_class_ter$lat_bin / res) * res
+m_class_ter$lon_bin2 <- round(m_class_ter$lon_bin / res) * res
+
+m_class_ter_new_res <- m_class_ter %>%
+  group_by(lat_bin2, lon_bin2) %>%
+    summarise(ter_pos_per_day  = sum(ter_pos_per_day ),
+              hours  = sum(hours)) 
+
+colnames(m_class_ter_new_res)[colnames(m_class_ter_new_res) %in% c('lat_bin2','lon_bin2')] <- c('lat_bin','lon_bin')
+
+quantile(m_class_ter_new_res$ter_pos_per_day)
+
+atlantic_map <- m_class_ter_new_res %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'ter_pos_per_day',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = ter_pos_per_day)) +
+    geom_gfw_eez(theme = 'light', alpha = 0.8, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,1200),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atlantic$box_out[['xmin']], bounding_atlantic$box_out[['xmax']]),
+           ylim = c(bounding_atlantic$box_out[['ymin']], bounding_atlantic$box_out[['ymax']]),
+           crs = bounding_atlantic$out_crs) +
+      labs(fill = 'Daily Positions',
+           title = 'Terrestrial AIS coverage') +
+      theme_gfw_map(theme = 'light') 
+
+
+fishwatchr::add_little_globe(atlantic_map,
+                             main_box = bounding_atlantic,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+  
+ggsave(here::here("outputs", "figures", "AIS coverage", "terrestrial_measure_cov_0.5.png"), width = 8, height = 10)
 
 ```
 
@@ -683,7 +455,7 @@ ggsave(here::here("outputs", "figures", "senegal_B_measure_cov.png"), width = 10
 # AIS Gap images
 
 ```{r AIS coverage tables, echo=F, warning=F}
-gap_locations <- readr::read_file(file = here::here("queries", ".", "ais_gap_locations.sql"))
+gap_locations <- readr::read_file(file = here::here("queries", "ais_coverage", "ais_gap_locations.sql"))
 
 wa_gap_locations <- fishwatchr::gfw_query(query = gap_locations,
                                  run_query = TRUE,
@@ -691,13 +463,11 @@ wa_gap_locations <- fishwatchr::gfw_query(query = gap_locations,
 
 
 ```
-
-<!-- move to looking at vessel level coverage -->
- # Vessel level AIS coverage  
+# Vessel level AIS coverage  
 
 ```{r look at vessel daily ais coverage, echo=F, warning=F}
 # vessel_ais_q <- readr::read_file(file = here::here("queries", ".", "vessel_ais_coverage.sql"))
-vessel_ais_q <- readr::read_file(file = here::here("queries", ".", "vessel_ais_coverage_all.sql"))
+vessel_ais_q <- readr::read_file(file = here::here("queries", "ais_coverage", "vessel_ais_coverage_all.sql"))
 
 daily_voi_ais <- fishwatchr::gfw_query(query = vessel_ais_q,
                                  run_query = TRUE,
@@ -705,7 +475,7 @@ daily_voi_ais <- fishwatchr::gfw_query(query = vessel_ais_q,
 
 ```
 
-```{r look at metrics, echo=F, warning=F}
+```{r vessel level AIS coverage metrics, echo=F, warning=F}
 
 daily_voi_ais$frac_hours <- daily_voi_ais$n_ais_hours / daily_voi_ais$n_voyage_hours 
 daily_voi_ais$year <- year(daily_voi_ais$trip_start)
@@ -766,7 +536,7 @@ daily_voi_ais %>%
       labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing trawlers') +
       facet_wrap(vars(ssvid))
 
-ggsave(filename = here::here('figures',"trawl_b5_vessels_coverage_2019_2021.png"),
+ggsave(filename = here::here("outputs", "figures", "AIS coverage", 'Vessel_coverage',"trawl_b5_vessels_coverage_2019_2021.png"),
         width = 30, height = 20, units = "cm")
 ```
 
@@ -800,11 +570,13 @@ ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE),
   theme_classic() +
   theme(legend.position = 'bottom')
       
-ggsave(filename = here::here('figures',"trawl_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+ggsave(filename = here::here("outputs", "figures", "AIS coverage", 'Vessel_coverage',"trawl_30_prop_gaps_hours.png"),width = 20, height = 15, units = "cm")
 ```
 
-```{r look at table of AIS usage, echo=F, warning=F}
-top3_bot_3 <- bind_rows(daily_voi_ais %>% 
+```{r Table of AIS usage fractions top n bottom n trawlers, echo=F, warning=F}
+n <- 3
+
+top_n_bot_n <- bind_rows(daily_voi_ais %>% 
   filter(geartype == 'trawlers', trip_start > as.Date('2019-01-01'))  %>% 
     group_by(ssvid) %>% 
       summarise(ttl_voyage_hours = sum(n_voyage_hours), 
@@ -815,7 +587,7 @@ top3_bot_3 <- bind_rows(daily_voi_ais %>%
         mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
           filter(days > 30) %>%
             ungroup() %>%
-              top_n(3, frac_hours), 
+              top_n(n, frac_hours), 
   daily_voi_ais %>% 
   filter(geartype == 'trawlers', trip_start > as.Date('2019-01-01'))  %>% 
     group_by(ssvid) %>% 
@@ -827,8 +599,7 @@ top3_bot_3 <- bind_rows(daily_voi_ais %>%
         mutate(frac_hours = ttl_ais_hours/ttl_voyage_hours) %>%
           filter(days > 30) %>%
             ungroup() %>%
-              top_n(-3, frac_hours))
-
+              top_n(-n, frac_hours))
 
 ```
 
@@ -842,16 +613,17 @@ daily_voi_ais %>%
   filter(ssvid %in% top5_ps) %>%
     mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
       ggplot() +
-      geom_line(aes(date, frac_hours)) +
-      geom_point(aes(date, frac_hours)) +
+      # geom_line(aes(date, frac_hours)) +
+      # geom_point(aes(date, frac_hours)) +
       geom_smooth(aes(date, frac_hours)) +
       lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31')), y=c(0,1)) +
-      labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing longliners') +
+      labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing tuna purse seiners') +
       facet_wrap(vars(ssvid))
 
-ggsave(filename = here::here('figures',"tps_b5_vessels_coverage_2019_2021.png"),
+ggsave(filename = here::here('outputs','figures', 'AIS coverage', 'Vessel_coverage',"tps_b5_vessels_coverage_2019_2021.png"),
         width = 30, height = 20, units = "cm")
 ```
+
 ```{r look at coverage for bottom tps 30 vessels by gear, echo=F, warning=F}
 
 plot_dat <- daily_voi_ais %>% 
@@ -882,7 +654,7 @@ ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE),
   theme_classic() +
   theme(legend.position = 'bottom')
       
-ggsave(filename = here::here('figures',"tps_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+ggsave(filename = here::here('outputs','figures', 'AIS coverage', 'Vessel_coverage', "tps_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
 ```
 
 # Drifting Longlines 
@@ -895,16 +667,16 @@ daily_voi_ais %>%
   filter(ssvid %in% top5_longliners) %>%
     mutate(frac_hours = n_ais_hours/n_voyage_hours) %>%
       ggplot() +
-      geom_line(aes(date, frac_hours)) +
-      geom_point(aes(date, frac_hours)) +
+      # geom_line(aes(date, frac_hours)) +
+      # geom_point(aes(date, frac_hours)) +
       geom_smooth(aes(date, frac_hours)) +
       lims(x=c(as.Date('2019-01-01'),as.Date('2021-12-31')), y=c(0,1)) +
       labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing longliners') +
       facet_wrap(vars(ssvid))
 
-ggsave(filename = here::here('figures',"ll_b5_vessels_coverage_2019_2021.png"),
-        width = 30, height = 20, units = "cm")
+ggsave(filename = here::here('outputs','figures', 'AIS coverage', 'Vessel_coverage',"ll_b5_vessels_coverage_2019_2021.png"), width = 30, height = 20, units = "cm")
 ```
+
 ```{r look at coverage for bottom ll 30 vessels by gear, echo=F, warning=F}
 
 plot_dat <- daily_voi_ais %>% 
@@ -935,7 +707,7 @@ ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE),
   theme_classic() +
   theme(legend.position = 'bottom')
       
-ggsave(filename = here::here('figures',"ll_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+ggsave(filename = here::here('outputs','figures', 'AIS coverage', 'Vessel_coverage',"ll_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
 ```
 
 # Carriers
@@ -955,7 +727,7 @@ daily_voi_ais %>%
       labs(y='Proportion of time on AIS', x = 'Date', title = 'worst performing longliners') +
       facet_wrap(vars(ssvid))
 
-ggsave(filename = here::here('figures',"carrier_b5_vessels_coverage_2019_2021.png"),
+ggsave(filename = here::here('outputs','figures', 'AIS coverage', 'Vessel_coverage',"carrier_b5_vessels_coverage_2019_2021.png"),
         width = 30, height = 20, units = "cm")
 ```
 
@@ -989,7 +761,7 @@ ggplot(data = plot_dat, aes(x=reorder(ssvid, frac_hours, mean, decreasing=TRUE),
   theme_classic() +
   theme(legend.position = 'bottom')
       
-ggsave(filename = here::here('figures',"carrier_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
+ggsave(filename = here::here('outputs','figures', 'AIS coverage', 'Vessel_coverage',"carrier_proportion_gaps_hours.png"),width = 20, height = 15, units = "cm")
 ```
 
 
