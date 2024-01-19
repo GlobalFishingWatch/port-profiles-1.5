@@ -4,12 +4,12 @@
 -- Date: 08 Sep 2023
 --------------------------------------------------------------------------------
 
-CREATE TEMP FUNCTION minimum() AS (DATE("2023-01-01"));
-CREATE TEMP FUNCTION maximum() AS (DATE("2023-01-07"));
-CREATE TEMP FUNCTION min_lat() AS (-6);
-CREATE TEMP FUNCTION max_lat() AS (22);
-CREATE TEMP FUNCTION min_lon() AS (-30);
-CREATE TEMP FUNCTION max_lon() AS (20);
+CREATE TEMP FUNCTION minimum() AS (TIMESTAMP({start_date}));
+CREATE TEMP FUNCTION maximum() AS (TIMESTAMP({end_date}));
+CREATE TEMP FUNCTION min_lat() AS ({min_lat});
+CREATE TEMP FUNCTION max_lat() AS ({max_lat});
+CREATE TEMP FUNCTION min_lon() AS ({min_lon});
+CREATE TEMP FUNCTION max_lon() AS ({max_lon});
 
 WITH
 
@@ -24,6 +24,7 @@ WITH
       identity.imo,
       identity.n_callsign,
       identity.n_shipname,
+      registry.geartype,
       is_fishing,
       is_carrier,
       is_bunker,
@@ -32,9 +33,11 @@ WITH
     FROM
       `world-fishing-827.vessel_database.all_vessels_v20230701`
     LEFT JOIN UNNEST(activity) as activity
+    LEFT JOIN UNNEST(registry) as registry
     WHERE
-       activity.first_timestamp <= TIMESTAMP(maximum())
-      AND activity.last_timestamp >= TIMESTAMP(minimum())
+       activity.first_timestamp <= maximum()
+      AND activity.last_timestamp >= minimum()
+      AND is_fishing
       ),
 
 
@@ -45,8 +48,12 @@ WITH
   SELECT
       *,
       EXTRACT(year from gap_start) as year,
+      off_eez,
+      on_eez
   FROM
     `world-fishing-827.pipe_production_v20201001.proto_ais_gap_events`
+    LEFT JOIN UNNEST(gap_start_eez) AS off_eez
+    LEFT JOIN UNNEST(gap_end_eez) AS on_eez
   WHERE
   -- limit to gap events longer than 12 hours as satellite reception can vary considerably over shorter timeframes
       gap_hours >= 12
@@ -56,7 +63,7 @@ WITH
    -- AND (positions_per_day_off > 5 AND positions_per_day_on > 5)
 
   -- restrict to gaps that started and ended in period of interest
-  AND DATE(gap_start) BETWEEN minimum() AND maximum()
+  AND gap_start BETWEEN minimum() AND maximum()
   AND gap_start_lat BETWEEN min_lat() AND max_lat()
   AND gap_start_lon BETWEEN min_lon() AND max_lon()
 
@@ -77,19 +84,15 @@ WITH
       JOIN vessel_database USING(ssvid)
   )
 
+
 ------------------------------------------------------------------------
 -- Return gaps
 ------------------------------------------------------------------------
 SELECT
-  DISTINCT(gap_id) AS uniq,
+  gap_id,
   ssvid,
-  -- n_shipname AS vessel_name,
-  -- is_fishing,
-  -- is_carrier,
-  -- is_bunker,
-  -- imo,
-  -- n_callsign AS ircs,
-  -- flag,
+  geartype,
+  flag,
   gap_start AS gap_start_timestamp,
   gap_end AS gap_end_timestamp,
   gap_hours,
@@ -104,5 +107,5 @@ SELECT
   gap_end_receiver_type,
   is_closed,
 FROM
-  gaps
+  gaps_vessel_info
 
