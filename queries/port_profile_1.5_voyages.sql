@@ -726,14 +726,14 @@ WITH
 -- Identify how many encounters occurred on each voyage
 --------------------------------------
 
--- this seems like a cleaner approach for num_encounters, but runtime is way too long
--- maybe revisit but for now using two-subquery approach below
+-- this seems like a cleaner approach for num_encounters, but runtime is way too long (i may/probably have something wrong)
+-- may revisit but for now using two-subquery approach below
 
 -- num_encounters AS (
 --   SELECT
 --     vessel_id,
 --     trip_id,
---     -- COUNT(*) AS num_encounters
+--     COUNT(*) AS num_encounters
 --   FROM (
 --     SELECT
 --       vessel_1_id,
@@ -752,9 +752,8 @@ WITH
 --   ON
 --     start_time BETWEEN trip_start AND trip_end
 --     AND(voyages.vessel_id IN (enc.vessel_1_id, enc.vessel_2_id) )
---     -- AND (voyages.vessel_id = enc.vessel_1_id OR voyages.vessel_id = enc.vessel_2_id)
---     -- GROUP BY
---     --   vessel_id, trip_id
+--     GROUP BY
+--        vessel_id, trip_id
 --     ) select * from num_encounters  /*
 
 # using two subqueries:
