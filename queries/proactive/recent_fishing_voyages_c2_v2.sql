@@ -335,7 +335,7 @@ WITH
     2 ),
 
   --------------------------------------
-  -- Identify the number of fishing events
+  -- Identify the number of gaps
   -- that occurred on each voyage
   --------------------------------------
    gaps AS (

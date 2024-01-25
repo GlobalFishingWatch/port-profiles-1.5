@@ -468,7 +468,7 @@ wa_gap_locations <- fishwatchr::gfw_query(query = glue::glue(gap_locations,
                                  con = con)$data
 ```
 
-```{r connection to BQ, echo=F, warning=F, include=FALSE}
+```{r make ais connection maps, echo=F, warning=F, include=FALSE}
 
 table(wa_gap_locations$geartype)
 
