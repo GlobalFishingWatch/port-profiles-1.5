@@ -20,7 +20,6 @@
   --    stop/gap is "long enough" (3
   --    hours currently)
 
-
 ## set time frame of interest
 CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2020-01-01 00:00:00 UTC'));
 CREATE TEMP FUNCTION  start_year() AS (2020);
@@ -34,15 +33,34 @@ CREATE TEMP FUNCTION port_iso() AS (CAST("GIN" AS STRING));
 
 ## save table if needed:
 CREATE TABLE `world-fishing-827.scratch_joef.voyages_conakry_2020-22_pipe25` AS
--- CREATE TABLE `world-fishing-827.scratch_joef.vessel_list_conakry_2020-22` AS
+-- CREATE TABLE `world-fishing-827.scratch_joef.vessel_list_conakry_2020-22_pipe25` AS
 
 --------------------------------------
 WITH
 
 ----------------------------------------------------------
--- Define lists of high/med/low confidence for all fishing related vessels
+-- Define lists of high/med/low confidence for all fishing-related vessels
 -- and join each list to voyages within the time period of interest
 ----------------------------------------------------------
+
+----------------------------------------------------------
+-- add in vessels not present on vessel list (ie TMT flagged)
+----------------------------------------------------------
+
+  additional_vessels AS(
+    SELECT DISTINCT
+      ssvid,
+      year,
+      IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
+      '4' as class_confidence,
+      'added_TMT' AS vessel_class,
+      prod_geartype AS gear_type
+     FROM
+      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
+     WHERE
+      year >= start_year() AND year <= end_year()
+      AND ssvid IN ("412440307", "412440310") -- add additional vessels here
+     ),
 
 ----------------------------------------------------------
 -- high/med/low confidence fishing vessels
@@ -50,20 +68,19 @@ WITH
 
 -- HIGH: MMSI in the fishing_vessels_ssvid table.
 -- These are vessels on our best fishing list and that have reliable AIS data
--- pulling in the vessel_name, IRCS, IMO from ssvid_by_year_table
 
   high_conf_fishing AS (
      SELECT DISTINCT
        ssvid,
        year,
       --  best_flag AS vessel_iso3,
-       gfw_best_flag AS vessel_iso3,
+      IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
        '1' as class_confidence,
        'fishing' AS vessel_class,
-       best_vessel_class AS gear_type
+       prod_geartype AS gear_type
      FROM
-      -- `world-fishing-827.gfw_research.fishing_vessels_ssvid_v20231201` -- **** update to pipe 3 when released ******
-      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201`
+      -- `world-fishing-827.gfw_research.fishing_vessels_ssvid_v20231201`
+      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -71,7 +88,7 @@ WITH
      ),
 
      -- 212632 og
-     -- 466563 new
+     -- 214485 new
 
 -- MED: All MMSI on our best fishing list not included in the high category.
 -- These are likely fishing vessels that primarily get excluded due to data issues
@@ -82,17 +99,17 @@ WITH
       ssvid,
       year,
       -- IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
-      IFNULL(gfw_best_flag, mmsi_flag) AS vessel_iso3,
+      IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
       '2' as class_confidence,
       'fishing' AS vessel_class,
       -- IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
-      IFNULL(IFNULL(best_vessel_class, registry_vessel_class), inferred_vessel_class_ag) AS gear_type
+      prod_geartype AS gear_type
     FROM
       -- `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
       `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table
     WHERE
     year >= start_year() AND year <= end_year()
-    -- AND on_fishing_list_best
+    -- AND on_fishing_list_best -- vi_ssvid approach
     AND prod_shiptype IN ("fishing")
     AND on_fishing_list_sr
     AND
@@ -105,7 +122,7 @@ WITH
     ),
 
     -- og 38382
-    -- new 32517
+    -- new 32520
 
 -- LOW: MMSI that are on one of our three source fishing lists (registry, neural net, self-reported)
 -- but not included in either the med or high list. These are MMSI for which we have minimal
@@ -116,11 +133,11 @@ WITH
       ssvid,
       year,
       -- IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
-      IFNULL(gfw_best_flag, mmsi_flag) AS vessel_iso3,
+      IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
       '3' as class_confidence,
       'fishing' AS vessel_class,
       -- IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
-      IFNULL(IFNULL(best_vessel_class, registry_vessel_class), inferred_vessel_class_ag) AS gear_type
+      prod_geartype AS gear_type
     FROM
       -- `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
       `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table
@@ -148,12 +165,18 @@ WITH
     ),
 
     -- og 148029
-    -- new 208244
+    -- new 208247
 
 ----------------------------------------------------------
 -- combined fishing vessel table info
 ----------------------------------------------------------
   fishing_vessels AS (
+    SELECT
+      *
+    FROM
+      additional_vessels
+    UNION ALL
+
     SELECT
       *
     FROM
@@ -172,7 +195,7 @@ WITH
       low_conf_fishing
   ),
 
--- using allvesselsv2 results in 455,246 fvs (2020-22)
+-- using allvesselsv2 results in 455,254 fvs (2020-22)
 -- orig way using vissvid is 399043
 
 ----------------------------------------------------------
@@ -192,12 +215,10 @@ WITH
       WHERE
         trip_end >= start_date() AND trip_start <= end_date()
         )
-    LEFT JOIN fishing_vessels
+    INNER JOIN fishing_vessels
     USING
       (ssvid, year)
-    WHERE
-      vessel_iso3 IS NOT NULL
-      AND vessel_iso3 != 'UNK'),
+      ),
 
 ----------------------------------------------------------
 -- Define lists of high/med/low confidence bunker vessels
@@ -205,7 +226,7 @@ WITH
   nn_bunkers_high_confidence AS (
     SELECT DISTINCT
       ssvid,
-      IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
+      IFNULL(IFNULL(best.best_flag, registry_info.best_known_flag), ais_identity.flag_mmsi) AS vessel_iso3,
       '1' as class_confidence,
       'bunker' AS vessel_class,
       IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type,
@@ -219,7 +240,12 @@ WITH
       best.best_vessel_class IN (
         "bunker",
         "bunker_or_tanker" )
-      AND ssvid IN (SELECT ssvid FROM `pipe_ais_v3_alpha_published.identity_core_v20231001` WHERE is_bunker = TRUE)
+      AND ssvid IN (
+        -- SELECT ssvid
+        SELECT identity.ssvid -- pipe25
+        -- FROM `pipe_ais_v3_alpha_published.identity_core_v20231001`
+        FROM `vessel_database.all_vessels_v20231201` -- pipe25
+        WHERE is_bunker = TRUE)
   ),
 
 ---------------------------------------------------------------
@@ -228,7 +254,7 @@ WITH
   nn_bunkers_med_confidence AS (
     SELECT DISTINCT
       ssvid,
-      IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
+      IFNULL(IFNULL(best.best_flag, registry_info.best_known_flag), ais_identity.flag_mmsi) AS vessel_iso3,
       '2' as class_confidence,
       'bunker' AS vessel_class,
       IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type,
@@ -242,7 +268,12 @@ WITH
       best.best_vessel_class IN (
         "bunker",
         "bunker_or_tanker" )
-      AND ssvid NOT IN (SELECT ssvid FROM `pipe_ais_v3_alpha_published.identity_core_v20231001` WHERE is_bunker = TRUE)
+      AND ssvid NOT IN (
+              -- SELECT ssvid
+        SELECT identity.ssvid -- pipe25
+        -- FROM `pipe_ais_v3_alpha_published.identity_core_v20231001`
+        FROM `vessel_database.all_vessels_v20231201` -- pipe25
+        WHERE is_bunker = TRUE)
   ),
 
 ---------------------------------------------------------------
@@ -259,9 +290,9 @@ WITH
       first_timestamp,
       last_timestamp
     FROM
-      -- `pipe_ais_v3_alpha_published.identity_core_v20231001`
-      `vessel_database.all_vessels_v20231201`,
-      UNNEST(activity)
+      -- `pipe_ais_v3_alpha_published.identity_core_v20231001` -- pipe3
+      `vessel_database.all_vessels_v20231201`, -- pipe25
+      UNNEST(activity) -- pipe25
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -352,9 +383,9 @@ WITH
       last_timestamp
     FROM
       -- `pipe_ais_v3_alpha_published.identity_core_v20231001` -- pipe3, update to latest v
-      `vessel_database.all_vessels_v20231201`,
-      UNNEST(activity),
-      UNNEST(feature.geartype) AS geartype
+      `vessel_database.all_vessels_v20231201`, -- pipe25
+      UNNEST(activity), -- pipe25
+      UNNEST(feature.geartype) AS geartype -- pipe25
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -603,6 +634,8 @@ WITH
     start_label,
     end_iso3,
     end_label,
+    trip_start_confidence,
+    trip_end_confidence,
     trip_start_visit_id,
     trip_end_visit_id,
     trip_start_anchorage_id,
@@ -740,6 +773,13 @@ WITH
     FIRST_VALUE (trip_end_anchorage_id) OVER (
       PARTITION BY block_start, block_end, ssvid
       ORDER BY trip_end DESC) AS trip_end_anchorage_id,
+
+    FIRST_VALUE (trip_start_confidence) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_start ASC) AS trip_start_confidence,
+    FIRST_VALUE (trip_end_confidence) OVER (
+      PARTITION BY block_start, block_end, ssvid
+      ORDER BY trip_end DESC) AS trip_end_confidence,
     FROM look_back_and_ahead
   ),
 
@@ -766,12 +806,14 @@ WITH
       trip_end_visit_id,
       trip_start_anchorage_id,
       trip_end_anchorage_id,
+      trip_start_confidence,
+      trip_end_confidence,
       CASE -- adding flag if voyages is collapsed bc of PAN crossing
         WHEN count(*) > 1 THEN 1
         WHEN count(*) = 1 THEN 0
         END AS pan_crossing
     FROM blocks_to_be_collapsed_down
-    GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
+    GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
   ),
 
 --------------------------------------
@@ -1031,7 +1073,7 @@ WITH
       (vessel_id,
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21),
 
 --------------------------------------
 -- label voyage if it had at least
@@ -1052,7 +1094,7 @@ WITH
       -- (ssvid, -- pipe3
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23),
 
 --------------------------------------
 -- label voyage if it had at least
@@ -1072,20 +1114,21 @@ WITH
       (vessel_id,
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25),
 
 --------------------------------------
 -- label if voyages represents a 'real' voyage
 -- 'real': TRUE if the start and end
 -- 'port' are different and the voyage
--- is longer than 1 hour
+-- is longer than x hour
 -- OR
 -- if the start end end 'port' are the
 -- the same, but the voyage had an
 -- encounter, loitering event, or fishing event
+-- and is > x h
 -- OR
 -- if the start and end 'port are the
--- same, but the voyage is at least 12
+-- same, but the voyage is at least x
 -- hours
 -- FALSE: all other voyages
 --------------------------------------
@@ -1098,11 +1141,11 @@ WITH
         CASE
           WHEN CONCAT(start_label, start_iso3) != CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 1 THEN TRUE
           WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3)
-        AND (had_encounter IS TRUE
+          AND (had_encounter IS TRUE
           OR had_loitering IS TRUE
           OR had_fishing IS TRUE)
-        AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 2 THEN TRUE
-          WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 12 THEN TRUE
+          AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 2 THEN TRUE
+          WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 3 THEN TRUE
         ELSE
         FALSE
       END
@@ -1142,7 +1185,7 @@ WITH
   good_vessel_voyages AS (
     SELECT
       *,
-      TIMESTAMP_DIFF(trip_end, trip_start, DAY) AS trip_duration_days
+      ROUND(TIMESTAMP_DIFF(trip_end, trip_start, HOUR)/24, 1) AS trip_duration_days
     FROM
       initial_true_voyages
     WHERE
@@ -1180,7 +1223,7 @@ WITH
   --     point_label,
   --     port_locode
   --   FROM
-  --     proj_pew_ports.gfw_ports_database_v20230424 ) AS ports
+  --     `proj_pew_ports.gfw_ports_database_v20230424` ) AS ports
   -- USING
   --   (trip_end_anchorage_id) ),
 
@@ -1195,10 +1238,11 @@ WITH
     LEFT JOIN (
       SELECT
         s2id AS trip_end_anchorage_id,
+        sublabel AS end_port_sublabel,
         distance_from_shore_m,
         dock
       FROM
-        `anchorages.named_anchorages_v20240117` ) -- may need to update
+        `anchorages.named_anchorages_v20240117` )
     USING
       (trip_end_anchorage_id)),
 
@@ -1215,8 +1259,8 @@ WITH
         visit_id AS trip_end_visit_id,
         start_timestamp AS start_portvisit_timestamp,
         end_timestamp AS end_portvisit_timestamp,
-        start_lat AS start_latitude,
-        start_lon AS start_longitude
+        ROUND(start_lat, 2) AS start_latitude,
+        ROUND(start_lon, 2) AS start_longitude
       FROM
         -- `pipe_ais_v3_alpha_published.port_visits` -- pipe3
         `pipe_production_v20201001.proto_port_visits` -- pipe2.5
@@ -1264,7 +1308,7 @@ WITH
     GROUP BY
       1
     HAVING
-      longest_event > 3 ),
+      longest_event > 0 ),
 
 --------------------------------------
 -- all qualifying voyages
@@ -1282,14 +1326,17 @@ WITH
       trip_start,
       start_iso3 AS start_port_iso3,
       start_label AS start_port_label,
+      trip_start_confidence,
       trip_end,
       end_iso3 AS end_port_iso3,
       end_label AS end_port_label,
+      end_port_sublabel,
       trip_end_anchorage_id,
+      trip_end_confidence,
       trip_duration_days,
       start_portvisit_timestamp,
       end_portvisit_timestamp,
-      ((TIMESTAMP_DIFF(end_portvisit_timestamp, start_portvisit_timestamp, minute)/60)/24) AS port_event_duration_days,
+      ROUND(TIMESTAMP_DIFF(end_portvisit_timestamp, start_portvisit_timestamp, minute)/60/24, 1) AS port_event_duration_days,
       distance_from_shore_m,
       dock,
       trip_end_visit_id,
@@ -1364,10 +1411,13 @@ WITH
       trip_start,
       start_port_iso3,
       start_port_label,
+      trip_start_confidence,
       trip_end,
       end_port_iso3,
       end_port_label,
+      end_port_sublabel,
       trip_end_anchorage_id,
+      trip_end_confidence,
       trip_duration_days,
       start_portvisit_timestamp,
       end_portvisit_timestamp,
@@ -1390,36 +1440,71 @@ WITH
         callsign,
         imo,
         gfw_best_flag AS vessel_flag_best,
-        best_vessel_class AS vessel_class_best,
+        prod_shiptype AS vessel_class_best,
         prod_geartype AS geartype_best
       FROM
         `pipe_production_v20201001.all_vessels_byyear_v2_v20231201`) -- update to pipe3
       USING
-        (vessel_id, year))
+        (vessel_id, year)),
 
 --------------------------------------
--- pull vessel list entering POI
--- comment this block out if want voyages
+-- clean vessel info so consistent for ssvid/year
+-- using DESC to select non-null value if present
 --------------------------------------
-  -- SELECT
-  --   DISTINCT
-  --   vessel_id,
-  --   ssvid,
-  --   year,
-  --   shipname,
-  --   vessel_flag_best,
-  --   callsign,
-  --   imo,
-  --   vessel_class_best,
-  --   geartype_best,
-  --   vessel_class_initial,
-  --   class_confidence_initial,
-  --   count(*) as visits_in_timeperiod,
-  --   count(num_encounters) AS total_encounters,
-  --   count(num_loitering) AS total_loitering,
-  --   count(num_fishing) AS total_fishing
-  -- FROM add_vessel_info
-  -- GROUP BY 1,2,3,4,5,6,7,8,9,10,11
+  clean_info AS(
+    SELECT
+      vessel_id,
+      ssvid,
+      year,
+      FIRST_VALUE (shipname) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY shipname DESC) AS shipname,
+      FIRST_VALUE (vessel_flag_best) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY vessel_flag_best DESC) AS vessel_flag_best,
+      FIRST_VALUE (callsign) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY callsign DESC) AS callsign,
+      FIRST_VALUE (imo) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY imo DESC) AS imo,
+      FIRST_VALUE (vessel_class_best) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY vessel_class_best DESC) AS vessel_class_best,
+      FIRST_VALUE (geartype_best) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY geartype_best DESC) AS geartype_best,
+      vessel_class_initial,
+      CASE
+        WHEN class_confidence_initial = "1" THEN "high"
+        WHEN class_confidence_initial = "2" THEN "med"
+        WHEN class_confidence_initial = "3" THEN "low"
+        WHEN class_confidence_initial = "4" THEN "TMT"
+        END AS class_confidence_initial,
+      trip_id,
+      trip_start,
+      start_port_iso3,
+      start_port_label,
+      trip_start_confidence,
+      trip_end,
+      end_port_iso3,
+      end_port_label,
+      end_port_sublabel,
+      trip_end_anchorage_id,
+      trip_end_confidence,
+      trip_duration_days,
+      start_portvisit_timestamp,
+      end_portvisit_timestamp,
+      port_event_duration_days,
+      distance_from_shore_m,
+      dock,
+      trip_end_visit_id,
+      start_latitude,
+      start_longitude,
+      num_encounters,
+      num_loitering,
+      num_fishing
+    FROM add_vessel_info)
 
 --------------------------------------
 -- pull voyages ending in port visit in POI
@@ -1441,10 +1526,13 @@ SELECT
   trip_start,
   start_port_iso3,
   start_port_label,
+  trip_start_confidence,
   trip_end,
   end_port_iso3,
   end_port_label,
+  end_port_sublabel,
   trip_end_anchorage_id,
+  trip_end_confidence,
   trip_duration_days,
   start_portvisit_timestamp,
   end_portvisit_timestamp,
@@ -1457,6 +1545,30 @@ SELECT
   num_encounters,
   num_loitering,
   num_fishing
-FROM add_vessel_info
+FROM clean_info
+
+--------------------------------------
+-- pull vessel list entering POI
+-- comment this block out if want voyages
+--------------------------------------
+  -- SELECT
+  --   DISTINCT
+  --   ssvid,
+  --   year,
+  --   shipname,
+  --   vessel_flag_best,
+  --   callsign,
+  --   imo,
+  --   vessel_class_best,
+  --   geartype_best,
+  --   vessel_class_initial,
+  --   class_confidence_initial,
+  --   count(*) as visits_in_timeperiod,
+  --   count(num_encounters) AS total_encounters,
+  --   count(num_loitering) AS total_loitering,
+  --   count(num_fishing) AS total_fishing
+  -- FROM clean_info
+  -- GROUP BY 1,2,3,4,5,6,7,8,9,10
+
 /*
 */
