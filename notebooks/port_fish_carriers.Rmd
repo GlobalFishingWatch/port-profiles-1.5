@@ -81,7 +81,8 @@ best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
 bbox <- transform_box(
   xlim = c(-60, 15),
   ylim = c(-20, 30),
-  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+  # output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+  output_crs = best_proj
 )
 
 ```
@@ -101,13 +102,11 @@ voi_ais_line <- voi_ais %>%
 
 carrier_map <-
   ggplot() +
-  geom_gfw_land(theme = 'dark', proj = gfw_projections("Equal Earth")$proj) +
-  geom_gfw_eez(theme = 'dark', alpha = 0.4, center = new_center) +
   geom_sf(data = voi_ais_line, colour='green') +
+    geom_sf(data = fao_major, size = 0.2, alpha = 1, fill = NA, color = 'yellow2') +
+  geom_gfw_land(theme = 'dark', center = new_center) +
+  geom_gfw_eez(theme = 'dark', alpha = 0.4, center = new_center) +
   # scale_colour_manual(values=gfw_palettes$tracks) +
-  # geom_sf(data = ccsbt_sf, colour='red', fill=NA) +
-  # geom_sf(data = iotc_sf, colour='yellow2', fill=NA) +
-  geom_sf(data = fao_major, size = 0.2, alpha = 1, fill = NA, color = 'yellow2') +
   theme_gfw_map(theme = "dark") +
   theme(legend.position="right") +
   labs(colour = 'MMSI') +

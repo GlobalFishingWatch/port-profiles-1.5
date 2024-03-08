@@ -88,10 +88,11 @@ bounding_atlantic <- transform_box(xlim = c(-21, -15),
 res <- 0.5
 ```
 
-# Satelitte Coverage 
-## All Data Types
+# Coverage Proportion
+## Satelitte Coverage 
+### All Data Types
 
-## Class A
+### Class A
 
 ```{r download type A proto messages, echo=F, warning=F}
 q_coverage_v2 <- readr::read_file(file = here::here("queries", "ais_coverage", "proto_ais_messages_type.sql"))
@@ -161,6 +162,9 @@ ggsave(here::here("outputs", "figures", "AIS coverage", "senegal_sat_ais_class_A
 
 ```
 
+### Class B
+
+
 ```{r Class B Satelitte coverage Senegal, echo=F, warning=F}
 
 west_africa_class_b <- fishwatchr::gfw_query(query = glue::glue(q_coverage_v2,
@@ -227,7 +231,7 @@ ggsave(here::here("outputs", "figures", "AIS coverage", "senegal_sat_ais_class_B
 
 ```
 
-# Terrestrial Coverage
+## Terrestrial Coverage
 
 ```{r Terrestrial coverage Senegal, echo=F, warning=F}
 
@@ -295,7 +299,7 @@ measured_ais <- fishwatchr::gfw_query(query = glue::glue(q_measured,
                                  run_query = TRUE,
                                  con = con)$data
 ```
-
+## Class A
 
 ```{r Test measured AIS class A, echo=F, warning=F}
 
@@ -348,6 +352,8 @@ ggsave(here::here("outputs", "figures", "AIS coverage", "Class_A_measured_cov_0.
 
 ```
 
+## Class B
+
 ```{r Test measured AIS class B, echo=F, warning=F}
 
 m_class_b <- filter(measured_ais, ais_class == 'B')
@@ -398,6 +404,8 @@ fishwatchr::add_little_globe(atlantic_map,
 ggsave(here::here("outputs", "figures","AIS coverage", "Class_B_measure_cov_0.5.png"), width = 8, height = 10)
 
 ```
+
+## Terrestrial
 
 ```{r Test measured AIS Terrestrial, echo=F, warning=F}
 
@@ -458,8 +466,8 @@ ggsave(here::here("outputs", "figures", "AIS coverage", "terrestrial_measure_cov
 gap_locations <- readr::read_file(file = here::here("queries", "ais_coverage", "ais_gap_locations.sql"))
 
 wa_gap_locations <- fishwatchr::gfw_query(query = glue::glue(gap_locations,
-                  start_date = "'2023-01-01'",
-                  end_date = "'2023-07-01'", 
+                  start_date = "'2022-01-01'",
+                  end_date = "'2023-01-01'", 
                   min_lat = "10", 
                   max_lat = "17", 
                   min_lon = "-21", 
@@ -472,13 +480,13 @@ wa_gap_locations <- fishwatchr::gfw_query(query = glue::glue(gap_locations,
 
 table(wa_gap_locations$geartype)
 
-time_period <- filter(wa_gap_locations, between(gap_start_timestamp,
-      as.POSIXct("2023-03-01 00:00:00 UTC",format='%Y-%m-%d %H:%M:%S', tz='UTC'),
-      as.POSIXct("2023-04-01 00:00:00 UTC",format='%Y-%m-%d %H:%M:%S', tz='UTC')))
+time_period <- filter(wa_gap_locations,  flag != 'SEN', between(gap_start_timestamp,
+      as.POSIXct("2022-01-01 00:00:00 UTC",format='%Y-%m-%d %H:%M:%S', tz='UTC'),
+      as.POSIXct("2023-01-01 00:00:00 UTC",format='%Y-%m-%d %H:%M:%S', tz='UTC')))
 
 # set plot limits bound on the data
-bounding_wa <- transform_box(xlim = c(-20, -14),
-                          ylim = c(16, 8),
+bounding_wa <- transform_box(xlim = c(-21, -15),
+                          ylim = c(10, 17),
                           output_crs = 4326)
 
 table(time_period$geartype)
@@ -486,20 +494,20 @@ table(time_period$geartype)
 # gather(key = "source", value = "hours", ttl_ais_hours, ttl_voyage_hours) %>%
 trawl_gaps <- time_period %>% 
   filter(geartype %in% c('trawlers'), 
-         gap_hours > 12, 
+         #gap_hours > 12, 
          flag != 'SEN'
          )  
 
-on <- dplyr::select(trawl_gaps, gap_id, lat=gap_end_lat, lon=gap_end_lon, gap_hours)
+on <- dplyr::select(time_period, gap_id, lat=gap_end_lat, lon=gap_end_lon, gap_hours)
 on$gp_event <- 'on'
 
-off <- dplyr::select(trawl_gaps, gap_id, lat=gap_start_lat, lon=gap_start_lon, gap_hours)
+off <- dplyr::select(time_period, gap_id, lat=gap_start_lat, lon=gap_start_lon, gap_hours)
 off$gp_event <- 'off'
 
-trawl_gaps_re <- bind_rows(on, off)
+wa_gap_locations_re <- bind_rows(on, off)
 
 # map of ON AND OFF MAP
-trawl_gaps_re %>% 
+wa_gap_locations_re %>% 
   mutate(gap_hours_alt = if_else(gp_event == "off", gap_hours, as.numeric(NA))) %>%
 ggplot() + 
     geom_gfw_outline(theme = "dark") +
@@ -508,11 +516,11 @@ ggplot() +
   # geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
   geom_path(aes(x = lon, y = lat, colour = gap_hours, group = gap_id), size = 1, alpha = 0.4) +
   geom_point(aes(x = lon, y = lat, colour = gap_hours, fill = gap_hours), size = 2, shape = 21, alpha = 0.6) +
-  labs(title = "AIS gap events for all trawlers",
-       subtitle = "March 2023",
+  labs(title = "AIS gap events",
+       subtitle = "2022",
        x = "Longitude", 
        y= "Latitude") +
-  scale_colour_viridis_c(name = "AIS gap (hours)",
+  scale_colour_viridis_c(name = "AIS gap (hrs)",
                          begin = 0.2,
                          end = 1.0,
                          option = "viridis",
@@ -520,7 +528,7 @@ ggplot() +
                          oob = scales::squish,
                          breaks = c(12, 14, 18, 24, 48),
                          labels = c("12", "14", "18", "24", "48")) +
-  scale_fill_viridis_c(name = "AIS gap (hours)",
+  scale_fill_viridis_c(name = "AIS gap (hrs)",
                          begin = 0.2,
                          end = 1.0,
                          option = "viridis",
@@ -545,14 +553,14 @@ ggplot() +
       strip.text = element_text(family = 'Roboto',
                                 face = 'bold',
                                 color = '#363c4c',
-                                size = 18),
+                                size = 10),
       legend.text = element_text(family = 'Roboto',
                                  color = '#848b9b',
-                                 size = 14),
+                                 size = 8),
       legend.title = element_text(family = 'Roboto',
                                   face = 'bold',
                                   color = '#363c4c',
-                                  size = 18),
+                                  size = 10),
       legend.position = 'bottom',
       legend.box = 'vertical',
       legend.key.height = unit(3, 'mm'),
