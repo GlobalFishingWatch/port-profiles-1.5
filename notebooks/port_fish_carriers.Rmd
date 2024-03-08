@@ -1,0 +1,294 @@
+---
+title: "Port Fish Carriers"
+author: "Max Schofield"
+date: "2024-01-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, echo=F, warning=F, include=FALSE}
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "gridExtra", "grid") )
+
+# get fishwatch r independently 
+if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+```
+
+```{r connection to BQ, echo=F, warning=F, include=FALSE}
+con <- DBI::dbConnect(drv = bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+
+```{r sav fao major shape as sf object}
+fao_major <- sf::read_sf(here::here('data','geodata','FAO_AREAS_NOCOASTLINE','FAO_AREAS_NOCOASTLINE.shp')) %>%
+  filter(F_LEVEL == 'MAJOR')
+```
+
+# Port Fish Carriers 
+
+This notebook is designed to create images illustrating the activities of fish carrier vessels that visit the focal port of the port profile. 
+
+The following images are planned
+1. Map/s showing the carrier vessels pattern of life e.g. port-to-port in the region, Europe-Africa, at-sea transhipment. 
+i) this requires classifications of the operating model of reefers - this is something TMT can lead. 
+2. Map showing the distribution of carrier vessel encounters 
+3. Map showing the distribution of carrier vessel loittering
+
+## Pattern of life 
+
+```{r pattern of life track data, echo=F, warning=F}
+q_voi_ais <- readr::read_file(file = here::here("queries", "carriers", "carrier_pol_ais.sql"))
+
+voi_ais <- fishwatchr::gfw_query(query = glue::glue(q_voi_ais,
+                  start_date = "'2023-01-01'",
+                  end_date = "'2024-01-01'"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+
+```{r pattern of life plotting params, echo=F, warning=F}
+# set plot center
+new_center <- -20
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-20 +wktext"
+
+bbox <- transform_box(
+  xlim = c(-60, 15),
+  ylim = c(-20, 30),
+  # output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+  output_crs = best_proj
+)
+
+```
+
+```{r pattern of life track map, echo=F, warning=F}
+voi_ais_line <- voi_ais %>%
+  dplyr::select(ssvid, timestamp, lat, lon) %>%
+  sf::st_as_sf(.,
+               coords = c("lon", "lat"),
+               crs = 4326) %>%
+  group_by(ssvid) %>%
+  arrange(timestamp) %>%
+  summarize(do_union = FALSE) %>%
+  sf::st_cast(., "LINESTRING") %>%
+  fishwatchr::recenter_sf(., center = new_center, buffer=0)
+
+
+carrier_map <-
+  ggplot() +
+  geom_sf(data = voi_ais_line, colour='green') +
+    geom_sf(data = fao_major, size = 0.2, alpha = 1, fill = NA, color = 'yellow2') +
+  geom_gfw_land(theme = 'dark', center = new_center) +
+  geom_gfw_eez(theme = 'dark', alpha = 0.4, center = new_center) +
+  # scale_colour_manual(values=gfw_palettes$tracks) +
+  theme_gfw_map(theme = "dark") +
+  theme(legend.position="right") +
+  labs(colour = 'MMSI') +
+  coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+           ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+           crs = bbox$out_crs)
+
+
+fishwatchr::add_little_globe(carrier_map,
+                             main_box = bbox,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+
+ggsave(here::here("outputs", "figures", "carriers", paste("carrier_pol_v",Sys.Date(),".png", sep='')), width = 8, height = 10)
+
+```
+
+## Encnounters
+
+We could consider looking only at at-sea transhipment carriers for the loitering and encounters carrier maps 
+
+```{r download encounters data, echo=F, warning=F}
+encounters <- fishwatchr::gfw_query(query = c(
+  "SELECT 
+    * 
+  FROM `world-fishing-827.scratch_hannah.tmt_voyage_enc_sen`
+  WHERE 
+    main_flag != 'SEN'
+    AND other_flag != 'SEN'
+        AND (main_class = 'carrier' OR other_vessel_class IN ('carrier'))"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r encounters point map, echo=F, warning=F}
+bbox <- transform_box(
+  xlim = c(-60, 15),
+  ylim = c(-20, 30),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+(dakar_carrier_encounters <- encounters %>%
+  sf::st_as_sf(., coords = c('mean_lon','mean_lat'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+ggplot() +
+  geom_sf(alpha = 1,
+          size = 1.5,
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Encounters before entering Dakar, Senegal"))
+)
+
+ggsave(dakar_carrier_encounters,
+       filename = here::here('outputs','figures','carriers',paste('dakar_encounter_map_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 150,
+       height = 250,
+       units = 'mm',
+       dpi = 600)
+```
+
+## Loitering 
+
+We need to exclude loitering events that correspond to encounters. 
+
+```{r download loitering data, echo=F, warning=F}
+loitering <- fishwatchr::gfw_query(query = c(
+  "WITH enc AS (
+  SELECT 
+    * 
+  FROM `world-fishing-827.scratch_hannah.tmt_voyage_enc_sen`
+  WHERE 
+    main_flag != 'SEN'
+    AND other_flag != 'SEN'
+        AND (main_class = 'carrier' OR other_vessel_class IN ('carrier'))
+), 
+
+loit AS (SELECT 
+    * 
+  FROM `world-fishing-827.scratch_hannah.tmt_voyage_loit_sen`
+  WHERE 
+    main_flag != 'SEN'
+    AND main_class = 'carrier' 
+),
+
+ ----------------------------------------------------------
+  -- Identify loitering events that overlap with encounters
+  ----------------------------------------------------------
+  loitering_with_encounters AS (
+    SELECT a.event_id
+    FROM (
+      SELECT *
+      FROM loit
+    ) AS a
+    JOIN (
+      SELECT *
+      FROM enc
+    ) AS b
+    ON (
+      (a.vessel_id = b.vessel_id 
+      AND b.event_start < a.loitering_end_timestamp
+      AND b.event_end >= a.loitering_start_timestamp) OR 
+      (a.vessel_id = b.neighbor_vessel_id 
+      AND b.event_start < a.loitering_end_timestamp
+      AND b.event_end >= a.loitering_start_timestamp)
+    )
+  ),
+
+  ----------------------------------------------------------
+  -- Use this to select for loitering events that don't
+  -- overlap
+  ----------------------------------------------------------
+  loitering_without_encounters AS (
+    SELECT *
+    FROM loit
+    WHERE event_id NOT IN (SELECT event_id FROM loitering_with_encounters)
+  )
+----------------------------------------------------------
+-- Return loitering_carriers
+--------------------------------------------------------
+SELECT *
+FROM loitering_without_encounters
+ORDER BY
+    ssvid,
+    loitering_start_timestamp"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r loitering point map, echo=F, warning=F}
+bbox <- transform_box(
+  xlim = c(-60, 15),
+  ylim = c(-20, 30),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+(dakar_carrier_loitering <- loitering %>%
+  sf::st_as_sf(., coords = c('start_lon','start_lat'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+ggplot() +
+  geom_sf(alpha = 1,
+          size = 1.5,
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Loitering before entering Dakar, Senegal"))
+)
+
+ggsave(dakar_carrier_loitering,
+       filename = here::here('outputs','figures','carriers',paste('dakar_loitering_map_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 150,
+       height = 250,
+       units = 'mm',
+       dpi = 600)
+```
