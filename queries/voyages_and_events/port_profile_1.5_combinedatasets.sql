@@ -1,3 +1,4 @@
+
 --------------------------------------------------
 -- Query to combine voyages and events into one master table as requested by TMT
 -- also adds AIS coverage metrics to voyages, adds all relevant port events,
@@ -229,11 +230,12 @@ events AS (
       percent_ais_voyage
     FROM voyages) AS b
     USING (trip_id)
-  )
+  ),
 
 ----------------------------------------------------------
 -- Union voyages to events
 ----------------------------------------------------------
+combined AS(
   SELECT
     trip_id,
     event_id,
@@ -304,7 +306,35 @@ events AS (
     *
   FROM
     events
-  ORDER BY event_start
+  ORDER BY event_start),
+
+
+----------------------------------------------------------
+-- Label ssvids with evidence of spoofing
+----------------------------------------------------------
+id_spoofers AS(
+  SELECT ssvid
+  FROM `world-fishing-827.gfw_research.vi_ssvid_byyear_v20240301`
+  WHERE
+      (year = 2020 OR year = 2021 OR year = 2022) AND
+      # MMSI broadcast 2 or more names in overlapping segments for > 24 h, GFW criteria
+      (activity.overlap_hours_multinames >= 24 OR
+      # MMSI used by multiple vessels simultaneously for more than 3 days
+      activity.overlap_hours >= 24*3 OR
+      # MMSI offsetting position
+      activity.offsetting IS TRUE)
+  )
+
+----------------------------------------------------------
+-- select final table adding spoofing indicator (if ssvid spoofed in any of the 3 years of analysis)
+----------------------------------------------------------
+SELECT
+  *,
+  IF (ssvid IN (
+      SELECT ssvid FROM id_spoofers),
+      TRUE, FALSE) possible_spoofing
+FROM combined
+ORDER BY event_start
 
 /*
 */
