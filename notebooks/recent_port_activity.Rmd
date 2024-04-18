@@ -69,11 +69,10 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
                       use_legacy_sql = FALSE)
 ```
 
-
-
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
-start_date <- "'2023-09-01 00:00:00 UTC'" 
-end_date <- "'2023-09-30 23:59:59 UTC'" 
+start_date <- "'2024-01-01 00:00:00 UTC'" 
+end_date <- "'2024-03-31 23:59:59 UTC'"
+year <- 2024
 country_iso3 <- "'SEN'"
 port_name <- "'DAKAR'"
 
@@ -82,6 +81,59 @@ month <- 'Sep'
 country <- 'SEN'
 
 ```
+
+```{r voyages all, echo=F, warning=F, include=FALSE}
+
+voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v3.sql"))
+
+voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+
+
+```
+
+```{r voyages ais, echo=F, warning=F, include=FALSE}
+
+voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v3.sql"))
+
+voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r groom data to TMT format}
+dak_voyages <- dplyr::select(voyages, vessel_name=shipname, MMSI=ssvid,
+   Flag=vessel_flag_best, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_end, trip_duration_days,
+   end_port = end_port_label, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmo = rfmos, encounter= num_encounters, num_encounters, loitering=num_loitering, num_loitering, gaps=num_gaps, num_gaps, total_gap_hours)
+
+# overwrite encounters T/F
+
+# overwrite fishing T/F
+
+# overwrite loitering T/F
+
+# overwrite loitering T/F
+
+```
+
+
+
+
+
 
 ```{r carrier visits all, echo=F, warning=F, include=FALSE}
 
