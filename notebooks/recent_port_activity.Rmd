@@ -99,11 +99,57 @@ voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q,
 
 ```
 
-```{r voyages ais, echo=F, warning=F, include=FALSE}
+```{r groom data to TMT format}
+dak_voyages <- dplyr::select(tem_voyages, vessel_name=shipname, MMSI=ssvid,
+   Flag=vessel_flag_best, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, vessel_id=vessel_id, trip_id=trip_id)
+   #gaps=1, num_gaps, total_gap_hours)
 
-voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v3.sql"))
+# overwrite encounters T/F
+dak_voyages$encounter <- ifelse(is.na(dak_voyages$num_encounters), FALSE, TRUE)
 
-voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+# overwrite fishing T/F
+dak_voyages$loitering <- ifelse(is.na(dak_voyages$num_loitering), FALSE, TRUE)
+
+# overwrite loitering T/F
+dak_voyages$fishing <- ifelse(is.na(dak_voyages$fishing), FALSE, TRUE)
+
+# overwrite loitering T/F
+#dak_voyages$gaps <- ifelse(is.na(dak_voyages$num_gaps), FALSE, TRUE)
+
+dak_voyages$fishing_hs <- ifelse(is.na(dak_voyages$fishing_hs), FALSE, TRUE)
+
+```
+
+
+```{r voyages extra as queries can't link up, echo=F, warning=F, include=FALSE}
+
+extra <- fishwatchr::gfw_query(query = c("SELECT * FROM `world-fishing-827.scratch_max.aiscoverage_dakar_2024-q1_pipe25`"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+```{r final r manipulation}
+
+full_dak_info <- left_join(dak_voyages, dplyr::select(extra,vessel_id, trip_id, at_dock, percent_ais_voyage), by=c('vessel_id','trip_id'))
+
+write.csv(dplyr::select(full_dak_info,-vessel_id, -trip_id), here::here("data", "dakar_Q1_2024_19Apr2024.csv"), row.names=F)
+```
+
+
+
+```{r set date and port GHA parameters, echo=F, warning=F, include=FALSE}
+start_date <- "'2024-01-01 00:00:00 UTC'" 
+end_date <- "'2024-03-31 23:59:59 UTC'"
+year <- 2024
+country_iso3 <- "'GHA'"
+port_name <- "'TEMA'"
+
+```
+
+```{r voyages all, echo=F, warning=F, include=FALSE}
+tem_voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
                                                     start_date = start_date,
                                                     end_date = end_date,
                                                     year = year,
@@ -114,21 +160,64 @@ voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q,
 ```
 
 ```{r groom data to TMT format}
-dak_voyages <- dplyr::select(voyages, vessel_name=shipname, MMSI=ssvid,
+gha_voyages <- dplyr::select(tem_voyages, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
-   previous_port = start_port_label, trip_start, trip_end, trip_duration_days,
-   end_port = end_port_label, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmo = rfmos, encounter= num_encounters, num_encounters, loitering=num_loitering, num_loitering, gaps=num_gaps, num_gaps, total_gap_hours)
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, vessel_id=vessel_id, trip_id=trip_id)
+   #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
+gha_voyages$encounter <- ifelse(is.na(gha_voyages$num_encounters), FALSE, TRUE)
 
 # overwrite fishing T/F
+gha_voyages$loitering <- ifelse(is.na(gha_voyages$num_loitering), FALSE, TRUE)
 
 # overwrite loitering T/F
+gha_voyages$fishing <- ifelse(is.na(gha_voyages$fishing), FALSE, TRUE)
 
-# overwrite loitering T/F
+# overwrite high_sea T/F
+gha_voyages$fishing_hs <- ifelse(is.na(gha_voyages$fishing_hs), FALSE, TRUE)
 
 ```
+
+
+```{r voyages extra ais queries gha can't link up, echo=F, warning=F, include=FALSE}
+
+extra_gha <- fishwatchr::gfw_query(query = c("SELECT * FROM `world-fishing-827.scratch_max.aiscoverage_tema_2024-q1_pipe25`"),
+                                 run_query = TRUE,
+                                 con = con)$data
+```
+
+```{r final r manipulation}
+
+full_tem_info <- left_join(gha_voyages, dplyr::select(extra_gha,vessel_id, trip_id, at_dock, percent_ais_voyage), by=c('vessel_id','trip_id'))
+
+write.csv(dplyr::select(full_tem_info,-vessel_id, -trip_id), here::here("data", "tema_Q1_2024_19Apr2024.csv"), row.names=F)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
