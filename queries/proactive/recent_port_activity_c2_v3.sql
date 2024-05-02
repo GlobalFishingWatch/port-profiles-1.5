@@ -207,7 +207,7 @@ WITH
         -- `pipe_ais_v3_alpha_published.voyages_c3` -- 10,024,183
         -- `pipe_ais_v3_alpha_internal.voyages_c2`
       WHERE
-        trip_end >= start_date() AND trip_start <= end_date()
+        trip_end BETWEEN start_date() AND end_date()
         )
     INNER JOIN fishing_vessels
     USING
@@ -905,6 +905,7 @@ WITH
   FROM (
     SELECT
       vessel_id,
+      event_vessels,
       event_start,
       event_end,
     FROM
@@ -920,8 +921,9 @@ WITH
   USING
     (vessel_id)
   WHERE
-    event_start BETWEEN trip_start
-    AND trip_end
+    event_start BETWEEN trip_start AND trip_end
+    AND  JSON_EXTRACT_SCALAR(event_vessels, "$[1].type") IN ('fishing', 'bunker_or_tanker', 'carrier')
+    AND  JSON_EXTRACT_SCALAR(event_vessels, "$[0].type") IN ('fishing', 'bunker_or_tanker', 'carrier')
   GROUP BY
     1,
     2 ),
@@ -1088,11 +1090,10 @@ WITH
         trip_start,
         trip_end
       FROM
-        updated_pan_voyages)
-    USING
-      (ssvid)
-    WHERE
-      gap_start BETWEEN trip_start AND trip_end
+        updated_pan_voyages) b
+      ON a.ssvid = b.ssvid
+      AND a.gap_start BETWEEN b.trip_start AND b.trip_end
+      AND a.gap_end BETWEEN b.trip_start AND b.trip_end
     GROUP BY
       1),
 
