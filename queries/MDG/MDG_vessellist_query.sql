@@ -28,11 +28,11 @@ CREATE TEMP FUNCTION  end_year() AS (2023);
 
 ## set port and country (iso) of interest
 -- CREATE TEMP FUNCTION port_label() AS (CAST("CONAKRY" AS STRING));
-CREATE TEMP FUNCTION port_iso() AS (CAST("LBR" AS STRING));
+CREATE TEMP FUNCTION port_iso() AS (CAST("MDG" AS STRING));
 
 ## save table if needed:
 -- CREATE TABLE `world-fishing-827.scratch_joef.voyages_NGA_2020-22_pipe25` AS
--- CREATE TABLE `world-fishing-827.scratch_joef.vessel_list_NGA_2020-22_pipe25` AS
+CREATE TABLE `world-fishing-827.scratch_joef.vessel_list_MDG_2021-23_pipe25` AS
 
 --------------------------------------
 WITH
@@ -1348,7 +1348,7 @@ FROM clean_info
 WHERE trip_end_anchorage_id IN(
   SELECT
     s2id
-  FROM `scratch_joef.LBR_anchorages_checked_with_Liberia`
+  FROM `scratch_joef.MDG_anchorages_reviewed`
 )
 )
 

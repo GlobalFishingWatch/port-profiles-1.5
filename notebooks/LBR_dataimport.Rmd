@@ -1,0 +1,30 @@
+
+```{r}
+install.packages(c('DBI', 'bigrquery')) # already installed by fishwatchr
+library(DBI)
+library(bigrquery)
+
+install.packages("bigrquery")
+library(bigrquery)
+install.packages("dplyr")
+library(dplyr)
+library(fishwatchr)
+
+con <- DBI::dbConnect(bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+
+```
+
+```{r}
+# LBR anchorages
+
+LBR_anchorages_corrected <- read.csv2(file = here::here("data", "LBR", "LBR_anchorages_checked_with_Liberia.csv"), sep = ",",)
+
+
+LBR_anchorages_corrected %>% group_by(s2id) %>% summarise(n()) %>% View()
+
+setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_orig$s2id)
+setdiff(NGA_anchorages_orig$s2id, NGA_anchorages_corrected$s2id)
+setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_all$s2id)
+```

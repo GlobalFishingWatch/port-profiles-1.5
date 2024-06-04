@@ -1,0 +1,33 @@
+```{r}
+install.packages(c('DBI', 'bigrquery')) # already installed by fishwatchr
+library(DBI)
+library(bigrquery)
+
+install.packages("bigrquery")
+library(bigrquery)
+install.packages("dplyr")
+library(dplyr)
+library(fishwatchr)
+
+con <- DBI::dbConnect(bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+
+```
+
+```{r}
+# MDG anchorages
+
+# fixing delimiter to work in BQ (; to ,)
+MDG_anchorages_corrected <- read.csv2(file = here::here("data", "MDG", "MDG_anchorages_reviewed.csv"), sep = ";",)
+# write.csv(MDG_anchorages_corrected, file=here::here("data", "MDG", "MDG_anchorages_corrected_fixed.csv"), sep = ",")
+write.table(MDG_anchorages_corrected,  file=here::here("data", "MDG", "MDG_anchorages_corrected.csv"), row.names = FALSE, dec = ".", sep = ";", 
+              quote = FALSE)
+
+
+LBR_anchorages_corrected %>% group_by(s2id) %>% summarise(n()) %>% View()
+
+setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_orig$s2id)
+setdiff(NGA_anchorages_orig$s2id, NGA_anchorages_corrected$s2id)
+setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_all$s2id)
+```
