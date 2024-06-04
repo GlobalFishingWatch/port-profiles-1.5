@@ -78,9 +78,8 @@ WITH
        'fishing' AS vessel_class,
        prod_geartype AS gear_type
      FROM
-      -- `world-fishing-827.gfw_research.fishing_vessels_ssvid_v20231201`
-      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ******
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` -- pipe 3 v is >100K more vessels...
+      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
+      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` -- pipe 3 v is >100K more vessels... 292042
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -102,9 +101,8 @@ WITH
       -- IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
       prod_geartype AS gear_type
     FROM
-      -- `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
-      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table
+      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table -- 170648 vessels (without removing high conf)
+      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table -- 267817 vessels (without removing high conf), 28364 with removing high conf
     WHERE
     year >= start_year() AND year <= end_year()
     -- AND on_fishing_list_best -- vi_ssvid approach
@@ -117,7 +115,7 @@ WITH
       FROM high_conf_fishing
       WHERE vi_table.ssvid = high_conf_fishing.ssvid AND vi_table.year = high_conf_fishing.year
     )
-    ),
+    ) select * from med_conf_fishing /*
 
 -- LOW: MMSI that are on one of our three source fishing lists (registry, neural net, self-reported)
 -- but not included in either the med or high list. These are MMSI for which we have minimal
