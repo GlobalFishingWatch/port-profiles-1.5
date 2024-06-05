@@ -37,8 +37,8 @@ NGA_anchorages_all <-
 write.csv2(NGA_anchorages_all, file=here::here("data", "Nigeria", "NGA_anchorages_all.csv"), sep = ",")
 
 # orig sent to TMT with just LAGOS and PORT HARCOURT sublabels
-NGA_anchorages_orig <- read.csv2(file = here::here("data", "Nigeria_anchorages.csv"), sep = ",",)
-NGA_anchorages_corrected <- read.csv2(file = here::here("data", "Nigeria_jayfiles", "Combined_Vetted_NGA_anchorages.csv"), sep = ",",)
+NGA_anchorages_orig <- read.csv2(file = here::here("data", "NGA", "NGA_anchorages.csv"), sep = ",",)
+NGA_anchorages_corrected <- read.csv2(file = here::here("data", "NGA", "Nigeria_jayfiles", "Combined_Vetted_NGA_anchorages.csv"), sep = ",",)
 
 
 NGA_anchorages_corrected %>% group_by(s2id) %>% summarise(n()) %>% View()
