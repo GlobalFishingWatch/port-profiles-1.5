@@ -1,5 +1,5 @@
 --------------------------------------
-  -- Query to quantify foreign fishing and carrier vessel visits and unique vessels visiting Liberia, Monrovia.
+  -- Query to quantify foreign fishing and carrier vessel visits and unique vessels visiting Nigeria ports.
   --
   -- there is a need to identify visits that follow significant voyages
   -- meaning voyages on which some activity occured rather than situations where a
