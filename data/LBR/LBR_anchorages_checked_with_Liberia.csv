@@ -1,0 +1,19 @@
+s2id,iso3,label,sublabel,lat,lon,dock,distance_from_shore_m,Feedback
+0fa0e5a5,LBR,BUCHANAN,Iron ore dock,5.857807041,-10.05031903,TRUE,0,Iron ore. Not relevant for PSMA.
+0fa0e5a3,LBR,BUCHANAN,General cargo terminal ,5.860399965,-10.05682512,TRUE,0,General use terminal. Unclear if relevant for PSMA.
+0fa0e5bd,LBR,BUCHANAN,General cargo terminal ,5.861804693,-10.05711579,TRUE,0,General use terminal. Unclear if relevant for PSMA.
+0f09f9d7,LBR,MONROVIA,Marginal Quay (APM Terminals),6.343645522,-10.79622543,TRUE,0,Used by reefers to offload. 
+0f09f9d9,LBR,MONROVIA,BMC Pier,6.350931241,-10.79654311,TRUE,0,Used by trawlers and reefers to offload.
+0f09f9d5,LBR,MONROVIA,Marginal Quay (APM Terminals),6.341371174,-10.79694935,TRUE,0,Used by reefers to offload. 
+0f09f77d,LBR,MONROVIA,Fuel Unloading Pier,6.343386079,-10.80159668,ARM,0,Arm is offload only. Not relevant for PSMA.
+0f09f77f,LBR,MONROVIA,Waiting area,6.341917551,-10.80052839,FALSE,0,Waiting area. Reefers may wait here for space to berth. 
+0f09f709,LBR,MONROVIA,Outer anchorage ,6.340128347,-10.83088672,FALSE,2000,Outer anchorage. Relevant
+0f09f711,LBR,MONROVIA,Outer anchorage ,6.348944619,-10.83124147,FALSE,2000,Outer anchorage. Relevant
+0f09f70d,LBR,MONROVIA,Outer anchorage ,6.344518733,-10.82639566,FALSE,2000,Outer anchorage. Relevant
+0f09f70f,LBR,MONROVIA,Outer anchorage ,6.344507442,-10.83138633,FALSE,2000,Outer anchorage. Relevant
+0fa0ef89,LBR,BUCHANAN,Outer anchorage ,5.836538176,-10.08335647,FALSE,3000,Outer anchorage. Unclear if relevant for PSMA
+0f09f705,LBR,MONROVIA,Outer anchorage ,6.344334337,-10.83647062,FALSE,3000,Outer anchorage. Relevant
+0f09f71b,LBR,MONROVIA,Outer anchorage ,6.34941716,-10.83634065,FALSE,3000,Outer anchorage. Relevant
+0fa0ef8f,LBR,BUCHANAN,Outer anchorage ,5.836560719,-10.08876214,FALSE,4000,Outer anchorage. Unclear if relevant for PSMA
+0fa0ef8b,LBR,BUCHANAN,Outer anchorage ,5.832139716,-10.08314127,FALSE,4000,Outer anchorage. Unclear if relevant for PSMA
+0f09f6e3,LBR,MONROVIA,Outer anchorage ,6.348899373,-10.84804656,FALSE,4000,Outer anchorage. Relevant

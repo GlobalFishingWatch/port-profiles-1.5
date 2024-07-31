@@ -323,18 +323,126 @@ id_spoofers AS(
       activity.overlap_hours >= 24*3 OR
       # MMSI offsetting position
       activity.offsetting IS TRUE)
-  )
+  ),
 
 ----------------------------------------------------------
--- select final table adding spoofing indicator (if ssvid spoofed in any of the 3 years of analysis)
+-- add spoofing indicator to master list (if ssvid spoofed in any of the 3 years of analysis)
 ----------------------------------------------------------
-SELECT
-  *,
-  IF (ssvid IN (
-      SELECT ssvid FROM id_spoofers),
-      TRUE, FALSE) possible_spoofing
-FROM combined
-ORDER BY event_start
+add_spoofer AS(
+  SELECT
+    *,
+    IF (ssvid IN (
+        SELECT ssvid FROM id_spoofers),
+        TRUE, FALSE) possible_spoofing
+  FROM combined
+  ORDER BY event_start
+)
+
+----------------------------------------------------------
+-- select final table, remove/merge duplicate events
+-- note - duplicate events may occur when overlapping voyages for >1 vessel id/ssvid
+-- seems to only be gaps that are affected, this selects that associated with more recent trip
+----------------------------------------------------------
+SELECT DISTINCT
+  -- trip_id,
+  FIRST_VALUE (trip_id) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS trip_id,
+  event_id,
+  event_type,
+  year,
+  -- vessel_id,
+  FIRST_VALUE (vessel_id) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS vessel_id,
+  ssvid,
+  -- shipname,
+  FIRST_VALUE (shipname) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS shipname,
+  -- vessel_flag_best,
+  FIRST_VALUE (vessel_flag_best) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS vessel_flag_best,
+  -- callsign,
+  FIRST_VALUE (callsign) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS callsign,
+  -- imo,
+  FIRST_VALUE (imo) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS imo,
+  vessel_class_best,
+  geartype_best,
+  vessel_class_initial,
+  class_confidence,
+  -- trip_start,
+  FIRST_VALUE (trip_start) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS trip_start,
+  -- start_port_iso3,
+  FIRST_VALUE (start_port_iso3) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS start_port_iso3,
+  -- start_port_label,
+  FIRST_VALUE (start_port_label) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS start_port_label,
+  -- trip_end,
+  FIRST_VALUE (trip_end) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS trip_end,
+  end_port_iso3,
+  end_port_label,
+  -- total_voyage_days,
+  FIRST_VALUE (total_voyage_days) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS total_voyage_days,
+  -- percent_ais_voyage,
+  FIRST_VALUE (percent_ais_voyage) OVER (
+    PARTITION BY event_id
+    ORDER BY trip_start DESC) AS percent_ais_voyage,
+  event_start,
+  event_end,
+  event_duration_d,
+  lat_mean,
+  lon_mean,
+  lat_start,
+  lon_start,
+  lat_end,
+  lon_end,
+  distance_km,
+  speed_knots,
+  eez,
+  major_fao,
+  high_seas,
+  rfmo,
+  start_distance_from_shore_km,
+  end_distance_from_shore_km,
+  start_distance_from_port_km,
+  end_distance_from_port_km,
+  positions_12_hours_before,
+  encountered_ssvid,
+  encountered_vessel_id,
+  encountered_shipname,
+  encountered_callsign,
+  encountered_imo,
+  encountered_flag,
+  encountered_vessel_class,
+  encountered_geartype,
+  port_event_type,
+  port_event_timestamp,
+  port_event_lat,
+  port_event_lon,
+  port_label,
+  sublabel,
+  tmt_port_label,
+  port_distance_from_shore_m,
+  at_dock,
+  port_confidence,
+  possible_spoofing
+FROM add_spoofer
+  ORDER BY event_start
 
 /*
 */

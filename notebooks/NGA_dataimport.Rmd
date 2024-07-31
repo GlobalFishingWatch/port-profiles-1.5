@@ -1,0 +1,57 @@
+
+```{r}
+install.packages(c('DBI', 'bigrquery')) # already installed by fishwatchr
+library(DBI)
+library(bigrquery)
+
+install.packages("bigrquery")
+library(bigrquery)
+install.packages("dplyr")
+library(dplyr)
+library(fishwatchr)
+
+con <- DBI::dbConnect(bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+
+```
+
+```{r}
+# full NGA anchorages
+NGA_anchorages_all <- 
+  fishwatchr::gfw_query(query = 
+                    "SELECT
+                         s2id,
+                         iso3,
+                         label,
+                         sublabel,
+                         lat,
+                         lon,
+                         distance_from_shore_m,
+                         dock
+                     FROM
+                         `anchorages.named_anchorages_v20240117`
+                    WHERE iso3 = 'NGA'
+                    "
+                        , run_query = TRUE, con = con)$data %>% as_tibble()
+write.csv2(NGA_anchorages_all, file=here::here("data", "Nigeria", "NGA_anchorages_all.csv"), sep = ",")
+
+# orig sent to TMT with just LAGOS and PORT HARCOURT sublabels
+NGA_anchorages_orig <- read.csv2(file = here::here("data", "NGA", "NGA_anchorages.csv"), sep = ",",)
+NGA_anchorages_corrected <- read.csv2(file = here::here("data", "NGA", "Nigeria_jayfiles", "Combined_Vetted_NGA_anchorages.csv"), sep = ",",)
+
+
+NGA_anchorages_corrected %>% group_by(s2id) %>% summarise(n()) %>% View()
+
+setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_orig$s2id)
+setdiff(NGA_anchorages_orig$s2id, NGA_anchorages_corrected$s2id)
+setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_all$s2id)
+```
+
+
+
+
+
+
+
+
