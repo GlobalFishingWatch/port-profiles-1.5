@@ -22,8 +22,8 @@
 
 ## set time frame of interest
 CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP({start_date}));
-CREATE TEMP FUNCTION  year() AS ({year});
 CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP({end_date}));
+CREATE TEMP FUNCTION  year() AS ({year});
 
 ## set port and country (iso) of interest
 CREATE TEMP FUNCTION port_label() AS (CAST({port_label} AS STRING));
@@ -50,10 +50,11 @@ WITH
       'added_TMT' AS vessel_class,
       prod_geartype AS gear_type
      FROM
-      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
+      `pipe_production_v20201001.all_vessels_byyear_v2_v20240601` -- **** update to pipe 3 when released ******
      WHERE
       year <= year()
-      AND ssvid IN ("412209169", "412209178", "412209208", "412329514", "412331135", "412331136", "412440647", "412660240", "636013651", "412549434", "416007496", "271073172", "412420882", "412440842", "654000012") -- add additional vessels here
+      AND ssvid IN ("412209169", "412209178", "412209208", "412329514", "412331135", "412331136", "412440647", "412660240", "636013651", "412549434", "416007496", "271073172", "412420882", "412440842", "654000012",
+                    "308121000", "629009092", "629009118", "227550000", "412300004", "412549434", "352545000", "355855000", "224546000", "412209012", "312507000") -- add additional vessels here
      ),
 
 ----------------------------------------------------------
@@ -74,7 +75,7 @@ WITH
        prod_geartype AS gear_type
      FROM
       -- `world-fishing-827.gfw_research.fishing_vessels_ssvid_v20231201`
-      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
+      `pipe_production_v20201001.all_vessels_byyear_v2_v20240601` -- **** update to pipe 3 when released ******
      WHERE
       year >= year() AND year <= year()
       AND prod_shiptype IN ("fishing")
@@ -100,7 +101,7 @@ WITH
       prod_geartype AS gear_type
     FROM
       -- `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
-      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table
+      `pipe_production_v20201001.all_vessels_byyear_v2_v20240601` AS vi_table
     WHERE
     year >= year() AND year <= year()
     -- AND on_fishing_list_best -- vi_ssvid approach
@@ -134,7 +135,7 @@ WITH
       prod_geartype AS gear_type
     FROM
       -- `gfw_research.vi_ssvid_byyear_v20231201` AS vi_table -- **** update to pipe 3 when released ******
-      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table
+      `pipe_production_v20201001.all_vessels_byyear_v2_v20240601` AS vi_table
     WHERE (
       -- on_fishing_list_nn
       -- OR on_fishing_list_known
@@ -227,7 +228,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `gfw_research.vi_ssvid_v20231201` -- **** update to pipe 3 when released ******
+      `gfw_research.vi_ssvid_v20240601` -- **** update to pipe 3 when released ******
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -238,7 +239,7 @@ WITH
         -- SELECT ssvid
         SELECT identity.ssvid -- pipe25
         -- FROM `pipe_ais_v3_alpha_published.identity_core_v20231001`
-        FROM `vessel_database.all_vessels_v20231201` -- pipe25
+        FROM `vessel_database.all_vessels_v20240601` -- pipe25
         WHERE is_bunker = TRUE)
   ),
 
@@ -255,7 +256,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `gfw_research.vi_ssvid_v20231201` -- **** update to pipe 3 when released ******
+      `gfw_research.vi_ssvid_v20240601` -- **** update to pipe 3 when released ******
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -266,7 +267,7 @@ WITH
               -- SELECT ssvid
         SELECT identity.ssvid -- pipe25
         -- FROM `pipe_ais_v3_alpha_published.identity_core_v20231001`
-        FROM `vessel_database.all_vessels_v20231201` -- pipe25
+        FROM `vessel_database.all_vessels_v20240601` -- pipe25
         WHERE is_bunker = TRUE)
   ),
 
@@ -285,7 +286,7 @@ WITH
       last_timestamp
     FROM
       -- `pipe_ais_v3_alpha_published.identity_core_v20231001` -- pipe3
-      `vessel_database.all_vessels_v20231201`, -- pipe25
+      `vessel_database.all_vessels_v20240601`, -- pipe25
       UNNEST(activity) -- pipe25
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
@@ -377,7 +378,7 @@ WITH
       last_timestamp
     FROM
       -- `pipe_ais_v3_alpha_published.identity_core_v20231001` -- pipe3, update to latest v
-      `vessel_database.all_vessels_v20231201`, -- pipe25
+      `vessel_database.all_vessels_v20240601`, -- pipe25
       UNNEST(activity), -- pipe25
       UNNEST(feature.geartype) AS geartype -- pipe25
     WHERE
@@ -403,7 +404,7 @@ WITH
       best.best_vessel_class AS gear_type,
       activity.first_timestamp,
       activity.last_timestamp
-    FROM `gfw_research.vi_ssvid_v20231201` -- update to pipe3
+    FROM `gfw_research.vi_ssvid_v20240601` -- update to pipe3
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -423,7 +424,7 @@ WITH
       best.best_vessel_class AS gear_type,
       activity.first_timestamp,
       activity.last_timestamp
-    FROM `gfw_research.vi_ssvid_v20231201` -- update to pipe3
+    FROM `gfw_research.vi_ssvid_v20240601` -- update to pipe3
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -1069,7 +1070,7 @@ WITH
   --------------------------------------
    gaps AS (
     SELECT
-      ssvid,
+      a.ssvid,
       count(*) AS num_gaps,
       sum(gap_hours) AS total_gap_hours,
     FROM (
@@ -1522,7 +1523,7 @@ WITH
         prod_shiptype AS vessel_class_best,
         prod_geartype AS geartype_best
       FROM
-        `pipe_production_v20201001.all_vessels_byyear_v2_v20231201`) -- update to pipe3
+        `pipe_production_v20201001.all_vessels_byyear_v2_v20240601`) -- update to pipe3
       USING
         (vessel_id, year)),
 
