@@ -147,7 +147,7 @@ WITH
     ),
 
 ----------------------------------------------------------
--- combined fishing vessel table info - fewer in pipe3 for full lists than 2.5 (570,515 vs 665,945)
+-- combined fishing vessel table info
 ----------------------------------------------------------
   fishing_vessels AS (
     SELECT
@@ -169,7 +169,7 @@ WITH
   ),
 
 ----------------------------------------------------------
--- voyages for all identified fishing vessels - more in pipe3 - ~11.5 mil vs 10.5 mil
+-- voyages for all identified fishing vessels
 ----------------------------------------------------------
   fishing_voyages AS (
     SELECT
@@ -215,7 +215,7 @@ WITH
   ),
 
 ---------------------------------------------------------------
--- nn bunkers not in vessel database - more in pipe3 - 13K vs 5K
+-- nn bunkers not in vessel database
 ---------------------------------------------------------------
   nn_bunkers_med_confidence AS (
     SELECT DISTINCT
@@ -241,7 +241,7 @@ WITH
   ),
 
 ---------------------------------------------------------------
--- List of carriers and bunkers according to vessel registries - fewer in pipe 3 - 259 vs 329
+-- List of carriers and bunkers according to vessel registries
 ---------------------------------------------------------------
   reg_bunkers AS (
     SELECT DISTINCT -- generics for flag and gear as there are duplicates in v database which will duplicate voyages
@@ -263,7 +263,7 @@ WITH
   ),
 
 ----------------------------------------------------------
--- combined bunker table info (14K vs 6K - 3 vs 2.5)
+-- combined bunker table info
 ----------------------------------------------------------
   bunker_vessels AS (
     SELECT
@@ -326,7 +326,7 @@ WITH
         ),
 
 ---------------------------------------------------------------
--- List of carriers according to vessel registries - high confidence - 968 vs 2037 pipe 25
+-- List of carriers according to vessel registries -
 ---------------------------------------------------------------
   reg_carriers AS (
     SELECT DISTINCT -- generics for flag and gear as there are duplicates in v database which will duplicate voyages
