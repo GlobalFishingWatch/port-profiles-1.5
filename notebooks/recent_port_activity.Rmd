@@ -104,6 +104,7 @@ unique(filter(voyages, ssvid %in% c("308121000", "629009092", "629009118", "2275
 
 ```
 
+
 ```{r groom data to TMT format}
 dak_voyages <- dplyr::select(voyages, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, vessel_class=vessel_class_best,
@@ -224,12 +225,103 @@ add_flag$vessel_class[!is.na(add_flag$Incorrect...missing.vessel.type)] <- add_f
 add_flag$vessel_type[!is.na(add_flag$Incorrect...missing.gear)] <- add_flag$Incorrect...missing.gear[!is.na(add_flag$Incorrect...missing.gear)]
 
 # write out data 
-write.csv(dplyr::select(add_flag,-"Incorrect...missing.gear", -"Incorrect...missing.vessel.type", -"Incorrect...missing.flag"), here::here("data", "dakar_Q2_2024_16Jul2024.csv"), row.names=F)
+#write.csv(dplyr::select(add_flag,-"Incorrect...missing.gear", -"Incorrect...missing.vessel.type", -"Incorrect...missing.flag"), here::here("data", "dakar_Q2_2024_16Jul2024.csv"), row.names=F)
+```
+
+```{r input reviewed TMT data for q2}
+tmt_review_new <- read.csv(here::here("data","proactive", "dakar_Q2_2024_07Aug2024_tmt_review.csv"), header=T)
+
+table(tmt_review_new$Action)
+
+# remove rows marked for remove
+tmt_review_new_v2 <- tmt_review_new[tmt_review_new$Action != 'REMOVE', ]
+
+# look at current values for vessel_type
+table(tmt_review_new_v2$vessel_type)
+
+## update TMT values to reflect GFW values 
+# vessel_class
+tmt_review_new_v2$Vessel.type[tmt_review_new_v2$Vessel.type=='Fishing vessel'] <- 'fishing'
+
+# vessel_type
+tmt_review_new_v2$Gear.type[tmt_review_new_v2$Gear.type=='Purse seiner'] <- 'tuna_purse_seines'
+tmt_review_new_v2$Gear.type[tmt_review_new_v2$Gear.type=='Trawlers'] <- 'trawlers'
+
+#  update check / identity change table
+tmt_review_new_v2$vessel_type[tmt_review_new_v2$Action == 'CHECK / IDENTITY CHANGE'][tmt_review_new_v2$Gear.type[tmt_review_new_v2$Action == 'CHECK / IDENTITY CHANGE'] != ""] <- 
+tmt_review_new_v2$Gear.type[tmt_review_new_v2$Action == 'CHECK / IDENTITY CHANGE'][tmt_review_new_v2$Gear.type[tmt_review_new_v2$Action == 'CHECK / IDENTITY CHANGE'] != ""]
+table(tmt_review_new_v2$vessel_type)
+
+# update name changes 
+table(tmt_review_new_v2[tmt_review_new_v2$Action == 'IDENTITY CHANGE', ]$Gear.type)
+tmt_review_new_v2$vessel_name
+
+tmt_review_new_v2$vessel_name[tmt_review_new_v2$Action == 'IDENTITY CHANGE'][tmt_review_new_v2$Name[tmt_review_new_v2$Action == 'IDENTITY CHANGE'] != ""] <- 
+tmt_review_new_v2$Name[tmt_review_new_v2$Action == 'IDENTITY CHANGE'][tmt_review_new_v2$Name[tmt_review_new_v2$Action == 'IDENTITY CHANGE'] != ""]
+
+# update vessel type
+tmt_review_new_v2$vessel_class[tmt_review_new_v2$Action == 'IDENTITY CHANGE'][tmt_review_new_v2$Vessel.type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'] != ""] <- 
+tmt_review_new_v2$Vessel.type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'][tmt_review_new_v2$Vessel.type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'] != ""]
+
+# update gear type
+tmt_review_new_v2$vessel_type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'][tmt_review_new_v2$Gear.type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'] != ""] <- 
+tmt_review_new_v2$Gear.type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'][tmt_review_new_v2$Gear.type[tmt_review_new_v2$Action == 'IDENTITY CHANGE'] != ""]
+
+# check values
+table(tmt_review_new_v2$vessel_class) 
+table(tmt_review_new_v2$vessel_type) 
+
+write.csv(dplyr::select(tmt_review_new_v2,-"Incorrect...missing.gear", -"Incorrect...missing.vessel.type", -"Incorrect...missing.flag"), here::here("data", "dakar_Q2_2024_16Jul2024.csv"), row.names=F)
+
+# https://globalfishingwatch.org/map/fishing-activity/vessel_missing_from_q_2_2024_dakar_port_analysis-user-public/vessel/630f3fbd5-5b60-a9f9-264a-bb6d949ba3b2?vesselDatasetId=public-global-vessel-identity%3Av3.0&vesselIdentitySource=selfReportedInfo&vesselSelfReportedId=48b310f78-8edd-e2a3-8b30-722b2ee97cd6&visibleEvents[0]=fishing&visibleEvents[1]=encounter&visibleEvents[2]=port_visit&longitude=-15.893355062108919&latitude=15.393651389957574&zoom=6.141303053718126&start=2024-04-01T00%3A00%3A00.000Z&end=2024-07-01T00%3A00%3A00.000Z
+
+#https://globalfishingwatch.org/map/fishing-activity/default-public?latitude=13.573236706543307&longitude=-15.772440969703073&zoom=4.600777145789837&start=2024-04-01T00%3A00%3A00.000Z&end=2024-07-01T00%3A00%3A00.000Z&dvIn[0][id]=vessel-818356b57-7844-a4ae-919e-36a06ae5a84a&dvIn[0][dvId]=fishing-map-vessel-track-v-3&dvIn[0][cfg][track]=public-global-all-tracks%3Av3.0&dvIn[0][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[0][cfg][events][0]=public-global-fishing-events%3Av3.0&dvIn[0][cfg][events][1]=public-global-port-visits-events%3Av3.0&dvIn[0][cfg][events][2]=public-global-encounters-events%3Av3.0&dvIn[0][cfg][events][3]=public-global-loitering-events%3Av3.0&dvIn[0][cfg][events][4]=public-global-gaps-events%3Av3.0&dvIn[0][cfg][clr]=%23F95E5E&dvIn[1][id]=fishing-ais-pipe-3&dvIn[1][cfg][vis]=false&dvIn[2][id]=vms&dvIn[2][cfg][vis]=false&dvIn[3][id]=context-layer-eez&dvIn[3][cfg][vis]=true&lTD=&fTD=&timebarVisualisation=vessel
+
+
+#https://globalfishingwatch.org/map/fishing-activity/default-public?latitude=13.93585953545746&longitude=-10.4345&zoom=4.0891&start=2024-04-01T00%3A00%3A00.000Z&end=2024-07-01T00%3A00%3A00.000Z&dvIn[0][id]=fishing-ais-pipe-3&dvIn[0][cfg][vis]=false&dvIn[1][id]=vms&dvIn[1][cfg][vis]=false&dvIn[2][id]=vessel-1fe43f651-11a3-402d-dfed-efde848e7eee&dvIn[2][dvId]=fishing-map-vessel-track-v-3&timebarVisualisation=vessel
+
+# https://globalfishingwatch.org/map/fishing-activity/default-public?latitude=11.518514803115004&longitude=-8.989016326741693&zoom=4.0891&start=2024-04-01T00%3A00%3A00.000Z&end=2024-07-01T00%3A00%3A00.000Z&dvIn[0][id]=context-layer-eez&dvIn[0][cfg][vis]=true&dvIn[1][id]=fishing-ais-pipe-3&dvIn[1][cfg][vis]=false&dvIn[2][id]=vms&dvIn[2][cfg][vis]=false&dvIn[3][id]=vessel-1fe43f651-11a3-402d-dfed-efde848e7eee&dvIn[3][dvId]=fishing-map-vessel-track-v-3&timebarVisualisation=vessel
+
+
+# https://globalfishingwatch.org/map/fishing-activity/default-public?latitude=11.518514803115004&longitude=-8.989016326741693&zoom=4.0891&start=2024-04-01T00%3A00%3A00.000Z&end=2024-07-01T00%3A00%3A00.000Z&dvIn[0][id]=vessel-48b310f78-8edd-e2a3-8b30-722b2ee97cd6&dvIn[0][dvId]=fishing-map-vessel-track-v-3&dvIn[0][cfg][track]=public-global-all-tracks%3Av3.0&dvIn[0][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[0][cfg][events][0]=public-global-fishing-events%3Av3.0&dvIn[0][cfg][events][1]=public-global-port-visits-events%3Av3.0&dvIn[0][cfg][events][2]=public-global-encounters-events%3Av3.0&dvIn[0][cfg][events][3]=public-global-loitering-events%3Av3.0&dvIn[0][cfg][events][4]=public-global-gaps-events%3Av3.0&dvIn[0][cfg][relatedVesselIds][0]=1fe43f651-11a3-402d-dfed-efde848e7eee&dvIn[0][cfg][clr]=%23F95E5E&dvIn[1][id]=context-layer-eez&dvIn[1][cfg][vis]=true&dvIn[2][id]=fishing-ais-pipe-3&dvIn[2][cfg][vis]=false&dvIn[3][id]=vms&dvIn[3][cfg][vis]=false&timebarVisualisation=vessel&lTD=&fTD=
+
+# https://globalfishingwatch.org/map/fishing-activity/default-public?latitude=11.518514803115004&longitude=-8.989016326741693&zoom=4.0891&start=2024-04-01T00%3A00%3A00.000Z&end=2024-07-01T00%3A00%3A00.000Z&dvIn[0][id]=vessel-48b310f78-8edd-e2a3-8b30-722b2ee97cd6&dvIn[0][dvId]=fishing-map-vessel-track-v-3&dvIn[0][cfg][track]=public-global-all-tracks%3Av3.0&dvIn[0][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[0][cfg][events][0]=public-global-fishing-events%3Av3.0&dvIn[0][cfg][events][1]=public-global-port-visits-events%3Av3.0&dvIn[0][cfg][events][2]=public-global-encounters-events%3Av3.0&dvIn[0][cfg][events][3]=public-global-loitering-events%3Av3.0&dvIn[0][cfg][events][4]=public-global-gaps-events%3Av3.0&dvIn[0][cfg][relatedVesselIds][0]=1fe43f651-11a3-402d-dfed-efde848e7eee&dvIn[0][cfg][clr]=%23F95E5E&dvIn[1][id]=context-layer-eez&dvIn[1][cfg][vis]=true&dvIn[2][id]=fishing-ais-pipe-3&dvIn[2][cfg][vis]=false&dvIn[3][id]=vms&dvIn[3][cfg][vis]=false&timebarVisualisation=vessel&lTD=&fTD=&visibleEvents[0]=fishing&visibleEvents[1]=port_visit
+```
+
+```{r manual rows for port calls}
+colnames(tmt_review_new_v2)
+colnames(full_dak_info)[1:26]
+
+# just the final table columns 
+interest_cols <- dplyr::select(tmt_review_new_v2,-1,-2, -3, -4, -5, -6, -7, -8, -9)
+
+# manual data for two missing vessels 
+haixin <- c('HAIXIN 29', 412549434, 'CHN', 'fishing', 'trawlers', 'COD', 'Pointe Noire', '06/02/2024 09:12', 
+  '23/02/2024 11:29', '17.8', 'DAKAR', 'FALSE', '0', '','FALSE', '', 'FALSE', NA, 'FALSE', NA, 'TRUE', 
+  '19', '48b310f78-8edd-e2a3-8b30-722b2ee97cd6', 'manual', 'manual', 'manual')
+gueriden <- c('GUERIDIN', 227550000, 'FRA', 'fishing', 'tuna_purse_seines', 'CIV', 'Abidjan', '14/04/2024 08:03', 
+  '27/04/2024 08:04', '17.8', 'DAKAR', 'TRUE', '487', 'CIV, GIN, GNB','FALSE', '', 'FALSE', NA, 'TRUE', 43, 'TRUE', 
+  '52', '1fe43f651-11a3-402d-dfed-efde848e7eee', 'manual', 'manual', 'manual')
+
+length(gueriden)
+
+haixin_df <- data.frame(t(haixin))
+gueriden_df <- data.frame(t(gueriden))
+colnames(haixin_df) <- colnames(interest_cols)
+colnames(gueriden_df) <- colnames(interest_cols)
+
+# tack on extra rows 
+full_q2_data <- rbind(interest_cols, haixin_df, gueriden_df)
+
+write.csv(full_q2_data, here::here("data", "dakar_Q2_2024_07Aug2024.csv"), row.names=F)
+
 ```
 
 ## Figures 
 ```{r flag figure for Dakar}
-tmt_review_v2 %>%
+full_q2_data$Flag <- full_q2_data$Flag2
+
+full_q2_data %>%
   group_by(Flag) %>%
   summarize(vessels = n()) %>%
   plot_donut_chart(group_var = Flag,
@@ -240,7 +332,7 @@ tmt_review_v2 %>%
                    label_frac = 0.025,
                    show_caption = T) 
 
-ggsave( filename = here::here('outputs', 'figures', 'q1_24_proactive', paste0(country,"_", month,"_", "dakar_fishing_flags_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave( filename = here::here('outputs', 'figures', 'q2_24_proactive', paste0(country,"_", month,"_", "dakar_fishing_flags_",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
        width = 10, 
        height = 10,
@@ -249,7 +341,7 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_24_proactive', paste0(co
 ```
 
 ```{r type figure for Dakar}
-tmt_review_v2 %>%
+full_q2_data %>%
   group_by(vessel_class) %>%
   summarize(vessels = n()) %>%
   plot_donut_chart(group_var = vessel_class,
@@ -257,20 +349,20 @@ tmt_review_v2 %>%
                    donut_title = 'Dakar voyages by\nclass',
                    add_labels = T,
                    show_legend = F,
-                   label_frac = 0.05,
+                   label_frac = 0.005,
                    show_caption = T) 
 
-ggsave( filename = here::here('outputs', 'figures', 'q1_24_proactive', paste0(country,"_", month,"_", "vessel_class_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave( filename = here::here('outputs', 'figures', 'q2_24_proactive', paste0(country,"_", month,"_", "vessel_class_",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
-       width = 5, 
-       height = 5,
+       width = 7, 
+       height = 7,
        bg = '#f7f7f7')
 
 ```
 
 
 ```{r gear figure for Dakar}
-tmt_review_v2 %>%
+full_q2_data %>%
   group_by(vessel_type) %>%
   summarize(vessels = n()) %>%
   plot_donut_chart(group_var = vessel_type,
@@ -281,7 +373,7 @@ tmt_review_v2 %>%
                    label_frac = 0.05,
                    show_caption = T) 
 
-ggsave( filename = here::here('outputs', 'figures', 'q1_24_proactive', paste0(country,"_", month,"_", "fishing_gears_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave( filename = here::here('outputs', 'figures', 'q2_24_proactive', paste0(country,"_", month,"_", "fishing_gears_",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
        width = 10, 
        height = 10,
@@ -295,7 +387,7 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_24_proactive', paste0(co
 q_confidence <- readr::read_file(here::here("queries","proactive", "proactive_fishing_locations.sql"))
 
 fishing <- fishwatchr::gfw_query(query = glue::glue(q_confidence,
-                                               voyages_table = "`world-fishing-827.scratch_max.voyages_dakar_q1_2024_pipe25`" 
+                                               voyages_table = "`world-fishing-827.scratch_max.voyages_dakar_q2_2024_pipe25`" 
                                                # min_date = "'2022-01-01'", 
                                                # max_date = "'2023-01-01'",
                                                ),
@@ -389,7 +481,7 @@ fishwatchr::add_little_globe(atl_full,
                              globe_just = 'inside',
                              globe_position = 'upperright')
 
-ggsave(filename = here::here('outputs', 'figures','q1_24_proactive', paste0(country,"_", month,"_", "longline_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave(filename = here::here('outputs', 'figures','q2_24_proactive', paste0(country,"_", month,"_", "longline_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
        width = 15, 
        height = 17,
@@ -468,7 +560,7 @@ fishwatchr::add_little_globe(trawl_full,
                              globe_just = 'inside',
                              globe_position = 'upperright')
 
-ggsave(filename = here::here('outputs', 'figures', paste0(country,"_", month,"_", "trawl_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave(filename = here::here('outputs', 'figures', 'q2_24_proactive', paste0(country,"_", month,"_", "trawl_map_",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
        width = 15, 
        height = 17,
