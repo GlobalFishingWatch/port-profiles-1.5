@@ -34,7 +34,8 @@ NGA_anchorages_all <-
                     WHERE iso3 = 'NGA'
                     "
                         , run_query = TRUE, con = con)$data %>% as_tibble()
-write.csv2(NGA_anchorages_all, file=here::here("data", "Nigeria", "NGA_anchorages_all.csv"), sep = ",")
+write.table(NGA_anchorages_all, file=here::here("data", "NGA", "NGA_anchorages_all.csv"), 
+            row.names = F, sep = ";", quote = FALSE)
 
 # orig sent to TMT with just LAGOS and PORT HARCOURT sublabels
 NGA_anchorages_orig <- read.csv2(file = here::here("data", "NGA", "NGA_anchorages.csv"), sep = ",",)

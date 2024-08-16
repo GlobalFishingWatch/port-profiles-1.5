@@ -1,4 +1,4 @@
-s2id,iso3,label,sublabel,lat,lon,PSMA Use,Use
+s2id,iso3,label,tmt_sublabel,lat,lon,psma_use,tmt_notes
 1069c959,NGA,RIVERS COMPLEX,PORT HARCOURT,4.762069923,7.004529117,YES,Handels all vessel classes. High reefer traffic
 1069c957,NGA,RIVERS COMPLEX,PORT HARCOURT,4.764920145,7.006510738,YES,Handels all vessel classes. High reefer traffic
 1069cbfd,NGA,RIVERS COMPLEX,PORT HARCOURT,4.767280589,7.008268278,YES,Handels all vessel classes. High reefer traffic
@@ -644,10 +644,10 @@ s2id,iso3,label,sublabel,lat,lon,PSMA Use,Use
 1069ccfb,NGA,RIVERS COMPLEX,OKURU AMA ANCHORAGE,4.8086379733273708,7.0597630085544445,NO,Non PSMA related
 1069ced1,NGA,RIVERS COMPLEX,OCTOPUS JETTY,4.7831401938498495,6.9734102786360763,NO,Non PSMA related
 1069cee7,NGA,RIVERS COMPLEX,NIGERIAN AGIP OIL,4.7984505389080914,6.971316392,NO,Non PSMA related
-,NGA,Rivers Complex,Okrika ,4.722441,7.084506,YES,Missed. Tankers may take on refined product here
-,NGA,Rivers Complex,Okrika ,4.719177,7.086395,YES,Missed. Tankers may take on refined product here
-,NGA,Rivers Complex,Onne,4.666618,7.152687,YES,"Missed. Multipurpose terminal, may be visited by reefers"
-,NGA,Rivers Complex,Onne,4.668444,7.153077,YES,"Missed. Multipurpose terminal, may be visited by reefers"
-,NGA,Rivers Complex,Onne,4.671016,7.153556,YES,"Missed. Container terminal, may be used by reefers for containerisation"
-,NGA,Rivers Complex,Onne,4.6734,7.153996,YES,"Missed. Container terminal, may be used by reefers for containerisation"
-,NGA,Rivers Complex,Onne,4.675825,7.155343,YES,"Missed. Container terminal, may be used by reefers for containerisation"
+,NGA,RIVERS COMPLEX,OKRIKA,4.722441,7.084506,YES,Missed. Tankers may take on refined product here
+,NGA,RIVERS COMPLEX,OKRIKA,4.719177,7.086395,YES,Missed. Tankers may take on refined product here
+,NGA,RIVERS COMPLEX,ONNE,4.666618,7.152687,YES,"Missed. Multipurpose terminal, may be visited by reefers"
+,NGA,RIVERS COMPLEX,ONNE,4.668444,7.153077,YES,"Missed. Multipurpose terminal, may be visited by reefers"
+,NGA,RIVERS COMPLEX,ONNE,4.671016,7.153556,YES,"Missed. Multipurpose terminal, may be visited by reefers"
+,NGA,RIVERS COMPLEX,ONNE,4.6734,7.153996,YES,"Missed. Multipurpose terminal, may be visited by reefers"
+,NGA,RIVERS COMPLEX,ONNE,4.675825,7.155343,YES,"Missed. Multipurpose terminal, may be visited by reefers"
