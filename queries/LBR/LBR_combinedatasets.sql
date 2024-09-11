@@ -6,7 +6,7 @@
 --------------------------------------------------
 
 -- Name desired output table
-CREATE TABLE `world-fishing-827.scratch_joef.LBR_masterlist_2021-23_pipe3` AS
+CREATE or replace TABLE `world-fishing-827.PortsProgramme.NGA_masterlist_2021-23` AS
 
 WITH
 
@@ -44,7 +44,7 @@ voyages AS (
       b.percent_ais_voyage,
     a.start_portvisit_timestamp AS event_start,
     a.end_portvisit_timestamp AS event_end,
-    a.port_event_duration_days AS event_duration_d,
+    a.port_event_duration_days * 24 AS event_duration_hrs,
       CAST(NULL AS numeric) AS lat_mean,
       CAST(NULL AS numeric) AS lon_mean,
     CAST(a.start_latitude AS numeric) AS lat_start,
@@ -54,6 +54,7 @@ voyages AS (
       CAST(NULL AS numeric) AS distance_km,
       CAST(NULL AS numeric) AS speed_knots,
       CAST(NULL AS string) AS eez,
+      CAST(NULL AS string) AS gap_end_eez,
       CAST(NULL AS string) AS major_fao,
       CAST(NULL AS string) AS high_seas,
       CAST(NULL AS string) AS rfmo,
@@ -71,14 +72,14 @@ voyages AS (
       CAST(NULL AS string) AS encountered_flag,
       CAST(NULL AS string) AS encountered_vessel_class,
       CAST(NULL AS string) AS encountered_geartype
-  FROM `world-fishing-827.scratch_joef.LBR_voyages_2021-23_pipe3` AS a
+  FROM `world-fishing-827.PortsProgramme.NGA_voyages_2021_23` AS a
   LEFT JOIN (
     SELECT
       trip_id,
       -- total_voyage_h,
       -- total_ais_h,
       percent_ais_voyage
-    FROM `world-fishing-827.scratch_joef.LBR_aiscoverage_2021-23_pipe3`) AS b
+    FROM `world-fishing-827.scratch_joef.NGA_aiscoverage_2021-23_pipe3`) AS b
   USING (trip_id)
   ),
 
@@ -120,12 +121,13 @@ add_anchorages AS(
       SELECT
         s2id,
         label AS port_label,
-        sublabel AS tmt_sublabel,
+        sublabel AS gfw_sublabel,
+        tmt_sublabel,
     -- a.trip_end_anchorage_id,
-        Feedback AS tmt_notes,
+        tmt_notes,
         -- CAST(distance_from_shore_m AS numeric) AS port_distance_from_shore_m,
         -- CAST(dock AS BOOL) AS at_dock
-      FROM `world-fishing-827.scratch_joef.LBR_anchorages_checked_with_Liberia`) as b
+      FROM `world-fishing-827.scratch_joef.NGA_anchorages_corrected_matched`) as b
       -- USING (s2id) )
     ON a.anchorage_id = b.s2id) as c
   LEFT JOIN (
@@ -136,7 +138,6 @@ add_anchorages AS(
     FROM `anchorages.named_anchorages_v20240117`) as d
     ON c.anchorage_id = d.s2id
   ),
-
 
 ----------------------------------------------------------
 -- Pull events, join to voyages, and add/prep data fields
@@ -167,7 +168,7 @@ events AS (
       b.percent_ais_voyage,
     a.event_start,
     a.event_end,
-    ROUND(a.event_duration_hrs / 24, 1) AS event_duration_d,
+    ROUND(a.event_duration_hrs, 1) AS event_duration_hrs,
     CAST(a.lat_mean AS numeric) AS lat_mean,
     CAST(a.lon_mean AS numeric) AS lon_mean,
     CAST(a.lat_start AS numeric) AS lat_start,
@@ -177,6 +178,7 @@ events AS (
     CAST(a.distance_km AS numeric) AS distance_km,
     CAST(a.speed_knots AS numeric) AS speed_knots,
     a.eez,
+    a.gap_end_eez,
     a.major_fao,
     a.high_seas,
     a.rfmo,
@@ -196,13 +198,14 @@ events AS (
     CAST(NULL AS numeric) AS port_event_lat,
     CAST(NULL AS numeric) AS port_event_lon,
     CAST(NULL AS string) AS port_label,
+    CAST(NULL AS string) AS gfw_sublabel,
     CAST(NULL AS string) AS tmt_sublabel,
     CAST(NULL AS string) AS anchorage_id,
     CAST(NULL AS string) AS tmt_notes,
     CAST(NULL AS numeric) AS port_distance_from_shore_m,
     CAST(NULL AS BOOL) AS at_dock,
     CAST(NULL AS int64) AS port_confidence
-  FROM `world-fishing-827.scratch_joef.LBR_events_2021-23_pipe3` AS a
+  FROM `world-fishing-827.PortsProgramme.NGA_events_2021_23` AS a
   LEFT JOIN (
     SELECT
       trip_id,
@@ -258,7 +261,7 @@ combined AS(
     percent_ais_voyage,
     event_start,
     event_end,
-    event_duration_d,
+    event_duration_hrs,
     lat_mean,
     lon_mean,
     lat_start,
@@ -268,6 +271,7 @@ combined AS(
     distance_km,
     speed_knots,
     eez,
+    gap_end_eez,
     major_fao,
     high_seas,
     rfmo,
@@ -287,6 +291,7 @@ combined AS(
     port_event_lat,
     port_event_lon,
     port_label,
+    gfw_sublabel,
     tmt_sublabel,
     anchorage_id,
     tmt_notes,
@@ -400,7 +405,7 @@ SELECT DISTINCT
     ORDER BY trip_start DESC) AS percent_ais_voyage,
   event_start,
   event_end,
-  event_duration_d,
+  event_duration_hrs,
   lat_mean,
   lon_mean,
   lat_start,
@@ -410,6 +415,7 @@ SELECT DISTINCT
   distance_km,
   speed_knots,
   eez,
+  gap_end_eez,
   major_fao,
   high_seas,
   rfmo,
@@ -431,6 +437,7 @@ SELECT DISTINCT
   port_event_lat,
   port_event_lon,
   port_label,
+  gfw_sublabel,
   tmt_sublabel,
   anchorage_id,
   tmt_notes,

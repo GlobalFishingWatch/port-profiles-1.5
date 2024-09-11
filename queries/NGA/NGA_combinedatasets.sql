@@ -6,7 +6,7 @@
 --------------------------------------------------
 
 -- Name desired output table
-CREATE TABLE `world-fishing-827.scratch_joef.NGA_masterlist_2021-23_pipe3` AS
+CREATE or replace TABLE `world-fishing-827.PortsProgramme.NGA_masterlist_2021-23` AS
 
 WITH
 
@@ -54,6 +54,7 @@ voyages AS (
       CAST(NULL AS numeric) AS distance_km,
       CAST(NULL AS numeric) AS speed_knots,
       CAST(NULL AS string) AS eez,
+      CAST(NULL AS string) AS gap_end_eez,
       CAST(NULL AS string) AS major_fao,
       CAST(NULL AS string) AS high_seas,
       CAST(NULL AS string) AS rfmo,
@@ -71,7 +72,7 @@ voyages AS (
       CAST(NULL AS string) AS encountered_flag,
       CAST(NULL AS string) AS encountered_vessel_class,
       CAST(NULL AS string) AS encountered_geartype
-  FROM `world-fishing-827.scratch_joef.NGA_voyages_2021-23_pipe3` AS a
+  FROM `world-fishing-827.PortsProgramme.NGA_voyages_2021_23` AS a
   LEFT JOIN (
     SELECT
       trip_id,
@@ -177,6 +178,7 @@ events AS (
     CAST(a.distance_km AS numeric) AS distance_km,
     CAST(a.speed_knots AS numeric) AS speed_knots,
     a.eez,
+    a.gap_end_eez,
     a.major_fao,
     a.high_seas,
     a.rfmo,
@@ -203,7 +205,7 @@ events AS (
     CAST(NULL AS numeric) AS port_distance_from_shore_m,
     CAST(NULL AS BOOL) AS at_dock,
     CAST(NULL AS int64) AS port_confidence
-  FROM `world-fishing-827.scratch_joef.NGA_events_2021-23_pipe3` AS a
+  FROM `world-fishing-827.PortsProgramme.NGA_events_2021_23` AS a
   LEFT JOIN (
     SELECT
       trip_id,
@@ -269,6 +271,7 @@ combined AS(
     distance_km,
     speed_knots,
     eez,
+    gap_end_eez,
     major_fao,
     high_seas,
     rfmo,
@@ -412,6 +415,7 @@ SELECT DISTINCT
   distance_km,
   speed_knots,
   eez,
+  gap_end_eez,
   major_fao,
   high_seas,
   rfmo,

@@ -1,4 +1,4 @@
--- NIGERIA events
+--- NIGERIA events ----
 
 --------------------------------------------------
 -- Query to pull relevant events and info on voyage basis - encounters, loitering, fishing, AIS gaps
@@ -6,7 +6,7 @@
 --------------------------------------------------
 
 -- update to relevant table from port_profile_1.5 query
-CREATE TABLE `scratch_joef.NGA_events_2021-23_pipe3` AS
+CREATE TABLE `world-fishing-827.PortsProgramme.NGA_events_2021_23` AS
 
 WITH
 
@@ -28,7 +28,7 @@ voyages AS (
     trip_id,
     trip_start,
     trip_end,
-  FROM `world-fishing-827.scratch_joef.NGA_voyages_2021-23_pipe3`
+  FROM `world-fishing-827.PortsProgramme.NGA_voyages_2021_23`
   ),
 
 ----------------------------------------------------------
@@ -60,6 +60,7 @@ encounters AS (
     ROUND(CAST(enc.distance_km AS numeric), 1) AS distance_km,
     ROUND(CAST(enc.speed_knots AS numeric), 1) AS speed_knots,
     eez,
+    CAST(NULL AS ARRAY<string>) AS gap_end_eez,
     enc.major_fao,
     enc.high_seas,
     enc.rfmo,
@@ -88,12 +89,10 @@ encounters AS (
       JSON_EXTRACT_SCALAR(event_info, "$.median_distance_km") as distance_km,
       JSON_EXTRACT_SCALAR(event_info, "$.median_speed_knots") as speed_knots,
       ## pull out event regions
-      -- ARRAY_TO_STRING(regions_mean_position.eez, ", ") AS eez,
       regions_mean_position.eez AS eez,
       ARRAY_TO_STRING(regions_mean_position.major_fao, ", ") AS major_fao,
       ARRAY_TO_STRING(regions_mean_position.high_seas, ", ") AS high_seas,
       ARRAY_TO_STRING(regions_mean_position.rfmo, ", ") AS rfmo,
-      -- regions_mean_position.rfmo AS rfmo,
       start_distance_from_shore_km,
       end_distance_from_shore_km,
       start_distance_from_port_km,
@@ -144,6 +143,7 @@ loitering AS(
     ROUND(CAST(loit.distance_km AS numeric), 1) AS distance_km,
     ROUND(CAST(loit.speed_knots AS numeric), 1) AS speed_knots,
     eez,
+    CAST(NULL AS ARRAY<string>) AS gap_end_eez,
     loit.major_fao,
     loit.high_seas,
     loit.rfmo,
@@ -169,12 +169,10 @@ loitering AS(
       JSON_EXTRACT_SCALAR(event_info, "$.total_distance_km") as distance_km,
       JSON_EXTRACT_SCALAR(event_info, "$.avg_speed_knots") as speed_knots,
       ## pull out event regions
-      -- ARRAY_TO_STRING(regions_mean_position.eez, ", ") AS eez,
       regions_mean_position.eez AS eez,
       ARRAY_TO_STRING(regions_mean_position.major_fao, ", ") AS major_fao,
       ARRAY_TO_STRING(regions_mean_position.high_seas, ", ") AS high_seas,
       ARRAY_TO_STRING(regions_mean_position.rfmo, ", ") AS rfmo,
-      -- regions_mean_position.rfmo AS rfmo,
       start_distance_from_shore_km,
       end_distance_from_shore_km,
       start_distance_from_port_km,
@@ -226,6 +224,7 @@ fishing AS(
     ROUND(CAST(fish.distance_km AS numeric), 1) AS distance_km,
     ROUND(CAST(fish.speed_knots AS numeric), 1) AS speed_knots,
     eez,
+    CAST(NULL AS ARRAY<string>) AS gap_end_eez,
     fish.major_fao,
     fish.high_seas,
     fish.rfmo,
@@ -251,12 +250,10 @@ fishing AS(
       JSON_EXTRACT_SCALAR(event_info, "$.distance_km") as distance_km,
       JSON_EXTRACT_SCALAR(event_info, "$.avg_speed_knots") as speed_knots,
       ## pull out event regions
-      -- ARRAY_TO_STRING(regions_mean_position.eez, ", ") AS eez,
       regions_mean_position.eez AS eez,
       ARRAY_TO_STRING(regions_mean_position.major_fao, ", ") AS major_fao,
       ARRAY_TO_STRING(regions_mean_position.high_seas, ", ") AS high_seas,
       ARRAY_TO_STRING(regions_mean_position.rfmo, ", ") AS rfmo,
-      -- regions_mean_position.rfmo AS rfmo,
       start_distance_from_shore_km,
       end_distance_from_shore_km,
       start_distance_from_port_km,
@@ -297,8 +294,8 @@ gaps AS(
     ROUND(gaps.lon_end, 2) AS lon_end,
     ROUND(gaps.distance_km, 1) AS distance_km,
     ROUND(gaps.speed_knots, 1) AS speed_knots,
-    -- CAST(gaps.eez AS string) AS eez,
     eez,
+    gap_end_eez,
     CAST(NULL AS string) AS major_fao,
     CAST(NULL AS string) AS high_seas,
     gaps.rfmo,
@@ -322,8 +319,9 @@ gaps AS(
       gap_end_lon AS lon_end,
       gap_distance_m / 1000 AS distance_km,
       gap_implied_speed_knots AS speed_knots,
-      -- ARRAY_TO_STRING(gap_start_eez, ", ") AS eez,
       gap_start_eez AS eez,
+      -- ARRAY_TO_STRING(gap_end_eez, ", ") AS gap_end_eez,
+      gap_end_eez,
       gap_start_rfmo AS rfmo,
       gap_start_distance_from_shore_m / 1000 AS start_distance_from_shore_km,
       gap_end_distance_from_shore_m / 1000 AS end_distance_from_shore_km,
@@ -420,7 +418,7 @@ eez_names AS (
 ----------------------------------------------------------
 -- join eez info to codes in event table
 ----------------------------------------------------------
-add_eez_info AS(
+add_eez_info_1 AS(
   SELECT
     encs.event_type,
     encs.event_id,
@@ -445,9 +443,8 @@ add_eez_info AS(
     encs.lon_end,
     encs.distance_km,
     encs.speed_knots,
-    -- encs.eez,
-    -- eez_id,
     ARRAY_TO_STRING(ARRAY_AGG(eez_name ORDER BY eez_name), ", ") AS eez,
+    gap_end_eez,
     encs.major_fao,
     encs.high_seas,
     encs.rfmo,
@@ -493,6 +490,99 @@ add_eez_info AS(
     lon_end,
     distance_km,
     speed_knots,
+    gap_end_eez,
+    major_fao,
+    high_seas,
+    rfmo,
+    start_distance_from_shore_km,
+    end_distance_from_shore_km,
+    start_distance_from_port_km,
+    end_distance_from_port_km,
+    positions_12_hours_before,
+    encountered_ssvid,
+    encountered_vessel_id,
+    year,
+    encountered_shipname,
+    encountered_callsign,
+    encountered_imo,
+    encountered_flag,
+    encountered_vessel_class,
+    encountered_geartype
+),
+
+add_eez_info_2 AS(
+  SELECT
+    encs.event_type,
+    encs.event_id,
+    encs.ssvid,
+    encs.shipname,
+    encs.vessel_flag_best,
+    encs.callsign,
+    encs.imo,
+    encs.vessel_class_best,
+    encs.geartype_best,
+    encs.vessel_class_initial,
+    encs.class_confidence_initial,
+    encs.trip_id,
+    encs.event_start,
+    encs.event_end,
+    encs.event_duration_hrs,
+    encs.lat_mean,
+    encs.lon_mean,
+    encs.lat_start,
+    encs.lon_start,
+    encs.lat_end,
+    encs.lon_end,
+    encs.distance_km,
+    encs.speed_knots,
+    encs.eez,
+    ARRAY_TO_STRING(ARRAY_AGG(eez_name ORDER BY eez_name), ", ") AS gap_end_eez,
+    encs.major_fao,
+    encs.high_seas,
+    encs.rfmo,
+    encs.start_distance_from_shore_km,
+    encs.end_distance_from_shore_km,
+    encs.start_distance_from_port_km,
+    encs.end_distance_from_port_km,
+    encs.positions_12_hours_before,
+    encs.encountered_ssvid,
+    encs.encountered_vessel_id,
+    encs.year,
+    encs.encountered_shipname,
+    encs.encountered_callsign,
+    encs.encountered_imo,
+    encs.encountered_flag,
+    encs.encountered_vessel_class,
+    encs.encountered_geartype
+  FROM add_eez_info_1 AS encs
+  LEFT JOIN UNNEST (gap_end_eez) AS eez_id
+  LEFT JOIN eez_names
+  USING (eez_id)
+  GROUP BY
+    event_type,
+    event_id,
+    ssvid,
+    shipname,
+    vessel_flag_best,
+    callsign,
+    imo,
+    vessel_class_best,
+    geartype_best,
+    vessel_class_initial,
+    class_confidence_initial,
+    trip_id,
+    event_start,
+    event_end,
+    event_duration_hrs,
+    lat_mean,
+    lon_mean,
+    lat_start,
+    lon_start,
+    lat_end,
+    lon_end,
+    distance_km,
+    speed_knots,
+    eez,
     major_fao,
     high_seas,
     rfmo,
@@ -540,6 +630,7 @@ SELECT
     distance_km,
     speed_knots,
     eez,
+    gap_end_eez,
     major_fao,
     high_seas,
     ARRAY_TO_STRING(ARRAY(select rfmos from UNNEST(rfmo) rfmos ORDER BY rfmos), ", ") AS rfmo,
@@ -583,6 +674,7 @@ SELECT
     distance_km,
     speed_knots,
     eez,
+    gap_end_eez,
     major_fao,
     high_seas,
     SPLIT(rfmo,', ') AS rfmo,
@@ -600,10 +692,9 @@ SELECT
     encountered_flag,
     encountered_vessel_class,
     encountered_geartype
-  FROM add_eez_info
+  FROM add_eez_info_2
   )
 
 /*
-
 
 */
