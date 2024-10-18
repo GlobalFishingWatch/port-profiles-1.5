@@ -73,14 +73,14 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
 # Dakar 
 
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
-start_date <- "'2024-04-01 00:00:00 UTC'" 
-end_date <- "'2024-06-30 23:59:59 UTC'"
+start_date <- "'2024-07-01 00:00:00 UTC'" 
+end_date <- "'2024-09-30 23:59:59 UTC'"
 year <- 2024
 country_iso3 <- "'SEN'"
 port_name <- "'DAKAR'"
 
 # file names
-month <- 'Q2'
+month <- 'Q3'
 country <- 'SEN'
 
 ```
@@ -105,12 +105,23 @@ unique(filter(voyages, ssvid %in% c("308121000", "629009092", "629009118", "2275
 ```
 
 
+```{r make vessel viewer url string}
+base_string_p1 <- 'https://globalfishingwatch.org/map/vessel/'
+base_string_p2 <- '?&start=' 
+base_string_p3 <- '&end='
+start_date_url <- '2024-09-01'
+end_date_url <- '2024-10-31'
+
+voyages_url <- bind_cols(voyages, vv_url = paste('=HYPERLINK("',base_string_p1, voyages_sample$vessel_id, base_string_p2, start_date_url, base_string_p3, end_date_url, '")', sep=''))
+
+```
+
 ```{r groom data to TMT format}
-dak_voyages <- dplyr::select(voyages, vessel_name=shipname, MMSI=ssvid,
+dak_voyages <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, vessel_id=vessel_id, trip_id=trip_id)
+   end_port = end_port_label, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, vessel_id=vessel_id, trip_id=trip_id, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
@@ -141,7 +152,7 @@ extra <- fishwatchr::gfw_query(query = c("SELECT * FROM `world-fishing-827.scrat
 
 full_dak_info <- left_join(dak_voyages, dplyr::select(extra,vessel_id, trip_id, at_dock, percent_ais_voyage), by=c('vessel_id','trip_id'))
 
-#write.csv(dplyr::select(full_dak_info,-vessel_id, -trip_id), here::here("data", "dakar_Q2_2024_16Jul2024.csv"), row.names=F)
+write.csv(dplyr::select(dak_voyages,-vessel_id, -trip_id), here::here("data", "dakar_Q3_2024_16Oct2024.csv"), row.names=F)
 ```
 
 
@@ -317,6 +328,8 @@ write.csv(full_q2_data, here::here("data", "dakar_Q2_2024_07Aug2024.csv"), row.n
 
 ```
 
+
+
 ## Figures 
 ```{r flag figure for Dakar}
 full_q2_data$Flag <- full_q2_data$Flag2
@@ -341,6 +354,8 @@ ggsave( filename = here::here('outputs', 'figures', 'q2_24_proactive', paste0(co
 ```
 
 ```{r type figure for Dakar}
+library(ggrepel)
+
 full_q2_data %>%
   group_by(vessel_class) %>%
   summarize(vessels = n()) %>%
@@ -349,8 +364,15 @@ full_q2_data %>%
                    donut_title = 'Dakar voyages by\nclass',
                    add_labels = T,
                    show_legend = F,
-                   label_frac = 0.005,
-                   show_caption = T) 
+                   label_frac = 0.05,
+                   show_caption = T) #+ 
+  theme(text = element_text(size = 4),  
+        axis.text=element_text(size=5), #change font size of axis text
+        #axis.title=element_text(size=5), #change font size of axis titles
+        plot.title=element_text(size=5), #change font size of plot title
+        #legend.text=element_text(size=5), #change font size of legend text
+        legend.title=element_text(size=5)) #%>%
+  #geom_label_repel(data=full_q2_data, aes(y=vessles, label=vessel_class))
 
 ggsave( filename = here::here('outputs', 'figures', 'q2_24_proactive', paste0(country,"_", month,"_", "vessel_class_",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
