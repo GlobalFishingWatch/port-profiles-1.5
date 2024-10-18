@@ -1,0 +1,31 @@
+Package: geojsonsf
+Type: Package
+Title: GeoJSON to Simple Feature Converter
+Version: 2.0.3
+Date: 2022-05-31
+Authors@R: c(
+    person("David", "Cooley", ,"dcooley@symbolix.com.au", role = c("aut", "cre"))
+    )
+Description: Converts Between GeoJSON and simple feature objects. 
+License: MIT + file LICENSE
+URL: https://github.com/SymbolixAU/geojsonsf
+BugReports: https://github.com/SymbolixAU/geojsonsf/issues
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.3.0)
+SystemRequirements: C++11
+LinkingTo: geometries, jsonify (>= 1.1.1), rapidjsonr (>= 1.2.0), Rcpp,
+        sfheaders (>= 0.2.2)
+Imports: Rcpp
+RoxygenNote: 7.1.0
+Suggests: covr, jsonify, knitr, rmarkdown, tinytest
+VignetteBuilder: knitr
+NeedsCompilation: yes
+Packaged: 2022-05-30 22:52:38 UTC; david
+Author: David Cooley [aut, cre]
+Maintainer: David Cooley <dcooley@symbolix.com.au>
+Repository: CRAN
+Date/Publication: 2022-05-30 23:20:02 UTC
+Built: R 4.2.3; x86_64-w64-mingw32; 2023-11-13 02:49:14 UTC; windows
+ExperimentalWindowsRuntime: ucrt
+Archs: x64

@@ -1,0 +1,34 @@
+addCOG                  Add Cloud Optimised Geotiff (COG) to a leaflet
+                        map.
+addCopyExtent           Copy current view extent to the clipboard
+addExtent               Add extent/bbox of spatial objects to a leaflet
+                        map
+addFeatures             Type agnositc version of 'leaflet::add*'
+                        functions.
+addFgb                  Add a flatgeobuf file to leaflet map
+addGeoRaster            Add stars/raster image to a leaflet map using
+                        optimised rendering.
+addGeotiff              Add a GeoTIFF file to a leaflet map using
+                        optimised rendering.
+addHomeButton           Add a home button / zoom-to-layer button to a
+                        map.
+addImageQuery           Add image query functionality to
+                        leaflet/mapview map.
+addLocalFile            Add vector data to leaflet map directly from
+                        the file system
+addLogo                 add a local or remote image (png, jpg, gif,
+                        bmp, ...) to a leaflet map
+addMouseCoordinates     Add mouse coordinate information at top of map.
+addPMPolygons           Add vector tiles stored as PMTiles in an AWS S3
+                        bucket to a leaflet map.
+addRasterRGB            Add an RGB image as a layer
+addReactiveFeatures     Add a reactive layer to map.
+addStarsImage           Add stars layer to a leaflet map
+addStaticLabels         Add static labels to 'leaflet' or 'mapview'
+                        objects
+addTileFolder           Add raster tiles from a local folder
+colorOptions            Color options for addGeoRaster and addGeotiff
+garnishMap              Garnish/decorate leaflet or mapview maps.
+paintRules              Styling options for PMTiles
+updateLayersControl     Update the layer controls when adding layers to
+                        an existing map.

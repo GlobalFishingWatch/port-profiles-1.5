@@ -1,0 +1,51 @@
+Package: bigrquery
+Title: An Interface to Google's 'BigQuery' 'API'
+Version: 1.4.2
+Authors@R: c(
+    person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-4757-117X")),
+    person("Jennifer", "Bryan", , "jenny@posit.co", role = "aut",
+           comment = c(ORCID = "0000-0002-6983-2759")),
+    person("Kungliga Tekniska Högskolan", role = "ctb",
+           comment = "strptime implementation"),
+    person("The NetBSD Foundation, Inc.", role = "ctb",
+           comment = "gmtime implementation"),
+    person("Posit Software, PBC", role = c("cph", "fnd"))
+  )
+Description: Easily talk to Google's 'BigQuery' database from R.
+License: GPL-3
+URL: https://bigrquery.r-dbi.org, https://github.com/r-dbi/bigrquery
+BugReports: https://github.com/r-dbi/bigrquery/issues
+Depends: R (>= 3.3)
+Imports: assertthat, bit64, brio, cli, curl, DBI, gargle (>= 1.4.0),
+        glue (>= 1.3.0), httr, jsonlite, lifecycle, methods,
+        prettyunits, progress, Rcpp, rlang (>= 0.4.9), tibble, withr
+Suggests: blob, covr, DBItest, dbplyr (>= 2.2.1), dplyr (>= 0.7.0),
+        hms, readr, sodium, testthat (>= 3.1.5), wk (>= 0.3.2)
+LinkingTo: progress, rapidjsonr, Rcpp
+Encoding: UTF-8
+RoxygenNote: 7.2.3
+Collate: 'RcppExports.R' 'bigrquery-package.R' 'bq-auth.R'
+        'bq-dataset.R' 'bq-download.R' 'bq-field.R' 'bq-job.R'
+        'bq-param.R' 'bq-parse.R' 'bq-perform.R' 'bq-project.R'
+        'bq-projects.R' 'bq-query.R' 'bq-refs.R' 'bq-request.R'
+        'bq-table.R' 'bq-test.R' 'camelCase.R' 'dbi-driver.R'
+        'dbi-connection.R' 'dbi-result.R' 'dplyr.R' 'gs-object.R'
+        'old-auth.R' 'old-dataset.R' 'old-id.R' 'old-job-extract.R'
+        'old-job-query.R' 'old-job-upload.R' 'old-job.R'
+        'old-project.R' 'old-projects.R' 'old-query.R' 'old-table.R'
+        'old-tabledata.R' 'utils.R' 'zzz.R'
+Config/testthat/edition: 3
+NeedsCompilation: yes
+Packaged: 2023-04-19 00:00:42 UTC; jenny
+Author: Hadley Wickham [aut, cre] (<https://orcid.org/0000-0003-4757-117X>),
+  Jennifer Bryan [aut] (<https://orcid.org/0000-0002-6983-2759>),
+  Kungliga Tekniska Högskolan [ctb] (strptime implementation),
+  The NetBSD Foundation, Inc. [ctb] (gmtime implementation),
+  Posit Software, PBC [cph, fnd]
+Maintainer: Hadley Wickham <hadley@posit.co>
+Repository: CRAN
+Date/Publication: 2023-04-20 16:32:37 UTC
+Built: R 4.2.3; x86_64-w64-mingw32; 2023-07-26 01:55:38 UTC; windows
+ExperimentalWindowsRuntime: ucrt
+Archs: x64

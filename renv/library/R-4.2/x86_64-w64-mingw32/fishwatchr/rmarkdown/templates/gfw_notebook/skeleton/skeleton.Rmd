@@ -1,0 +1,30 @@
+---
+output: 
+  html_document:
+    theme: cosmo
+    highlight: tango
+---
+![](logo.png){width="25%"} 
+
+# [INSERT TITLE]  
+
+#### [INSERT AUTHOR]  
+
+#### `r Sys.Date()`  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = FALSE)
+```
+
+```{r packages}
+# Default packages
+library(tidyverse, quietly = T)
+library(fishwatchr)
+library(glue)
+
+# BigQuery connection
+con <- DBI::dbConnect(bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+

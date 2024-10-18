@@ -1,0 +1,30 @@
+---
+title: "Fishing activity report for [INSERT COUNTRY]"
+author: "Global Fishing Watch"
+date: "The Date"
+output: html_document
+params:
+  start_date: '2018-01-01'
+  end_date: '2018-12-31'
+  country: 'ISO3 country code'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Fishing effort
+
+Summarize and plot the fishing effort of the country's fleet here
+
+## Fleet characteristics
+
+Summarize and describe the fishing fleet for the country here
+
+## Encounters
+
+Summarize and plot the encounters by the country's vessels here
+
+## Port visits
+
+Summarize and plot port visits by the country here

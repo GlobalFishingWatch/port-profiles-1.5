@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Andy South" />
+
+<meta name="date" content="2023-08-20" />
+
+<title>What is a country ?</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">What is a country ?</h1>
+<h4 class="author">Andy South</h4>
+<h4 class="date">2023-08-20</h4>
+
+
+
+<p>This vignette shows how <a href="https://github.com/ropensci/rnaturalearth">rnaturalearth</a>
+allows mapping countries using different definitions of what a country
+is. What a country is can be more complicated than you might expect.</p>
+<p>For example, from my own parochial perspective, it allows mapping the
+UK as a whole or separating out England, Scotland, Wales and Northern
+Ireland. It also allows you to exclude far away places like the Falkland
+Islands, or not. Mapping France it allows the inclusion or exclusion of
+French Guiana and islands in the South Pacific.</p>
+<p><a href="https://github.com/ropensci/rnaturalearth">rnaturalearth</a>
+is an R package to hold and facilitate interaction with natural earth
+vector map data.</p>
+<p><a href="https://www.naturalearthdata.com/">Natural Earth</a> is a
+public domain map dataset including vector country boundaries.</p>
+<p>This vignette uses <code>sp::plot</code> as a simple, quick way to
+plot the data obtained using <code>rnaturalearth</code>.
+<code>rnaturalearth</code> data can also be used to make more elaborate
+maps with <code>ggplot2</code>, <code>tmap</code> and other options.</p>
+<div id="load-required-packages" class="section level2">
+<h2>load required packages</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rnaturalearth)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sp)</span></code></pre></div>
+</div>
+<div id="country-types-countries-map_units-and-sovereignty." class="section level2">
+<h2>Country types : countries, map_units and sovereignty.</h2>
+<p>Natural Earth data are classified by <code>countries</code>,
+<code>map_units</code> and <code>sovereignty</code>. Below you will see
+that specifying <code>united kingdom</code> for</p>
+<ul>
+<li><code>countries</code> gives the UK undivided</li>
+<li><code>map_units</code> gives England, Scotland, Wales and Northern
+Ireland</li>
+<li><code>sovereignty</code> includes the Falkland Islands</li>
+</ul>
+<p>Filtering by <code>geounit</code> can give finer control, e.g. to
+plot Scotland alone, or France without French Guiana.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># countries, UK undivided</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>, <span class="at">type =</span> <span class="st">&quot;countries&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># map_units, UK divided into England, Scotland, Wales and Northern Ireland</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>, <span class="at">type =</span> <span class="st">&quot;map_units&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># map_units, select by geounit to plot Scotland alone</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">geounit =</span> <span class="st">&quot;scotland&quot;</span>, <span class="at">type =</span> <span class="st">&quot;map_units&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># sovereignty, Falkland Islands included in UK</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>, <span class="at">type =</span> <span class="st">&quot;sovereignty&quot;</span>), <span class="at">col =</span> <span class="st">&quot;red&quot;</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_coastline</span>(<span class="at">scale =</span> <span class="dv">110</span>), <span class="at">col =</span> <span class="st">&quot;lightgrey&quot;</span>, <span class="at">lty =</span> <span class="dv">3</span>, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># France, country includes French Guiana</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;france&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># France map_units includes French Guiana too</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;france&quot;</span>, <span class="at">type =</span> <span class="st">&quot;map_units&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># France filter map_units by geounit to exclude French Guiana</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">geounit =</span> <span class="st">&quot;france&quot;</span>, <span class="at">type =</span> <span class="st">&quot;map_units&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># France sovereignty includes South Pacicic islands</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;france&quot;</span>, <span class="at">type =</span> <span class="st">&quot;sovereignty&quot;</span>), <span class="at">col =</span> <span class="st">&quot;red&quot;</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_coastline</span>(<span class="at">scale =</span> <span class="dv">110</span>), <span class="at">col =</span> <span class="st">&quot;lightgrey&quot;</span>, <span class="at">lty =</span> <span class="dv">3</span>, <span class="at">add =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="country-scales-small-medium-and-large." class="section level2">
+<h2>Country scales : small, medium and large.</h2>
+<p>The different definitions of a country outlined above are available
+at different scales.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># countries, large scale</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>, <span class="at">scale =</span> <span class="st">&quot;large&quot;</span>))</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># countries, medium scale</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>, <span class="at">scale =</span> <span class="st">&quot;medium&quot;</span>))</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co"># countries, small scale</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_countries</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>, <span class="at">scale =</span> <span class="st">&quot;small&quot;</span>))</span></code></pre></div>
+</div>
+<div id="states-admin-level-1-select-by-country-or-geounit." class="section level2">
+<h2>States, admin level 1, select by country or geounit.</h2>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># states country=&#39;united kingdom&#39;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_states</span>(<span class="at">country =</span> <span class="st">&quot;united kingdom&quot;</span>))</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># states geounit=&#39;england&#39;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_states</span>(<span class="at">geounit =</span> <span class="st">&quot;england&quot;</span>))</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co"># states country=&#39;france&#39;</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_states</span>(<span class="at">country =</span> <span class="st">&quot;france&quot;</span>))</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co"># states geounit=&#39;france&#39;</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">::</span><span class="fu">plot</span>(<span class="fu">ne_states</span>(<span class="at">geounit =</span> <span class="st">&quot;france&quot;</span>))</span></code></pre></div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+addPopupGraphs          Add graph/plot popups to leaflet layers.
+addPopupImages          Add image popups to leaflet layers.
+leafpop-package         Include Tables, Images and Graphs in Leaflet
+                        Popups
+popupGraph              Create HTML strings for popups

@@ -1,0 +1,26 @@
+array_stream_set_finalizer
+                        Register an array stream finalizer
+as_nanoarrow_array      Convert an object to a nanoarrow array
+as_nanoarrow_array_stream
+                        Convert an object to a nanoarrow array_stream
+as_nanoarrow_buffer     Convert an object to a nanoarrow buffer
+as_nanoarrow_schema     Convert an object to a nanoarrow schema
+as_nanoarrow_vctr       Experimental Arrow encoded arrays as R vectors
+basic_array_stream      Create ArrayStreams from batches
+convert_array           Convert an Array into an R vector
+convert_array_stream    Convert an Array Stream into an R vector
+infer_nanoarrow_ptype   Infer an R vector prototype
+infer_nanoarrow_ptype_extension
+                        Implement Arrow extension types
+na_type                 Create type objects
+na_vctrs                Vctrs extension type
+nanoarrow_array_init    Modify nanoarrow arrays
+nanoarrow_buffer_init   Create and modify nanoarrow buffers
+nanoarrow_extension_array
+                        Create Arrow extension arrays
+nanoarrow_extension_spec
+                        Register Arrow extension types
+nanoarrow_pointer_is_valid
+                        Danger zone: low-level pointer operations
+nanoarrow_version       Underlying 'nanoarrow' C library build
+read_nanoarrow          Read/write serialized streams of Arrow data

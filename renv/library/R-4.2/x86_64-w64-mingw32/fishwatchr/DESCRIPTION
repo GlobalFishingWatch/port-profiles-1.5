@@ -1,0 +1,34 @@
+Package: fishwatchr
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Tyler",
+           family = "Clavelle",
+           role = c("aut", "cre"),
+           email = "tyler@globalfishingwatch.org")
+Depends: R (>= 3.5.0)
+Imports: bigrquery, DBI, dplyr, extrafont, forcats, ggplot2, ggpp,
+        ggtext, glue, httr, jsonlite, magrittr, mapview, patchwork,
+        precommit, purrr, raster, readr, renv, rlist, rnaturalearth,
+        rstudioapi, sf, smoothr, sp, stringr, tibble, tidyr, usethis
+Suggests: rnaturalearthdata
+Description: What the package does (one paragraph).
+License: GPL (>= 3)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
+RemoteType: github
+RemoteHost: api.github.com
+RemoteRepo: fishwatchr
+RemoteUsername: GlobalFishingWatch
+RemoteRef: HEAD
+RemoteSha: 9a7619bad1c53898ada87a6816676adcccc386ba
+GithubRepo: fishwatchr
+GithubUsername: GlobalFishingWatch
+GithubRef: HEAD
+GithubSHA1: 9a7619bad1c53898ada87a6816676adcccc386ba
+NeedsCompilation: no
+Packaged: 2023-11-14 17:02:33 UTC; Max
+Author: Tyler Clavelle [aut, cre]
+Maintainer: Tyler Clavelle <tyler@globalfishingwatch.org>
+Built: R 4.2.1; ; 2023-11-14 17:03:11 UTC; windows

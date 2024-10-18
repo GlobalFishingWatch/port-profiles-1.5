@@ -1,0 +1,10 @@
+as.tile_source          Deprecated interface
+has_internet            Check for Internet
+osm_native              Coordinate helpers
+osm_raster              Load an Open Street Map image
+osm_tile                Low-level tile math
+osm_tile_covering       Get an OSM tile covering
+osm_url                 Resolve a tile into a URL
+osm_url_load_async      Load tile URLs
+osm_url_spec            Tile URL Specification
+set_default_cachedir    Set/Get the Default Tile Cache Location

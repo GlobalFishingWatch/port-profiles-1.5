@@ -1,0 +1,4 @@
+name: GFW Notebook
+description: >
+   A generic RMarkdown notebook with GFW theme
+create_dir: FALSE

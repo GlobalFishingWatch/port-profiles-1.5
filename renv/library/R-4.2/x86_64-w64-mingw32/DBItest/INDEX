@@ -1,0 +1,82 @@
+DBItest-package         DBItest: Testing DBI Backends
+make_context            Test contexts
+spec_arrow_append_table_arrow
+                        spec_arrow_append_table_arrow
+spec_arrow_create_table_arrow
+                        spec_arrow_create_table_arrow
+spec_arrow_fetch_arrow
+                        spec_arrow_fetch_arrow
+spec_arrow_fetch_arrow_chunk
+                        spec_arrow_fetch_arrow_chunk
+spec_arrow_get_query_arrow
+                        spec_arrow_get_query_arrow
+spec_arrow_read_table_arrow
+                        spec_arrow_read_table_arrow
+spec_arrow_send_query_arrow
+                        spec_result_send_query
+spec_arrow_write_table_arrow
+                        spec_arrow_write_table_arrow
+spec_compliance_methods
+                        spec_compliance_methods
+spec_connection_disconnect
+                        spec_connection_disconnect
+spec_driver_connect     spec_driver_connect
+spec_driver_constructor
+                        spec_driver_constructor
+spec_driver_data_type   spec_driver_data_type
+spec_get_info           spec_driver_get_info
+spec_getting_started    spec_getting_started
+spec_meta_bind          spec_meta_bind
+spec_meta_column_info   spec_meta_column_info
+spec_meta_get_row_count
+                        spec_meta_get_row_count
+spec_meta_get_rows_affected
+                        spec_meta_get_rows_affected
+spec_meta_get_statement
+                        spec_meta_get_statement
+spec_meta_has_completed
+                        spec_meta_has_completed
+spec_meta_is_valid      spec_meta_is_valid
+spec_result_clear_result
+                        spec_result_clear_result
+spec_result_create_table_with_data_type
+                        spec_result_create_table_with_data_type
+spec_result_execute     spec_result_execute
+spec_result_fetch       spec_result_fetch
+spec_result_get_query   spec_result_get_query
+spec_result_roundtrip   spec_result_roundtrip
+spec_result_send_query
+                        spec_result_send_query
+spec_result_send_statement
+                        spec_result_send_statement
+spec_sql_append_table   spec_sql_append_table
+spec_sql_create_table   spec_sql_create_table
+spec_sql_exists_table   spec_sql_exists_table
+spec_sql_list_fields    spec_sql_list_fields
+spec_sql_list_objects   spec_sql_list_objects
+spec_sql_list_tables    spec_sql_list_tables
+spec_sql_quote_identifier
+                        spec_sql_quote_identifier
+spec_sql_quote_literal
+                        spec_sql_quote_literal
+spec_sql_quote_string   spec_sql_quote_string
+spec_sql_read_table     spec_sql_read_table
+spec_sql_remove_table   spec_sql_remove_table
+spec_sql_unquote_identifier
+                        spec_sql_unquote_identifier
+spec_sql_write_table    spec_sql_write_table
+spec_transaction_begin_commit_rollback
+                        spec_transaction_begin_commit_rollback
+spec_transaction_with_transaction
+                        spec_transaction_with_transaction
+test_all                Run all tests
+test_arrow              Test Arrow methods
+test_compliance         Test full compliance to DBI
+test_connection         Test the "Connection" class
+test_driver             Test the "Driver" class
+test_getting_started    Getting started with testing
+test_meta               Test metadata functions
+test_result             Test the "Result" class
+test_sql                Test SQL methods
+test_transaction        Test transaction functions
+tweaks                  Tweaks for DBI tests
