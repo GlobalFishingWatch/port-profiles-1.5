@@ -1,5 +1,5 @@
 --------------------------------------
-  -- Query to quantify foreign fishing and carrier vessel visits and unique vessels visiting Madagascar.
+  -- Query to quantify foreign fishing and carrier vessel visits and unique vessels visiting Liberia, Monrovia.
   --
   -- there is a need to identify visits that follow significant voyages
   -- meaning voyages on which some activity occured rather than situations where a
@@ -26,13 +26,12 @@ CREATE TEMP FUNCTION  start_year() AS (2021);
 CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP('2023-12-31 23:59:59 UTC'));
 CREATE TEMP FUNCTION  end_year() AS (2023);
 
-## set port and country (iso) of interest
+## set port and country (iso) of interest - using anchorage list
 -- CREATE TEMP FUNCTION port_label() AS (CAST("CONAKRY" AS STRING));
-CREATE TEMP FUNCTION port_iso() AS (CAST("MDG" AS STRING));
+-- CREATE TEMP FUNCTION port_iso() AS (CAST("LBR" AS STRING));
 
 ## save table if needed:
--- CREATE TABLE `world-fishing-827.scratch_joef.voyages_NGA_2020-22_pipe25` AS
-CREATE TABLE `world-fishing-827.scratch_joef.vessel_list_MDG_2021-23_pipe25` AS
+CREATE TABLE `world-fishing-827.PortsProgramme.LBR_voyages_2021-23` AS
 
 --------------------------------------
 WITH
@@ -43,23 +42,23 @@ WITH
 ----------------------------------------------------------
 
 ----------------------------------------------------------
--- add in vessels not present on vessel list (ie TMT flagged)
+-- add in vessels not present on vessel list (ie TMT flagged) (2020 for the hau yuan fleet voyages arriving in 2020)
 ----------------------------------------------------------
 
---  additional_vessels AS(
---    SELECT DISTINCT
---      ssvid,
---      year,
---      IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
---      '4' as class_confidence,
---      'added_TMT' AS vessel_class,
---      prod_geartype AS gear_type
---     FROM
---      `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
---     WHERE
---      year >= start_year() AND year <= end_year()
---      AND ssvid IN ("412440307", "412440310") -- add additional vessels here
---     ),
+ additional_vessels AS(
+   SELECT DISTINCT
+     ssvid,
+     year,
+     IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
+     '4' as class_confidence,
+     'added_TMT' AS vessel_class,
+     prod_geartype AS gear_type
+    FROM
+     `pipe_ais_v3_published.product_vessel_info_summary_v20240701`
+    WHERE
+     year >= 2020 AND year <= 2023
+     AND ssvid IN ("311040500", "309361000", "636019354", "412483273", "412483274", "412483275", "412483279", "412479022") -- add additional vessels here
+    ),
 
 ----------------------------------------------------------
 -- high/med/low confidence fishing vessels
@@ -78,8 +77,7 @@ WITH
        'fishing' AS vessel_class,
        prod_geartype AS gear_type
      FROM
-      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` -- pipe 3 v is >100K more vessels... 292042
+      `pipe_ais_v3_published.product_vessel_info_summary_v20240701`
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -101,8 +99,7 @@ WITH
       -- IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
       prod_geartype AS gear_type
     FROM
-      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` AS vi_table -- 170648 vessels (without removing high conf)
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table -- 267817 vessels (without removing high conf), 28364 with removing high conf
+      `pipe_ais_v3_published.product_vessel_info_summary_v20240701` AS vi_table
     WHERE
     year >= start_year() AND year <= end_year()
     -- AND on_fishing_list_best -- vi_ssvid approach
@@ -128,10 +125,9 @@ WITH
       IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
       '3' as class_confidence,
       'fishing' AS vessel_class,
-      -- IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary_v20240701` AS vi_table
     WHERE (
       prod_shiptype = 'fishing'
       OR prod_shiptype = 'discrepancy'
@@ -153,9 +149,15 @@ WITH
     ),
 
 ----------------------------------------------------------
--- combined fishing vessel table info - fewer in pipe3 for full lists than 2.5 (570,515 vs 665,945)
+-- combined fishing vessel table info
 ----------------------------------------------------------
   fishing_vessels AS (
+    SELECT
+      *
+    FROM
+      additional_vessels
+    UNION ALL
+
     SELECT
       *
     FROM
@@ -175,7 +177,7 @@ WITH
   ),
 
 ----------------------------------------------------------
--- voyages for all identified fishing vessels - more in pipe3 - ~11.5 mil vs 10.5 mil
+-- voyages for all identified fishing vessels
 ----------------------------------------------------------
   fishing_voyages AS (
     SELECT
@@ -187,7 +189,16 @@ WITH
       FROM
         `pipe_ais_v3_published.voyages_c3`
       WHERE
-        trip_end >= start_date() AND trip_start <= end_date()
+        (trip_end >= start_date() AND trip_start <= end_date())
+        ## manually adding in Hau Yuan Yu fleet voyages arriving in Monrovia (in 2020)
+        OR ( trip_start <= end_date() AND
+        trip_id IN (
+            "412479022-708d6a479-95e6-7d80-7101-1b0239f8a63b-01726628bf70",
+            "412483273-2dfc90329-9cc4-041d-0dae-69e60ef22711-01726621fcf8",
+            "412483274-2186e505a-a159-78d6-2d2c-f111f0e811a1-0172662452a0",
+            "412483275-a26755864-4606-3df7-e1c6-375095ac2cba-0172662519d8",
+            "412483279-1bcb955fd-d7b0-93fb-c1de-71cbacedfa07-01726621f528"
+        ))
         )
     INNER JOIN fishing_vessels
     USING
@@ -195,7 +206,7 @@ WITH
       ),
 
 ----------------------------------------------------------
--- Define lists of high/med/low confidence bunker vessels - more in pipe 3 - 996 vs 403
+-- Define lists of high/med/low confidence bunker vessels
 ----------------------------------------------------------
   nn_bunkers_high_confidence AS (
     SELECT DISTINCT
@@ -207,7 +218,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501` --
+      `pipe_ais_v3_published.vi_ssvid_byyear_v20240701` --
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -216,7 +227,7 @@ WITH
         "bunker_or_tanker" )
       AND ssvid IN (
         SELECT ssvid
-        FROM `pipe_ais_v3_published.identity_core_v20240501`
+        FROM `pipe_ais_v3_published.identity_core_v20240701`
         WHERE is_bunker = TRUE)
   ),
 
@@ -233,7 +244,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501` --
+      `pipe_ais_v3_published.vi_ssvid_byyear_v20240701` --
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -242,12 +253,12 @@ WITH
         "bunker_or_tanker" )
       AND ssvid NOT IN (
         SELECT ssvid
-        FROM `pipe_ais_v3_published.identity_core_v20240501`
+        FROM `pipe_ais_v3_published.identity_core_v20240701`
         WHERE is_bunker = TRUE)
   ),
 
 ---------------------------------------------------------------
--- List of carriers and bunkers according to vessel registries - fewer in pipe 3 - 259 vs 329
+-- List of carriers and bunkers according to vessel registries
 ---------------------------------------------------------------
   reg_bunkers AS (
     SELECT DISTINCT -- generics for flag and gear as there are duplicates in v database which will duplicate voyages
@@ -259,7 +270,7 @@ WITH
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core_v20240501`
+      `pipe_ais_v3_published.identity_core_v20240701`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -269,7 +280,7 @@ WITH
   ),
 
 ----------------------------------------------------------
--- combined bunker table info (14K vs 6K - 3 vs 2.5)
+-- combined bunker table info
 ----------------------------------------------------------
   bunker_vessels AS (
     SELECT
@@ -332,7 +343,7 @@ WITH
         ),
 
 ---------------------------------------------------------------
--- List of carriers according to vessel registries - high confidence - 968 vs 2037 pipe 25
+-- List of carriers according to vessel registries - high confidence
 ---------------------------------------------------------------
   reg_carriers AS (
     SELECT DISTINCT -- generics for flag and gear as there are duplicates in v database which will duplicate voyages
@@ -344,7 +355,7 @@ WITH
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core_v20240501`
+      `pipe_ais_v3_published.identity_core_v20240701`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -367,7 +378,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v20240701`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -388,7 +399,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v20240701`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -398,7 +409,7 @@ WITH
   ),
 
 ----------------------------------------------------------
--- combined carrier table info - 8K vs 5K, 3 vs 2.5
+-- combined carrier table info
 ----------------------------------------------------------
   carrier_vessels AS (
     SELECT
@@ -420,7 +431,7 @@ WITH
   ),
 
 ----------------------------------------------------------
--- voyages for all identified carriers - more in 2.5, 370 vs 320k
+-- voyages for all identified carriers
 ----------------------------------------------------------
   carrier_voyages AS (
     SELECT
@@ -777,17 +788,23 @@ WITH
 -- Identify how many encounters occurred on each voyage
 --------------------------------------
 -- pipe 3
-num_encounters AS (
-  SELECT
-    vessel_id,
-    trip_id,
-    COUNT(*) AS num_encounters
-  FROM (
+ num_encounters AS (
     SELECT
       vessel_id,
-      event_start,
-      event_end
-    FROM `pipe_ais_v3_published.product_events_encounter_v20240531`) enc
+      trip_id,
+      COUNT(*) AS num_encounters
+    FROM (
+      SELECT
+        vessel_id,
+        event_start,
+        event_end,
+        JSON_EXTRACT_SCALAR(event_vessels, "$[0].type") as product_shiptype,
+        -- ## encountered vessel information
+        JSON_EXTRACT_SCALAR(event_vessels, "$[1].type") as enc_product_shiptype,
+        JSON_EXTRACT_SCALAR(event_vessels, "$[1].id") as enc_product_vessel_id,
+        JSON_EXTRACT_SCALAR(event_vessels, "$[1].ssvid") as enc_product_ssvid,
+        start_distance_from_port_km
+      FROM `world-fishing-827.pipe_ais_v3_published.product_events_encounter`) enc
     INNER JOIN (
       SELECT
         vessel_id,
@@ -796,10 +813,14 @@ num_encounters AS (
         trip_end
       FROM
         updated_pan_voyages) voyages
-    USING (vessel_id)
-      WHERE event_start BETWEEN trip_start AND trip_end
-    GROUP BY
-       vessel_id, trip_id
+    USING
+      (vessel_id)
+    WHERE
+      event_start BETWEEN trip_start AND trip_end
+          AND  product_shiptype != 'gear' AND enc_product_shiptype != 'gear'
+          AND start_distance_from_port_km > 10
+      GROUP BY
+        vessel_id, trip_id
     ),
 
 --------------------------------------
@@ -817,26 +838,25 @@ num_encounters AS (
         event_start,
         event_end,
       FROM
-        `pipe_ais_v3_published.product_events_loitering_v20240531`
+        `pipe_ais_v3_published.product_events_loitering`
       WHERE
         seg_id IN (
-        SELECT
-          seg_id
-        FROM
-          `pipe_ais_v3_published.segs_activity`
-        WHERE
-          good_seg IS TRUE
-          AND overlapping_and_short IS FALSE)
-          AND SAFE_CAST(JSON_QUERY(event_info,"$.avg_distance_from_shore_km") AS FLOAT64) > 37.04 -- to match 20 nm rule used in map
-          AND SAFE_CAST(JSON_QUERY(event_info,"$.loitering_hours") AS FLOAT64) > 2
-          AND SAFE_CAST(JSON_QUERY(event_info,"$.avg_speed_knots") AS FLOAT64) < 2) a
+          SELECT
+            seg_id
+          FROM
+            `pipe_ais_v3_published.segs_activity`
+          WHERE
+            good_seg IS TRUE
+            AND overlapping_and_short IS FALSE)
+        AND SAFE_CAST(JSON_QUERY(event_info,"$.avg_distance_from_shore_km") AS FLOAT64) > 37.04 -- to match 20 nm rule
+        AND SAFE_CAST(JSON_QUERY(event_info,"$.loitering_hours") AS FLOAT64) > 4
+        AND SAFE_CAST(JSON_QUERY(event_info,"$.avg_speed_knots") AS FLOAT64) < 2) a
     INNER JOIN (
       SELECT
         vessel_id,
         trip_id,
         trip_start,
-        trip_end,
-        pan_crossing
+        trip_end
       FROM
         updated_pan_voyages) b
     USING
@@ -845,8 +865,8 @@ num_encounters AS (
       event_start BETWEEN trip_start
       AND trip_end
     GROUP BY
-      vessel_id, trip_id
-      ),
+      1,
+      2 ),
 
 --------------------------------------
 -- Identify how many fishing events occurred on each voyage
@@ -863,7 +883,38 @@ num_encounters AS (
         event_start,
         event_end
       FROM
-        `pipe_ais_v3_published.product_events_fishing_v20240531`) a
+        `pipe_ais_v3_published.product_events_fishing`) a
+    INNER JOIN (
+      SELECT
+        vessel_id,
+        trip_id,
+        trip_start,
+        trip_end
+      FROM
+        updated_pan_voyages)
+    USING
+      (vessel_id)
+    WHERE
+      event_start BETWEEN trip_start AND trip_end
+    GROUP BY
+      vessel_id, trip_id
+      ),
+
+--------------------------------------
+-- Identify how many gaps occurred on each voyage
+--------------------------------------
+  num_gaps AS(
+    SELECT
+      vessel_id,
+      trip_id,
+      COUNT(*) AS num_AISdisabling
+    FROM (
+      SELECT
+        vessel_id,
+        event_start,
+        event_end
+      FROM
+        `pipe_ais_v3_published.product_events_ais_disabling`) a
     INNER JOIN (
       SELECT
         vessel_id,
@@ -941,6 +992,25 @@ num_encounters AS (
       1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25),
 
 --------------------------------------
+-- label voyage if it had at least one gap event
+--------------------------------------
+  add_gaps AS (
+    SELECT
+      g.*,
+      h.num_AISdisabling,
+    IF
+      (h.num_AISdisabling > 0, TRUE, FALSE) AS had_AISdisabling
+    FROM
+      add_fishing AS g
+    LEFT JOIN
+      num_gaps h
+    USING
+      (vessel_id,
+        trip_id)
+    GROUP BY
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27),
+
+--------------------------------------
 -- label if voyages represents a 'real' voyage
 -- 'real': TRUE if the start and end
 -- 'port' are different and the voyage
@@ -975,7 +1045,7 @@ num_encounters AS (
       END
         AS true_voyage
       FROM
-        add_fishing)
+        add_gaps)
     WHERE
       true_voyage IS TRUE ),
 
@@ -1012,7 +1082,7 @@ num_encounters AS (
     FROM
       initial_true_voyages
     WHERE
-      EXTRACT(YEAR
+      (EXTRACT(YEAR
       FROM
         trip_end) >= start_year()
       AND EXTRACT(YEAR
@@ -1024,7 +1094,14 @@ num_encounters AS (
       FROM
         poor_vessel_ids
       WHERE
-        poor_id IS FALSE) ),
+        poor_id IS FALSE))
+      OR trip_id IN (
+            "412479022-708d6a479-95e6-7d80-7101-1b0239f8a63b-01726628bf70",
+            "412483273-2dfc90329-9cc4-041d-0dae-69e60ef22711-01726621fcf8",
+            "412483274-2186e505a-a159-78d6-2d2c-f111f0e811a1-0172662452a0",
+            "412483275-a26755864-4606-3df7-e1c6-375095ac2cba-0172662519d8",
+            "412483279-1bcb955fd-d7b0-93fb-c1de-71cbacedfa07-01726621f528")
+        ),
 
 --------------------------------------
 -- Add end anchorage information from GFW ports
@@ -1078,6 +1155,7 @@ num_encounters AS (
 -- minimum event duration
 -- Used to remove visits where the port
 -- stop or port gap are not long enough
+-- currently set to 0 as want to capture all visits for TMT analysis
 --------------------------------------
   has_long_enough_event AS (
     SELECT
@@ -1143,7 +1221,8 @@ num_encounters AS (
       start_longitude,
       num_encounters,
       num_loitering,
-      num_fishing
+      num_fishing,
+      num_AISdisabling
     FROM
       add_visit_end_2
     WHERE
@@ -1175,7 +1254,7 @@ num_encounters AS (
     FROM
       all_voyages
     WHERE
-      end_port_iso3 != vessel_iso3
+      (end_port_iso3 != vessel_iso3
       AND NOT (end_port_iso3 IN (
         SELECT
           iso3
@@ -1186,10 +1265,11 @@ num_encounters AS (
           iso3
         FROM
           is_eu_iso3))
-      AND ssvid NOT IN ("334455660","100001001","721","23456","345","100000016","100000008") -- wrong MMSI number associate with Peru
-  # filter for ports of interest
+      AND ssvid NOT IN ("334455660","100001001","721","23456","345","100000016","100000008")) -- wrong MMSI number associate with Peru
+  # filter for ports of interest -- using anchorages list for Monrovia in this case
+      OR ssvid IN ("311040500", "309361000", "636019354", "412483273", "412483274", "412483275", "412483279", "412479022") -- adding in TMT missing vessels
       -- AND end_port_label IN (port_label()) -- using parameters set at top of code for port and iso
-      AND end_port_iso3 IN (port_iso())
+      -- AND end_port_iso3 IN (port_iso())
       ),
 
 --------------------------------------
@@ -1228,7 +1308,8 @@ num_encounters AS (
       start_longitude,
       num_encounters,
       num_loitering,
-      num_fishing
+      num_fishing,
+      num_AISdisabling
     FROM foreign_voyages )
     JOIN (
       SELECT
@@ -1242,7 +1323,7 @@ num_encounters AS (
         prod_shiptype AS vessel_class_best,
         prod_geartype AS geartype_best
       FROM
-        `pipe_ais_v3_published.product_vessel_info_summary_v20240501`)
+        `pipe_ais_v3_published.product_vessel_info_summary_v20240701`)
       USING
         (vessel_id, year)),
 
@@ -1302,54 +1383,67 @@ num_encounters AS (
       start_longitude,
       num_encounters,
       num_loitering,
-      num_fishing
-    FROM add_vessel_info),
+      num_fishing,
+      num_AISdisabling
+    FROM add_vessel_info)
 
 --------------------------------------
 -- pull voyages ending in port visit in POI
 --------------------------------------
-pull_by_anchorage AS(
-SELECT
-  vessel_id,
-  ssvid,
-  year,
-  shipname,
-  vessel_flag_best,
-  callsign,
-  imo,
-  vessel_class_best,
-  geartype_best,
-  vessel_class_initial,
-  class_confidence_initial,
-  trip_id,
-  trip_start,
-  start_port_iso3,
-  start_port_label,
-  trip_start_confidence,
-  trip_end,
-  end_port_iso3,
-  end_port_label,
-  end_port_sublabel,
-  trip_end_anchorage_id,
-  trip_end_confidence,
-  trip_duration_days,
-  start_portvisit_timestamp,
-  end_portvisit_timestamp,
-  port_event_duration_days,
-  distance_from_shore_m,
-  dock,
-  trip_end_visit_id,
-  start_latitude,
-  start_longitude,
-  num_encounters,
-  num_loitering,
-  num_fishing
-FROM clean_info
-WHERE trip_end_anchorage_id IN(
+-- pull_by_anchorage AS(
   SELECT
-    s2id
-  FROM `scratch_joef.MDG_anchorages_reviewed`
-)
+    vessel_id,
+    CAST(ssvid AS STRING) AS ssvid,
+    year,
+    shipname,
+    vessel_flag_best,
+    callsign,
+    imo,
+    vessel_class_best,
+    geartype_best,
+    vessel_class_initial,
+    class_confidence_initial,
+    trip_id,
+    trip_start,
+    start_port_iso3,
+    start_port_label,
+    trip_start_confidence,
+    trip_end,
+    end_port_iso3,
+    end_port_label,
+    tmt_sublabel,
+    tmt_notes,
+    -- end_port_sublabel,
+    trip_end_anchorage_id,
+    trip_end_confidence,
+    trip_duration_days,
+    start_portvisit_timestamp,
+    end_portvisit_timestamp,
+    port_event_duration_days,
+    distance_from_shore_m,
+    dock,
+    trip_end_visit_id,
+    start_latitude,
+    start_longitude,
+    num_encounters,
+    num_loitering,
+    num_fishing,
+    num_AISdisabling
+  FROM clean_info
+  LEFT JOIN (
+    SELECT
+      s2id,
+      sublabel AS tmt_sublabel,
+      Feedback AS tmt_notes
+    FROM `scratch_joef.LBR_anchorages_checked_with_Liberia`)
+  ON trip_end_anchorage_id = s2id
+  WHERE trip_end_anchorage_id IN(
+    SELECT
+      s2id
+    FROM `scratch_joef.LBR_anchorages_checked_with_Liberia`
+  )
+
+/*
 )
 
 --------------------------------------
