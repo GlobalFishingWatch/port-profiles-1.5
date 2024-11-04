@@ -1,0 +1,36 @@
+Package: ggspatial
+Type: Package
+Title: Spatial Data Framework for ggplot2
+Version: 1.1.9
+Authors@R: c(
+    person("Dewey", "Dunnington",
+           email = "dewey@fishandwhistle.net", 
+           role = c("aut", "cre"), 
+           comment = c(ORCID = "0000-0002-9415-4582")
+    ),
+    person("Brent", "Thorne", role = "ctb", comment = c(ORCID = "0000-0002-1099-3857")),
+    person("Diego", "Hernangómez", role = "ctb", comment = c(ORCID = "0000-0001-8457-4658"))
+  )
+Maintainer: Dewey Dunnington <dewey@fishandwhistle.net>
+Description: Spatial data plus the power of the ggplot2 framework means easier mapping when input 
+  data are already in the form of spatial objects.
+License: GPL-3
+Depends: R (>= 2.10)
+Imports: sf, ggplot2 (>= 3.0.0), rosm (>= 0.2), abind, methods, tibble,
+        scales, tidyr, rlang, grid, glue
+Suggests: prettymapr, knitr, rmarkdown, sp, raster, terra, testthat (>=
+        3.0.0), dplyr, withr, ggrepel, stars, covr, vdiffr, lwgeom
+URL: https://paleolimbot.github.io/ggspatial/,
+        https://github.com/paleolimbot/ggspatial
+BugReports: https://github.com/paleolimbot/ggspatial/issues
+RoxygenNote: 7.2.3
+Encoding: UTF-8
+Config/testthat/edition: 3
+NeedsCompilation: no
+Packaged: 2023-08-15 19:24:53 UTC; deweydunnington
+Author: Dewey Dunnington [aut, cre] (<https://orcid.org/0000-0002-9415-4582>),
+  Brent Thorne [ctb] (<https://orcid.org/0000-0002-1099-3857>),
+  Diego Hernangómez [ctb] (<https://orcid.org/0000-0001-8457-4658>)
+Repository: CRAN
+Date/Publication: 2023-08-17 15:32:38 UTC
+Built: R 4.2.3; ; 2023-11-13 03:46:52 UTC; windows

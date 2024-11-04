@@ -1,0 +1,80 @@
+%lr%                    Helper function for raincloud plots
+GeomFlatViolin          Flat violin ggplot-proto
+add_little_globe        Add little globe with AOI to regional map
+add_logo                Add GFW logo to ggplot object
+box_to_aoi              Convert a bounding box to sf rectangular AOI
+calc_map_center         Calculate center of bounding box
+cell_area               Calculate area of grid cell from latitude and
+                        resolution
+eez_sf                  eez_sf dataset
+effort_data             Effort dataset
+fetchGHdata             Fetch file from github private repo
+fishing_track_review    Function to map vessel track and plot
+                        timeseries of associated track variables
+geom_flat_violin        Hack of geom_violin for a flat half-violin plot
+geom_gfw_eez            Add GFW themed EEZ layer
+geom_gfw_land           Add GFW themed land layer
+geom_gfw_outline        Add GFW themed map outline layer
+get_effort              Get Global Fishing Watch public daily fishing
+                        effort data gridded at 100th degree resolution
+                        by flag state and gear type
+get_effort_mmsi         Get Global Fishing Watch public daily fishing
+                        effort data gridded at 10th degree resolution
+                        by mmsi
+get_encounters          Get encounters for a MMSI or list of MMSIs
+                        within a given time range and/or bounding box
+get_loitering_events    Get loitering events for a MMSI, list of MMSIs,
+                        or a bounding box within a given time range
+get_port_visits         Get port visits for a MMSI or list of MMSIs
+                        within a given time range
+get_vessel_info         Get vessel identity information for an MMSI or
+                        vector of MMSIs
+get_vessel_track        Get the full vessel track for an MMSI between
+                        two dates, including the neural net score for
+                        each position.
+gfw_logo                gfw_logo
+gfw_logo2               gfw_logo2
+gfw_logo2_black         gfw_logo2_black
+gfw_logo2_white         gfw_logo2_white
+gfw_logo_black          gfw_logo_black
+gfw_logo_white          gfw_logo_white
+gfw_map                 Generate a basic map with GFW theme
+gfw_palette             GFW palette generator
+gfw_palettes            Complete list of Global Fishing Watch palettes
+gfw_project_raster      Reproject a raster dataframe
+gfw_projections         Apply a GFW projection
+gfw_query               Run a query on BigQuery
+make_little_globe       Create a little globe with AOI
+make_pkg_proj           Create project or package
+make_track              Convert track into sf object with grouping
+                        variable
+mod_proj                Helper function modifying proj string longitude
+npfc_sf                 npfc_sf
+outline_sf              outline_sf
+plot_donut_chart        Generate a donut chart
+plot_effort             Plot fishing effort or vessel presence
+plot_heatmap            Generate a heatmap
+plot_raincloud          Make a raincloud plot
+plot_timeseries         Make timeseries plots of vessel track variables
+plot_vessel_track       Plot a single vessel track as a map or
+                        timeseries line plot
+plot_vessel_track_fish
+                        Plot single vessel track on map
+proj_shape              Function to project vector objects
+projection_defaults     Default GFW projections
+recenter_raster         Recenter a raster dataframe on new longitude in
+                        Equal Earth projection
+recenter_sf             Recenter a vector shapefile on new longitude in
+                        Equal Earth projection
+shift_center_r          Convert center longitude to cut longitude for
+                        raster recentering
+shift_center_v          Convert center longitude to cut longitude for
+                        vector recentering
+stack_timeseries        Utility function to stack timeseries plots
+theme_gfw               GFW standard ggplot chart theme
+theme_gfw_map           GFW standard map theme
+transform_box           Project an EPSG:4326 (lon/lat) bounding box
+                        into an alternative projection
+vessel_info             Vessel info dataset
+vessel_track            Vessel track dataset
+wcpfc_sf                wcpfc_sf

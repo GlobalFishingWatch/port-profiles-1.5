@@ -1,0 +1,43 @@
+annotate                Annotations supporting NPC
+birch.df                Birch seedlings' size
+compute_npcx            Compute npc coordinates
+dark_or_light           Chose between dark and light color
+geom_grob               Inset graphical objects
+geom_label_npc          Text with Normalised Parent Coordinates
+geom_label_pairwise     Label pairwise comparisons
+geom_label_s            Linked Text
+geom_plot               Inset plots
+geom_point_s            Points linked by a segment
+geom_quadrant_lines     Reference lines: horizontal plus vertical, and
+                        quadrants
+geom_table              Inset tables
+geom_x_margin_arrow     Reference arrows on the margins
+geom_x_margin_grob      Add Grobs on the margins
+geom_x_margin_point     Reference points on the margins
+ggplot                  Create a new ggplot plot from time series data
+ggpp-package            ggpp: Grammar Extensions to 'ggplot2'
+ivy.df                  Ivy photosynthesis light response
+position_dodgenudge     Combined positions dodge and nudge
+position_jitternudge    Combined positions jitter and nudge
+position_nudge_center   Nudge labels away from a central point
+position_nudge_line     Nudge labels away from a line
+position_nudge_to       Nudge labels to new positions
+position_stacknudge     Combined positions stack and nudge
+quadrant_example.df     Gene expression data
+scale_continuous_npc    Position scales for continuous data (npcx &
+                        npcy)
+stat_apply_group        Apply a function to x or y values
+stat_dens1d_filter      Filter observations by local 1D density
+stat_dens1d_labels      Replace labels in data based on 1D density
+stat_dens2d_filter      Filter observations by local 2D density
+stat_dens2d_labels      Replace labels in data based on 2D density
+stat_fmt_tb             Select and slice a tibble nested in 'data'
+stat_functions          Draw functions as curves
+stat_panel_counts       Number of observations in a plot panel
+stat_quadrant_counts    Number of observations in quadrants
+try_data_frame          Convert an R object into a tibble
+ttheme_gtdefault        Table themes
+ttheme_set              Set default table theme
+volcano_example.df      Gene expression data
+weather_18_june_2019.df
+                        Weather data

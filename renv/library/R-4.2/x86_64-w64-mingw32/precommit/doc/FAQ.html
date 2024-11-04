@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>FAQ</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">FAQ</h1>
+
+
+
+<div id="its-broken.-missing-packages-etc.-how-do-i-fix-it" class="section level2">
+<h2>It’s broken. Missing packages etc. How do I fix it?</h2>
+<p>Update the hook revisions with <code>$ pre-commit autoupdate</code>
+or <code>&gt; precommit::autoupdate()</code>. If this does not help,
+please follow the <a href="https://lorenzwalthert.github.io/precommit/dev/articles/precommit.html#update">update
+instructions</a> in the package documentation. If that does not work,
+run <code>$ pre-commit clean</code> to clean the pre-commit cache. Then,
+try again. Although you could also clear the {renv} cache, this should
+only be a strategy of last resort, as it may break other {renv} projects
+on your machine and you’d have to do some re-storing there.</p>
+</div>
+<div id="how-does-it-work-whats-the-magic" class="section level2">
+<h2>How does it work? What’s the magic?</h2>
+<p>No magic. Git <a href="https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks">provides
+a mechanism for pre-commit hooks</a>. Since it’s cumbersome to copy bash
+scripts and keep them updated in some hidden <code>.git/</code>
+directory, people wrote frameworks to basically maintain these files.
+One of them is <a href="https://pre-commit.com">pre-commit.com</a>. So
+you call git to commit, git calls its internal hooks, these hooks (bash
+scripts in the simplest case) are provided by the pre-commit framework.
+And where does pre-commit get all it’s nice hooks from? From us.</p>
+</div>
+<div id="how-are-hooks-accessed-what-happens-if-theres-no-internet-connection" class="section level2">
+<h2>How are hooks accessed? What happens if there’s no internet
+connection?</h2>
+<p>Internet connection is required during installation
+(<code>precommit::install_precommit()</code>) and project initialization
+(<code>precommit::use_precommit()</code>) as well as when hooks are
+updated (<code>precommit::autoupdate()</code>). Otherwise, no internet
+connection is required. During initialization, hooks from this repo will
+be placed in a virtual environment within the user cache and upon
+committing, they are called from a generic hook helper in
+<code>.git/hooks/</code>.</p>
+</div>
+<div id="why-do-some-hooks-not-give-me-the-same-results-as-running-the-command-interactively" class="section level2">
+<h2>Why do some hooks not give me the same results as running the
+command interactively?</h2>
+<p>Note that starting with <code>precommit &gt; 0.1.3</code>, hooks run
+in an isolated <a href="https://rstudio.github.io/renv/"><code>{renv}</code></a>,
+leveraging <a href="https://pre-commit.com/#r">R as a supported
+language</a> in the pre-commit framework. The version of a package you
+use interactively (e.g. <code>{roxygen2}</code> to document) might for
+that reason be different from the one pre-commit uses. The point of
+using pre-commit is to take mental burden off your shoulders (and
+sometimes even caches results for speed), so there is no need to run
+functionality covered by the hooks manually anyways. If you need to know
+which package versions are used, look for the <code>renv.lock</code>
+file in <a href="https://github.com/lorenzwalthert/precommit" class="uri">https://github.com/lorenzwalthert/precommit</a> at the git
+tag specified under <code>rev:</code> in your
+<code>.pre-commit-config.yaml</code>.</p>
+</div>
+<div id="can-you-use-it-outside-rstudio" class="section level2">
+<h2>Can you use it outside RStudio?</h2>
+<p>Yes, all but the <code>open_config()</code> and
+<code>open_wordlist()</code> to open files in RStudio.</p>
+</div>
+<div id="can-i-use-the-hooks-provided-in-this-package-without-installing-the-r-package" class="section level2">
+<h2>Can I use the hooks provided in this package without installing the
+R package?</h2>
+<p>Yes, you don’t need to manually install this package. Although
+technically speaking, this package will get installed into a virtual
+environment isolated from your global and project library.</p>
+</div>
+<div id="how-can-i-make-sure-that-my-contributors-are-using-the-hooks" class="section level2">
+<h2>How can I make sure that my contributors are using the hooks?</h2>
+<p>They must follow the installation instructions in the README,
+i.e. run</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;lorenzwalthert/precommit&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>precommit<span class="sc">::</span><span class="fu">install_precommit</span>()</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>precommit<span class="sc">::</span><span class="fu">use_precommit</span>()</span></code></pre></div>
+<p>The last call can be omitted by users who have <a href="https://pre-commit.com/#automatically-enabling-pre-commit-on-repositories">automatically
+enabled pre-commit hooks</a>.</p>
+<p>To enforce all hooks pass, you can follow the <a href="https://pre-commit.com/#usage-in-continuous-integration">advice on
+how to use pre-commit in a CI/CD setup</a>.</p>
+</div>
+<div id="should-i-list-precommit-as-a-dependency-of-my-package-in-description" class="section level2">
+<h2>Should I list <code>{precommit}</code> as a dependency of my package
+in DESCRIPTION?</h2>
+<p>No, precommit is a dev dependency like <code>{devtools}</code>, so it
+should not be listed in <code>DESCRIPTION</code>.</p>
+</div>
+<div id="what-if-not-all-people-who-are-committing-to-this-repo-want-to-use-the-hooks" class="section level2">
+<h2>What if not all people who are committing to this repo want to use
+the hooks?</h2>
+<p>This is not a problem, git will only run the hooks in a local repo
+after <code>precommit::use_precommit()</code> has been run successfully
+from within this local repo on your machine. You can also uninstall
+anytime with <code>precommit::uninstall_precommit()</code>. Anyone who
+does not want to use the hooks simply should not run
+<code>precommit::use_precommit()</code>. You can also temporarily
+disable hooks using the environment variable <code>SKIP</code> or the
+argument <code>--no-verify</code>, as described <a href="https://pre-commit.com/#temporarily-disabling-hooks">here</a>.</p>
+</div>
+<div id="how-does-one-create-a-new-pre-commit-hook" class="section level2">
+<h2>How does one create a new pre-commit hook?</h2>
+<p>How to contribute new hooks is explained in <a href="https://github.com/lorenzwalthert/precommit/blob/main/CONTRIBUTING.md"><code>CONTRIBUTING.md</code></a>.</p>
+<hr />
+<p>There is more. Check out the documentation of the <a href="https://pre-commit.com">pre-commit</a> framework.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

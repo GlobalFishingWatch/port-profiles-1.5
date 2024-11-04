@@ -1,0 +1,12 @@
+autoupdate              Auto-update your hooks
+install_precommit       Install pre-commit on your system
+open_config             Open pre-commit related files
+path_precommit_exec     Locate the pre-commit executable
+snippet_generate        Generate code snippets
+uninstall_precommit     Uninstall pre-commit
+update_precommit        Update the pre-commit executable
+use_ci                  Use continuous integration with pre-commit
+use_precommit           Get started with pre-commit
+use_precommit_config    Initiate a pre-commit config file
+version_precommit       Retrieve the version of the pre-commit
+                        executable used

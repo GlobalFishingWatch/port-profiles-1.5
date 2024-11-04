@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: An Interface to Google's 'BigQuery' 'API'</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body><div class="container">
+<h1> An Interface to Google's 'BigQuery' 'API'
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;bigrquery&rsquo; version 1.4.2</h2>
+
+<ul><li><a href="../DESCRIPTION">DESCRIPTION file</a>.</li>
+<li><a href="../NEWS">Package NEWS</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="api-dataset.html">api-dataset</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="api-job.html">api-job</a></td>
+<td>BigQuery job: retrieve metadata</td></tr>
+<tr><td style="width: 25%;"><a href="api-project.html">api-project</a></td>
+<td>BigQuery project methods</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">api-table</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="bq_refs.html">as_bq_dataset</a></td>
+<td>S3 classes that reference remote BigQuery datasets, tables and jobs</td></tr>
+<tr><td style="width: 25%;"><a href="bq_field.html">as_bq_field</a></td>
+<td>BigQuery field (and fields) class</td></tr>
+<tr><td style="width: 25%;"><a href="bq_field.html">as_bq_fields</a></td>
+<td>BigQuery field (and fields) class</td></tr>
+<tr><td style="width: 25%;"><a href="bq_refs.html">as_bq_job</a></td>
+<td>S3 classes that reference remote BigQuery datasets, tables and jobs</td></tr>
+<tr><td style="width: 25%;"><a href="bq_refs.html">as_bq_table</a></td>
+<td>S3 classes that reference remote BigQuery datasets, tables and jobs</td></tr>
+<tr><td style="width: 25%;"><a href="bigquery.html">bigquery</a></td>
+<td>BigQuery DBI driver</td></tr>
+<tr><td style="width: 25%;"><a href="bq_auth.html">bq_auth</a></td>
+<td>Authorize bigrquery</td></tr>
+<tr><td style="width: 25%;"><a href="bq_auth_configure.html">bq_auth_configure</a></td>
+<td>Edit and view auth configuration</td></tr>
+<tr><td style="width: 25%;"><a href="bq_refs.html">bq_dataset</a></td>
+<td>S3 classes that reference remote BigQuery datasets, tables and jobs</td></tr>
+<tr><td style="width: 25%;"><a href="api-dataset.html">bq_dataset_create</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="api-dataset.html">bq_dataset_delete</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="api-dataset.html">bq_dataset_exists</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="api-dataset.html">bq_dataset_meta</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="bq_query.html">bq_dataset_query</a></td>
+<td>Submit query to BigQuery</td></tr>
+<tr><td style="width: 25%;"><a href="api-dataset.html">bq_dataset_tables</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="api-dataset.html">bq_dataset_update</a></td>
+<td>BigQuery datasets</td></tr>
+<tr><td style="width: 25%;"><a href="bq_deauth.html">bq_deauth</a></td>
+<td>Clear current token</td></tr>
+<tr><td style="width: 25%;"><a href="bq_field.html">bq_field</a></td>
+<td>BigQuery field (and fields) class</td></tr>
+<tr><td style="width: 25%;"><a href="bq_field.html">bq_fields</a></td>
+<td>BigQuery field (and fields) class</td></tr>
+<tr><td style="width: 25%;"><a href="bq_has_token.html">bq_has_token</a></td>
+<td>Is there a token on hand?</td></tr>
+<tr><td style="width: 25%;"><a href="bq_refs.html">bq_job</a></td>
+<td>S3 classes that reference remote BigQuery datasets, tables and jobs</td></tr>
+<tr><td style="width: 25%;"><a href="api-job.html">bq_job_meta</a></td>
+<td>BigQuery job: retrieve metadata</td></tr>
+<tr><td style="width: 25%;"><a href="api-job.html">bq_job_show_statistics</a></td>
+<td>BigQuery job: retrieve metadata</td></tr>
+<tr><td style="width: 25%;"><a href="api-job.html">bq_job_status</a></td>
+<td>BigQuery job: retrieve metadata</td></tr>
+<tr><td style="width: 25%;"><a href="api-job.html">bq_job_wait</a></td>
+<td>BigQuery job: retrieve metadata</td></tr>
+<tr><td style="width: 25%;"><a href="bq_auth_configure.html">bq_oauth_client</a></td>
+<td>Edit and view auth configuration</td></tr>
+<tr><td style="width: 25%;"><a href="bq_projects.html">bq_projects</a></td>
+<td>List available projects</td></tr>
+<tr><td style="width: 25%;"><a href="api-project.html">bq_project_datasets</a></td>
+<td>BigQuery project methods</td></tr>
+<tr><td style="width: 25%;"><a href="api-project.html">bq_project_jobs</a></td>
+<td>BigQuery project methods</td></tr>
+<tr><td style="width: 25%;"><a href="bq_query.html">bq_project_query</a></td>
+<td>Submit query to BigQuery</td></tr>
+<tr><td style="width: 25%;"><a href="bq_query.html">bq_query</a></td>
+<td>Submit query to BigQuery</td></tr>
+<tr><td style="width: 25%;"><a href="bq_refs.html">bq_table</a></td>
+<td>S3 classes that reference remote BigQuery datasets, tables and jobs</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_copy</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_create</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_delete</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="bq_table_download.html">bq_table_download</a></td>
+<td>Download table data</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_exists</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_fields</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_load</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_meta</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_nrow</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_patch</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_save</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_size</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="api-table.html">bq_table_upload</a></td>
+<td>BigQuery tables</td></tr>
+<tr><td style="width: 25%;"><a href="bq_token.html">bq_token</a></td>
+<td>Produce configured token</td></tr>
+<tr><td style="width: 25%;"><a href="bq_user.html">bq_user</a></td>
+<td>Get info on current user</td></tr>
+<tr><td style="width: 25%;"><a href="bigquery.html">dbConnect-method</a></td>
+<td>BigQuery DBI driver</td></tr>
+<tr><td style="width: 25%;"><a href="bigquery.html">dbi_driver</a></td>
+<td>BigQuery DBI driver</td></tr>
+<tr><td style="width: 25%;"><a href="src_bigquery.html">src_bigquery</a></td>
+<td>A BigQuery data source for dplyr.</td></tr>
+</table>
+</div></body></html>

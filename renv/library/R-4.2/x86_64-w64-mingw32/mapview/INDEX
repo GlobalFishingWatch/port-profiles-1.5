@@ -1,0 +1,28 @@
+breweries               Selected breweries in Franconia
+franconia               Administrative district borders of Franconia
+knit_print.mapview      Print functions for mapview objects used in
+                        knitr
+mapView                 View spatial objects interactively
+mapshot                 Save mapview or leaflet map as HTML and/or
+                        image using webshot
+mapview-class           Class mapview
+mapview-defunct         Defunct functions in mapview
+mapview-package         Interactive viewing of spatial objects in R
+mapviewColors           mapview version of leaflet::color* functions
+mapviewOptions          Global options for the mapview package
+mapviewOutput           Create a mapview UI element for use with shiny
+mapviewWatcher          Start and/or stop automagic mapviewing of
+                        spatial objects in your workspace.
+npts                    count the number of points/vertices/nodes of sf
+                        objects
+ops                     mapview + mapview adds data from the second map
+                        to the first
+print,mapview-method    Method for printing mapview objects
+removeMapJunk           Delete elements from a map.
+renderMapview           Render a mapview widget in shiny
+show,mapview-method     Method for printing mapview objects (show)
+trails                  Selected hiking trails in Franconia
+viewExtent              View extent/bbox of spatial objects
+                        interactively
+viewRGB                 Red-Green-Blue map view of a multi-layered
+                        Raster object

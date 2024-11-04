@@ -1,0 +1,9 @@
+coastlines              world coastlines from Natural Earth
+countries               world country polygons from Natural Earth
+map_units               world map_unit polygons from Natural Earth
+rnaturalearthdata       rnaturalearthdata : World Vector Map Data from
+                        Natural Earth Used in 'rnaturalearth'
+sovereignty             world sovereignty polygons from Natural Earth
+states                  state (admin level 1) polygons from Natural
+                        Earth
+tiny_countries          tiny countries points from Natural Earth

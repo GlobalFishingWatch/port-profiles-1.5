@@ -1,0 +1,53 @@
+Package: rnaturalearth
+Title: World Map Data from Natural Earth
+Version: 0.3.4
+Authors@R: c(
+  person(
+    family = "Massicotte",
+    given = "Philippe",
+    email = "pmassicotte@hotmail.com",
+    role = c("aut", "cre"),
+    comment = c(ORCID = "0000-0002-5919-4116")
+  ),
+  person(
+    family = "South",
+    given = "Andy",
+    email = "southandy@gmail.com",
+    role = c("aut")
+  ),
+  person(
+    family = "Hufkens",
+    given = "Koen",
+    email = "koen.hufkens@gmail.com",
+    role = c("ctb"),
+    comment = c(ORCID = "0000-0002-5070-8109")
+  ))
+Description: Facilitates mapping by making natural earth map data from <https://www.naturalearthdata.com/> more easily available to R users.
+License: MIT + file LICENSE
+LazyData: true
+LazyDataCompression: xz
+Encoding: UTF-8
+URL: https://docs.ropensci.org/rnaturalearth/,
+        https://github.com/ropensci/rnaturalearth
+BugReports: https://github.com/ropensci/rnaturalearth/issues
+Additional_repositories: http://packages.ropensci.org
+Depends: R (>= 3.1.1)
+Imports: sp (>= 1.0.15), utils (>= 3.2.3), sf (>= 0.3-4), httr (>=
+        1.1.0), jsonlite, terra
+Suggests: ggrepel, knitr (>= 1.12.3), testthat (>= 0.9.1), devtools (>=
+        1.10.0), rnaturalearthdata (>= 0.1.0), rnaturalearthhires (>=
+        0.1.0), pbapply, ggplot2, dplyr, purrr, rmarkdown, tmap,
+        lifecycle (>= 1.0.3), rlang
+Config/Needs/website: ropensci/rnaturalearthhires
+VignetteBuilder: knitr
+RoxygenNote: 7.2.3
+NeedsCompilation: no
+Packaged: 2023-08-20 13:13:04 UTC; filoche
+Author: Philippe Massicotte [aut, cre]
+    (<https://orcid.org/0000-0002-5919-4116>),
+  Andy South [aut],
+  Koen Hufkens [ctb] (<https://orcid.org/0000-0002-5070-8109>)
+Maintainer: Philippe Massicotte <pmassicotte@hotmail.com>
+Repository: CRAN
+Date/Publication: 2023-08-21 09:10:02 UTC
+Built: R 4.2.3; ; 2023-11-13 03:21:25 UTC; windows

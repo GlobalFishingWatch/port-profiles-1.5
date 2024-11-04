@@ -1,0 +1,18 @@
+api-dataset             BigQuery datasets
+api-job                 BigQuery job: retrieve metadata
+api-project             BigQuery project methods
+api-table               BigQuery tables
+bigquery                BigQuery DBI driver
+bq_auth                 Authorize bigrquery
+bq_auth_configure       Edit and view auth configuration
+bq_dataset              S3 classes that reference remote BigQuery
+                        datasets, tables and jobs
+bq_deauth               Clear current token
+bq_field                BigQuery field (and fields) class
+bq_has_token            Is there a token on hand?
+bq_projects             List available projects
+bq_query                Submit query to BigQuery
+bq_table_download       Download table data
+bq_token                Produce configured token
+bq_user                 Get info on current user
+src_bigquery            A BigQuery data source for dplyr.

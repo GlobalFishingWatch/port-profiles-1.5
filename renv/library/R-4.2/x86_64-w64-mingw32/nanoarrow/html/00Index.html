@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: Interface to the 'nanoarrow' 'C' Library</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body><div class="container">
+<h1> Interface to the 'nanoarrow' 'C' Library
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;nanoarrow&rsquo; version 0.6.0</h2>
+
+<ul><li><a href="../DESCRIPTION">DESCRIPTION file</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="array_stream_set_finalizer.html">array_stream_set_finalizer</a></td>
+<td>Register an array stream finalizer</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_array.html">as_nanoarrow_array</a></td>
+<td>Convert an object to a nanoarrow array</td></tr>
+<tr><td style="width: 25%;"><a href="infer_nanoarrow_ptype_extension.html">as_nanoarrow_array_extension</a></td>
+<td>Implement Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_array_stream.html">as_nanoarrow_array_stream</a></td>
+<td>Convert an object to a nanoarrow array_stream</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_buffer.html">as_nanoarrow_buffer</a></td>
+<td>Convert an object to a nanoarrow buffer</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_schema.html">as_nanoarrow_schema</a></td>
+<td>Convert an object to a nanoarrow schema</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_vctr.html">as_nanoarrow_vctr</a></td>
+<td>Experimental Arrow encoded arrays as R vectors</td></tr>
+<tr><td style="width: 25%;"><a href="basic_array_stream.html">basic_array_stream</a></td>
+<td>Create ArrayStreams from batches</td></tr>
+<tr><td style="width: 25%;"><a href="convert_array_stream.html">collect_array_stream</a></td>
+<td>Convert an Array Stream into an R vector</td></tr>
+<tr><td style="width: 25%;"><a href="convert_array.html">convert_array</a></td>
+<td>Convert an Array into an R vector</td></tr>
+<tr><td style="width: 25%;"><a href="infer_nanoarrow_ptype_extension.html">convert_array_extension</a></td>
+<td>Implement Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="convert_array_stream.html">convert_array_stream</a></td>
+<td>Convert an Array Stream into an R vector</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_buffer_init.html">convert_buffer</a></td>
+<td>Create and modify nanoarrow buffers</td></tr>
+<tr><td style="width: 25%;"><a href="read_nanoarrow.html">example_ipc_stream</a></td>
+<td>Read/write serialized streams of Arrow data</td></tr>
+<tr><td style="width: 25%;"><a href="infer_nanoarrow_ptype.html">infer_nanoarrow_ptype</a></td>
+<td>Infer an R vector prototype</td></tr>
+<tr><td style="width: 25%;"><a href="infer_nanoarrow_ptype_extension.html">infer_nanoarrow_ptype_extension</a></td>
+<td>Implement Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_schema.html">infer_nanoarrow_schema</a></td>
+<td>Convert an object to a nanoarrow schema</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_allocate_array</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_allocate_array_stream</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_allocate_schema</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_array_init.html">nanoarrow_array_init</a></td>
+<td>Modify nanoarrow arrays</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_array_init.html">nanoarrow_array_modify</a></td>
+<td>Modify nanoarrow arrays</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_array_init.html">nanoarrow_array_set_schema</a></td>
+<td>Modify nanoarrow arrays</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_buffer_init.html">nanoarrow_buffer_append</a></td>
+<td>Create and modify nanoarrow buffers</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_buffer_init.html">nanoarrow_buffer_init</a></td>
+<td>Create and modify nanoarrow buffers</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_extension_array.html">nanoarrow_extension_array</a></td>
+<td>Create Arrow extension arrays</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_extension_spec.html">nanoarrow_extension_spec</a></td>
+<td>Register Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_addr_chr</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_addr_dbl</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_addr_pretty</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_export</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_is_valid</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_move</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_release</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_pointer_is_valid.html">nanoarrow_pointer_set_protected</a></td>
+<td>Danger zone: low-level pointer operations</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_schema.html">nanoarrow_schema_modify</a></td>
+<td>Convert an object to a nanoarrow schema</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_schema.html">nanoarrow_schema_parse</a></td>
+<td>Convert an object to a nanoarrow schema</td></tr>
+<tr><td style="width: 25%;"><a href="as_nanoarrow_vctr.html">nanoarrow_vctr</a></td>
+<td>Experimental Arrow encoded arrays as R vectors</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_version.html">nanoarrow_version</a></td>
+<td>Underlying 'nanoarrow' C library build</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_binary</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_binary_view</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_bool</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_date32</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_date64</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_decimal128</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_decimal256</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_dense_union</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_dictionary</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_double</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_duration</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_extension</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_fixed_size_binary</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_fixed_size_list</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_float</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_half_float</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_int16</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_int32</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_int64</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_int8</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_interval_day_time</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_interval_months</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_interval_month_day_nano</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_large_binary</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_large_list</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_large_string</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_list</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_map</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_na</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_sparse_union</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_string</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_string_view</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_struct</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_time32</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_time64</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_timestamp</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_type</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_uint16</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_uint32</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_uint64</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_type.html">na_uint8</a></td>
+<td>Create type objects</td></tr>
+<tr><td style="width: 25%;"><a href="na_vctrs.html">na_vctrs</a></td>
+<td>Vctrs extension type</td></tr>
+<tr><td style="width: 25%;"><a href="read_nanoarrow.html">read_nanoarrow</a></td>
+<td>Read/write serialized streams of Arrow data</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_extension_spec.html">register_nanoarrow_extension</a></td>
+<td>Register Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_extension_spec.html">resolve_nanoarrow_extension</a></td>
+<td>Register Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="nanoarrow_extension_spec.html">unregister_nanoarrow_extension</a></td>
+<td>Register Arrow extension types</td></tr>
+<tr><td style="width: 25%;"><a href="read_nanoarrow.html">write_nanoarrow</a></td>
+<td>Read/write serialized streams of Arrow data</td></tr>
+</table>
+</div></body></html>

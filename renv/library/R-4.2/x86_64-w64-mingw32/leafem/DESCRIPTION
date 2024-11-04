@@ -1,0 +1,94 @@
+Package: leafem
+Title: 'leaflet' Extensions for 'mapview'
+Version: 0.2.3
+Authors@R: 
+    c(person(given = "Tim",
+             family = "Appelhans",
+             role = c("cre", "aut"),
+             email = "tim.appelhans@gmail.com"),
+      person(given = "Christoph",
+             family = "Reudenbach",
+             role = "ctb",
+             email = "reudenbach@geo.uni-marburg.de"),
+      person(given = "Kenton",
+             family = "Russell",
+             role = "ctb"),
+      person(given = "Jochen",
+             family = "Darley",
+             role = "ctb",
+             email = "Debugger@jedimasters.de"),
+      person(given = "Daniel",
+             family = "Montague",
+             role = c("ctb", "cph"), 
+             comment = "Leaflet.EasyButton plugin"),
+      person(given = "Lorenzo",
+             family = "Busetto",
+             role = c("ctb"), 
+             email = "lbusett@gmail.com"),
+      person(given = "Luigi",
+             family = "Ranghetti",
+             role = c("ctb")),
+      person(given = "Miles",
+             family = "McBain",
+             role = c("ctb")),
+      person(given = "Sebastian",
+             family = "Gatscha",
+             role = "ctb",
+             email = "sebastian_gatscha@gmx.at"),
+      person(given = "Björn",
+             family = "Harrtell",
+             role = c("ctb", "cph"),
+             comment = "FlatGeobuf plugin"),
+      person(given = "Daniel",
+             family = "Dufour",
+             role = c("ctb", "cph"),
+             comment = "georaster-layer-for-leaflet"),
+      person(given = "Yeedle",
+             family = "Neuwirth",
+             role = "ctb"),
+      person(given = "Derek",
+             family = "Friend",
+             role = "ctb",
+             email = "dafriend.r@gmail.com"),
+      person(given = "Kevin",  
+             family = "Cazelles", 
+             role = "ctb",
+             email = "kevin.cazelles@gmail.com", 
+             comment = c(ORCID = "0000-0001-6619-9874")))
+Maintainer: Tim Appelhans <tim.appelhans@gmail.com>
+Description: Provides extensions for packages 'leaflet' & 'mapdeck', 
+    many of which are used by package 'mapview'. 
+    Focus is on functionality readily available in 
+    Geographic Information Systems such as 'Quantum GIS'. Includes functions
+    to display coordinates of mouse pointer position, query image values via 
+    mouse pointer and zoom-to-layer buttons. Additionally, provides a feature 
+    type agnostic function to add points, lines, polygons to a map.
+License: MIT + file LICENSE
+URL: https://github.com/r-spatial/leafem,
+        https://r-spatial.github.io/leafem/
+BugReports: https://github.com/r-spatial/leafem/issues
+Depends: R (>= 3.1.0)
+Imports: base64enc, geojsonsf, htmltools (>= 0.3), htmlwidgets, leaflet
+        (>= 2.0.1), methods, raster, sf, png
+Suggests: clipr, leafgl, lwgeom, mapdeck, plainview, stars
+Encoding: UTF-8
+RoxygenNote: 7.2.3
+NeedsCompilation: no
+Packaged: 2023-09-17 08:29:29 UTC; tim
+Author: Tim Appelhans [cre, aut],
+  Christoph Reudenbach [ctb],
+  Kenton Russell [ctb],
+  Jochen Darley [ctb],
+  Daniel Montague [ctb, cph] (Leaflet.EasyButton plugin),
+  Lorenzo Busetto [ctb],
+  Luigi Ranghetti [ctb],
+  Miles McBain [ctb],
+  Sebastian Gatscha [ctb],
+  Björn Harrtell [ctb, cph] (FlatGeobuf plugin),
+  Daniel Dufour [ctb, cph] (georaster-layer-for-leaflet),
+  Yeedle Neuwirth [ctb],
+  Derek Friend [ctb],
+  Kevin Cazelles [ctb] (<https://orcid.org/0000-0001-6619-9874>)
+Repository: CRAN
+Date/Publication: 2023-09-17 23:40:02 UTC
+Built: R 4.2.3; ; 2023-11-13 03:50:11 UTC; windows

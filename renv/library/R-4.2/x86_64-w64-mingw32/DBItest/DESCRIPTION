@@ -1,0 +1,81 @@
+Package: DBItest
+Title: Testing DBI Backends
+Version: 1.8.1
+Date: 2024-03-31
+Authors@R: c(
+    person("Kirill", "Müller", , "kirill@cynkra.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-1416-3412")),
+    person("RStudio", role = "cph"),
+    person("R Consortium", role = "fnd")
+  )
+Description: A helper that tests DBI back ends for conformity to the
+    interface.
+License: LGPL (>= 2.1)
+URL: https://dbitest.r-dbi.org, https://github.com/r-dbi/DBItest
+BugReports: https://github.com/r-dbi/DBItest/issues
+Depends: R (>= 3.2.0)
+Imports: blob (>= 1.2.0), callr, DBI (>= 1.2.1), desc, hms (>= 0.5.0),
+        lubridate, magrittr, methods, nanoarrow, palmerpenguins, rlang
+        (>= 0.2.0), testthat (>= 2.0.0), utils, withr
+Suggests: clipr, constructive, debugme, devtools, knitr, lintr,
+        pkgload, rmarkdown, RSQLite
+VignetteBuilder: knitr
+Config/Needs/website: r-dbi/dbitemplate
+Config/autostyle/scope: line_breaks
+Config/autostyle/strict: false
+Config/testthat/edition: 3
+Config/Needs/check: decor
+Encoding: UTF-8
+KeepSource: true
+RoxygenNote: 7.3.1
+Collate: 'DBItest.R' 'compat-purrr.R' 'context.R' 'dbi.R' 'dummy.R'
+        'expectations.R' 'generics.R' 'import-dbi.R'
+        'import-testthat.R' 'run.R' 's4.R' 'spec-getting-started.R'
+        'spec-compliance-methods.R' 'spec-driver-constructor.R'
+        'spec-driver-data-type.R' 'spec-connection-data-type.R'
+        'spec-result-create-table-with-data-type.R'
+        'spec-driver-connect.R' 'spec-connection-disconnect.R'
+        'spec-result-send-query.R' 'spec-result-fetch.R'
+        'spec-result-roundtrip.R' 'spec-result-clear-result.R'
+        'spec-result-get-query.R' 'spec-result-send-statement.R'
+        'spec-result-execute.R' 'spec-sql-quote-string.R'
+        'spec-sql-quote-literal.R' 'spec-sql-quote-identifier.R'
+        'spec-sql-unquote-identifier.R' 'spec-sql-read-table.R'
+        'spec-sql-create-table.R' 'spec-sql-append-table.R'
+        'spec-sql-write-table.R' 'spec-sql-list-tables.R'
+        'spec-sql-exists-table.R' 'spec-sql-remove-table.R'
+        'spec-sql-list-objects.R' 'spec-meta-bind-runner.R'
+        'spec-meta-bind-formals.R' 'spec-meta-bind-expr.R'
+        'spec-meta-bind.R' 'spec-meta-bind-arrow.R'
+        'spec-meta-bind-stream.R' 'spec-meta-bind-arrow-stream.R'
+        'spec-meta-bind-.R' 'spec-meta-is-valid.R'
+        'spec-meta-has-completed.R' 'spec-meta-get-statement.R'
+        'spec-meta-get-row-count.R' 'spec-meta-get-rows-affected.R'
+        'spec-transaction-begin-commit-rollback.R'
+        'spec-transaction-with-transaction.R'
+        'spec-arrow-send-query-arrow.R' 'spec-arrow-fetch-arrow.R'
+        'spec-arrow-fetch-arrow-chunk.R' 'spec-arrow-get-query-arrow.R'
+        'spec-arrow-read-table-arrow.R'
+        'spec-arrow-write-table-arrow.R'
+        'spec-arrow-create-table-arrow.R'
+        'spec-arrow-append-table-arrow.R' 'spec-arrow-bind.R'
+        'spec-arrow-roundtrip.R' 'spec-driver-get-info.R'
+        'spec-connection-get-info.R' 'spec-sql-list-fields.R'
+        'spec-meta-column-info.R' 'spec-meta-get-info-result.R'
+        'spec-driver.R' 'spec-connection.R' 'spec-result.R'
+        'spec-sql.R' 'spec-meta.R' 'spec-arrow.R' 'spec-transaction.R'
+        'spec-compliance.R' 'spec-stress-connection.R' 'spec-stress.R'
+        'spec-all.R' 'spec-.R' 'test-all.R' 'test-getting-started.R'
+        'test-driver.R' 'test-connection.R' 'test-result.R'
+        'test-sql.R' 'test-meta.R' 'test-transaction.R' 'test-arrow.R'
+        'test-compliance.R' 'test-stress.R' 'test_backend.R' 'tweaks.R'
+        'utf8.R' 'utils.R' 'zzz.R'
+NeedsCompilation: no
+Packaged: 2024-03-31 09:56:36 UTC; kirill
+Author: Kirill Müller [aut, cre] (<https://orcid.org/0000-0002-1416-3412>),
+  RStudio [cph],
+  R Consortium [fnd]
+Maintainer: Kirill Müller <kirill@cynkra.com>
+Repository: CRAN
+Date/Publication: 2024-03-31 11:00:02 UTC
+Built: R 4.2.3; ; 2024-04-24 02:58:38 UTC; windows

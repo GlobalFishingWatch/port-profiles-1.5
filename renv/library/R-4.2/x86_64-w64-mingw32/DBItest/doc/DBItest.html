@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Kirill Müller" />
+
+
+<title>Testing DBI backends</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Testing DBI backends</h1>
+<h4 class="author">Kirill Müller</h4>
+
+
+
+<p>This document shows how to use the DBItest package when implementing
+a new DBI backend or when applying it to an existing backend. The
+DBItest package provides a large collection of automated tests.</p>
+<div id="testing-a-new-backend" class="section level2">
+<h2>Testing a new backend</h2>
+<p>The test cases in the DBItest package are structured very similarly
+to the sections in the “backend” vignette:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">vignette</span>(<span class="st">&quot;backend&quot;</span>, <span class="at">package =</span> <span class="st">&quot;DBI&quot;</span>)</span></code></pre></div>
+<p>Like the “backend” vignette, this vignette assumes that you are
+implementing the <code>RKazam</code> package that has a
+<code>Kazam()</code> function that creates a new <code>DBIDriver</code>
+instance for connecting to a “Kazam” database.</p>
+<p>You can add the tests in the DBItest package incrementally, as you
+proceed with implementing the various parts of the DBI. The DBItest
+package builds upon the testthat package. To enable it, run the
+following in your package directory (after installing or updating
+<code>devtools</code>):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">use_testthat</span>()</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">use_test</span>(<span class="st">&quot;DBItest&quot;</span>)</span></code></pre></div>
+<p>This creates, among others, a file <code>test-DBItest.R</code> in the
+<code>tests/testthat</code> directory. Replace its entire contents by
+the following:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">make_context</span>(<span class="fu">Kazam</span>(), <span class="cn">NULL</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">test_getting_started</span>()</span></code></pre></div>
+<p>Now test your package with <code>devtools::test()</code>. If you
+followed at least the “Getting started” section of the DBI “backend”
+vignette, all tests should succeed.</p>
+<p>By adding the corresponding test function to your
+<code>tests/test-DBItest.R</code> file <em>before</em> implementing a
+section, you get immediate feedback which functionality of this section
+still needs to be implemented by running <code>devtools::test()</code>
+again. Therefore, proceed by appending the following to
+<code>tests/test-DBItest.R</code>, to include a test case for the
+forthcoming section:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">test_driver</span>()</span></code></pre></div>
+<p>Again, all tests should succeed when you are done with the “Driver”
+section. Add the call to the next tester function, implement the
+following section until all tests succeed, and so forth.</p>
+<p>In this scenario, you are usually interested only in the first error
+the test suite finds. The <code>StopReporter</code> of
+<code>testthat</code> is most helpful here, activate it by passing
+<code>reporter = &quot;stop&quot;</code> to <code>devtools::test()</code>.
+Alternatively, call the relevant <code>DBItest::test_()</code> function
+directly.</p>
+<p>The tests are documented with the corresponding functions: For
+instance, <code>?test_driver</code> shows a coarse description of all
+tests for the “Driver” test case. Test failures will include the name of
+the test that is failing; in this case, investigating the documentation
+or the source code of the DBItest package will usually lead to the cause
+of the error.</p>
+<p>Not all tests can be satisfied: For example, there is one test that
+tests that <code>logical</code> variables survive a write-read roundtrip
+to the database, whereas another test tests that <code>logical</code>
+variables are converted to <code>integer</code> in such a case. Tests
+can be skipped by adding regular expressions for the tests to skip as
+character vector to the call, as in the following<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">test_driver</span>(<span class="at">skip =</span> <span class="fu">c</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="st">&quot;data_type&quot;</span>           <span class="co"># Reason 1...</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="st">&quot;constructor.*&quot;</span>,      <span class="co"># Reason 2...</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="cn">NULL</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>))</span></code></pre></div>
+<p>Some other reasons to skip tests are: - your database does not
+support a feature - you want to postpone or avoid the implementation of
+a feature - the test takes too long to run.</p>
+</div>
+<div id="testing-an-existing-backend" class="section level2">
+<h2>Testing an existing backend</h2>
+<p>For an existing backends, simply enabling all tests may be the
+quickest way to get started. Run the following in your package directory
+(after installing or updating <code>devtools</code>):</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">use_testthat</span>()</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">use_test</span>(<span class="st">&quot;DBItest&quot;</span>)</span></code></pre></div>
+<p>This creates, among others, a file <code>test-DBItest.R</code> in the
+<code>tests/testthat</code> directory. Replace its entire contents by
+the following:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">make_context</span>(<span class="fu">Kazam</span>(), <span class="cn">NULL</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">test_all</span>()</span></code></pre></div>
+<p>The notes about “Kazam” and skipping tests from the previous section
+apply here as well. The <code>test_all()</code> function simply calls
+all test cases.</p>
+</div>
+<div id="external-testing" class="section level2">
+<h2>External testing</h2>
+<p>DBItest is currently geared towards usage as part of a package’s test
+suite. With some effort it is possible to test a database backend
+against a custom database. This can help verify that your database
+installation gives expected results when accessed with DBI with specific
+connection arguments.</p>
+<p>The example below shows how to run tests with the RSQLite
+backend.</p>
+<div id="preparation" class="section level3">
+<h3>Preparation</h3>
+<p>First, we need to define a test context. It contains:</p>
+<ul>
+<li>a connector that describes how to establish the database connection,
+see <code>?DBI::`DBIConnector-class`</code> for details,</li>
+<li>tweaks, see <code>?tweaks</code>,</li>
+<li>tests skipped by default, as a character vector.</li>
+</ul>
+<p>Database backends that use DBItest for testing usually have a file
+<code>test/testthat/helper-DBItest.R</code> or
+<code>test/testthat/test-DBItest.R</code> where a call to
+<code>make_context()</code> can be found. The help for
+<code>make_context()</code> already contains an example that works for
+RSQLite. Adapt it to your needs.</p>
+<p>The <code>make_context()</code> function must be called before any
+tests can run.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">library</span>(DBItest)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>tweaks <span class="ot">&lt;-</span> <span class="fu">tweaks</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">constructor_relax_args =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">placeholder_pattern =</span> <span class="fu">c</span>(<span class="st">&quot;?&quot;</span>, <span class="st">&quot;$1&quot;</span>, <span class="st">&quot;$name&quot;</span>, <span class="st">&quot;:name&quot;</span>),</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">date_cast =</span> <span class="cf">function</span>(x) <span class="fu">paste0</span>(<span class="st">&quot;&#39;&quot;</span>, x, <span class="st">&quot;&#39;&quot;</span>),</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">time_cast =</span> <span class="cf">function</span>(x) <span class="fu">paste0</span>(<span class="st">&quot;&#39;&quot;</span>, x, <span class="st">&quot;&#39;&quot;</span>),</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="at">timestamp_cast =</span> <span class="cf">function</span>(x) <span class="fu">paste0</span>(<span class="st">&quot;&#39;&quot;</span>, x, <span class="st">&quot;&#39;&quot;</span>),</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">logical_return =</span> <span class="cf">function</span>(x) <span class="fu">as.integer</span>(x),</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">date_typed =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>  <span class="at">time_typed =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>  <span class="at">timestamp_typed =</span> <span class="cn">FALSE</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>)</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>default_skip <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;roundtrip_date&quot;</span>, <span class="st">&quot;roundtrip_timestamp&quot;</span>)</span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">make_context</span>(</span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a>  <span class="fu">new</span>(</span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a>    <span class="st">&quot;DBIConnector&quot;</span>,</span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a>    <span class="at">.drv =</span> RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(),</span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a>    <span class="at">.conn_args =</span> <span class="fu">list</span>(<span class="at">dbname =</span> <span class="fu">tempfile</span>(<span class="st">&quot;DBItest&quot;</span>, <span class="at">fileext =</span> <span class="st">&quot;.sqlite&quot;</span>))</span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a>  ),</span>
+<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a>  <span class="at">tweaks =</span> tweaks,</span>
+<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a>  <span class="at">default_skip =</span> default_skip</span>
+<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a>))</span></code></pre></div>
+</div>
+<div id="testing" class="section level3">
+<h3>Testing</h3>
+<p>Use <code>test_all()</code> to run all tests, and
+<code>test_some()</code> to run a specific test that failed previously.
+The <code>test_*</code> functions need to be run with a testthat
+reporter to avoid stopping at the first error or warning. For
+interactive use, the “progress” reporter gives good results. In the
+example below, the “location” and “stop” reporters are combined. Review
+<code>?testthat::Reporter</code> for a list of reporters.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>DBItest<span class="sc">::</span><span class="fu">test_some</span>(<span class="st">&quot;get_query_atomic&quot;</span>)</span></code></pre></div>
+<pre><code>## Test passed</code></pre>
+<p>DBItest relies heavily on metaprogramming. Unfortunately, this means
+that a failing test may give no indication of the reason for the
+failure. The <code>test_some()</code> function now by default integrates
+the new experimental <a href="https://github.com/r-dbi/dblog">dblog
+package</a> package. It prints the DBI code that is executed as the
+tests are run, as seen above.</p>
+<p>Another way to scout for the reason of the problem is to review the
+sources of DBItest and relate the test name (that is printed with each
+failure) with the human-readable specification embedded with the test
+code.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>testthat<span class="sc">::</span><span class="fu">with_reporter</span>(</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  <span class="fu">c</span>(<span class="st">&quot;location&quot;</span>, <span class="st">&quot;fail&quot;</span>),</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  DBItest<span class="sc">::</span><span class="fu">test_some</span>(<span class="st">&quot;get_query_atomic&quot;</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## Start test: DBItest: Result: get_query_atomic
+##    [success]
+##    [success]
+##    [success]
+##    [success]
+##    [success]
+##    [success]
+##    [success]
+## End test: DBItest: Result: get_query_atomic</code></pre>
+</div>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>The terminating <code>NULL</code> allows appending new
+lines to the end by copy-pasting an existing line, without having to
+take care of the terminating comma.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
