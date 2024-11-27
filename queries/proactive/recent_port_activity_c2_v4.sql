@@ -72,7 +72,7 @@ WITH
        prod_geartype AS gear_type
      FROM
       -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` -- pipe 3 v is >100K more vessels... 292042
+      `pipe_ais_v3_published.product_vessel_info_summary_v20241001` -- pipe 3 v is >100K more vessels... 292042
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -93,7 +93,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary_v20241001` AS vi_table
     WHERE
     year >= start_year() AND year <= end_year()
     AND prod_shiptype IN ("fishing")
@@ -121,7 +121,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary_v20241001` AS vi_table
     WHERE (
       prod_shiptype = 'fishing'
       OR prod_shiptype = 'discrepancy'
@@ -173,9 +173,24 @@ WITH
 ----------------------------------------------------------
 -- voyages for all identified fishing vessels
 ----------------------------------------------------------
-  fishing_voyages AS (
+fishing_voyages AS (
     SELECT
-      *
+      voyages.ssvid,
+      voyages.year,
+      voyages.vessel_id,
+      voyages.trip_start,
+      voyages.trip_end,
+      voyages.trip_start_anchorage_id,
+      voyages.trip_end_anchorage_id,
+      voyages.trip_start_visit_id,
+      voyages.trip_end_visit_id,
+      voyages.trip_start_confidence,
+      voyages.trip_end_confidence,
+      voyages.trip_id,
+      fv.vessel_iso3,
+      fv.class_confidence,
+      fv.vessel_class,
+      fv.gear_type
     FROM (
       SELECT
         *,
@@ -185,8 +200,8 @@ WITH
       WHERE
         trip_end BETWEEN start_date() AND end_date()
         AND trip_start < end_date()
-        )
-    INNER JOIN fishing_vessels
+        ) voyages
+    INNER JOIN fishing_vessels fv
     USING
       (ssvid, year)
       ),
@@ -205,7 +220,7 @@ WITH
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core_v20240501`
+      `pipe_ais_v3_published.identity_core_v20241001`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -228,7 +243,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v20241001`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -249,7 +264,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v20241001`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
