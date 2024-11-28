@@ -72,7 +72,7 @@ WITH
        prod_geartype AS gear_type
      FROM
       -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
-      `pipe_ais_v3_published.product_vessel_info_summary_v20241001` -- pipe 3 v is >100K more vessels... 292042
+      `pipe_ais_v3_published.product_vessel_info_summary` -- pipe 3 v is >100K more vessels... 292042
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -93,7 +93,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20241001` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE
     year >= start_year() AND year <= end_year()
     AND prod_shiptype IN ("fishing")
@@ -121,7 +121,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20241001` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE (
       prod_shiptype = 'fishing'
       OR prod_shiptype = 'discrepancy'
@@ -220,7 +220,7 @@ fishing_voyages AS (
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core_v20241001`
+      `pipe_ais_v3_published.identity_core`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -243,7 +243,7 @@ fishing_voyages AS (
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20241001`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -264,7 +264,7 @@ fishing_voyages AS (
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20241001`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
