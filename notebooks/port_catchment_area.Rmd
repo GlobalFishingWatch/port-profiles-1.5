@@ -749,6 +749,39 @@ fishing_gin$lon_bin <- round(fishing_gin$lon_mean/res)*res
 # set plot upper limit
 upper <- 750
 
+# commented out image sizing moifications
+# plot.title = element_text(family = 'Roboto',
+#                           face = 'bold',
+#                           color = '#363c4c',
+#                           size = 18),
+# plot.subtitle = element_text(family = 'Roboto',
+#                              color = '#363c4c',
+#                              size = 16),
+# 
+# strip.text = element_text(family = 'Roboto',
+#                           face = 'bold',
+#                           color = '#363c4c',
+#                           size = 10),
+# legend.text = element_text(family = 'Roboto',
+#                            color = '#848b9b',
+#                            size = 8),
+# legend.title = element_text(family = 'Roboto',
+#                             face = 'bold',
+#                             color = '#363c4c',
+#                             size = 10),
+# legend.position = 'bottom',
+# legend.box = 'vertical',
+# legend.key.height = unit(3, 'mm'),
+# legend.key.width = unit(20,'mm'),
+# axis.title = element_text(family = 'Roboto',
+#                           face = 'bold',
+#                           color = '#848b9b',
+#                           size = 18),
+# axis.text = element_text(family = 'Roboto',
+#                          color = '#848b9b',
+#                          size = 14)
+
+
 # create heatmap for each flag
 chn <- 
   filter(fishing_gin, main_flag == 'CHN') %>%
