@@ -1286,9 +1286,8 @@ WITH
           iso3
         FROM
           is_eu_iso3))
-      --AND ssvid NOT IN ("334455660","100001001","721","23456","345","100000016","100000008") -- wrong MMSI number associate with Peru
-  # filter for ports of interest
-      AND end_port_label NOT IN UNNEST(port_label()) -- using parameters set at top of code for port and iso
+  -- filter for ports of interest
+      AND end_port_label NOT IN UNNEST(port_label())
       AND end_port_iso3 IN (port_iso())
       ),
 

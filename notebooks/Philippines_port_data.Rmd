@@ -127,8 +127,6 @@ non_des_all_data <- fishwatchr::gfw_query(query = glue::glue(combined_q,
 write.csv(non_des_all_data, here::here("data", "PHL", paste('PHL_nondes_full_data_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
-
-
 # Missing voyages Gen San & Davao 
 ## Set up BQ function parameters
 
@@ -140,24 +138,29 @@ end_year <- 2023
 
 port_labels <- '"GENERAL SANTOS", "DAVAO", "TORIL"'
 port_iso <- '"PHL"'
+missing_ssvids <- '"416002494", "416501000", "416532000", "440222000", "510076000", "416002900", "416111500",
+                   "416367000", "416804000", "510100000", "544117120", "352241000"'
+
+
 ```
 
-# identify initial voyages
+# identify initial voyages missed in standard Q
 
 ```{r phl gensan dav mis voyages 2023-24, echo=F, warning=F, include=FALSE}
 # note this in pipe 2.5 as thr old analysis was so keeping all data consistent.
 
-# voyages_q <- readr::read_file(here::here("queries","PHL", "non-des port voyages.sql"))
-# 
-# fishwatchr::gfw_query(query = glue::glue(voyages_q, 
-#                                           start_date = start_date,
-#                                           end_date = end_date,
-#                                           start_year = start_year,
-#                                           end_year = end_year,
-#                                           port_labels = port_labels,
-#                                           port_iso = port_iso),
-#                                  run_query = TRUE,
-#                                  con = con)
+voyages_q <- readr::read_file(here::here("queries","PHL", "mis_ves_voyages_gen_dav.sql"))
+
+fishwatchr::gfw_query(query = glue::glue(voyages_q,
+                                          start_date = start_date,
+                                          end_date = end_date,
+                                          start_year = start_year,
+                                          end_year = end_year,
+                                          port_labels = port_labels,
+                                          port_iso = port_iso, 
+                                          missing_ssvids = missing_ssvids),
+                                 run_query = TRUE,
+                                 con = con)
 
 ```
 
@@ -165,14 +168,14 @@ port_iso <- '"PHL"'
 ```{r phl gensan dav mis voyages events, echo=F, warning=F, include=FALSE}
 # note this in pipe 2.5 as the old analysis was so keeping all data consistent. 
 
-# temp_table_voyages <- '`world-fishing-827.scratch_max.phl_nondes_voyages_temp`'
-# 
-# events_q <- readr::read_file(here::here("queries","PHL", "non-des port events.sql"))
-# 
-# fishwatchr::gfw_query(query = glue::glue(events_q, 
-#                                           temp_table = temp_table_voyages),
-#                                  run_query = TRUE,
-                                 # con = con)
+temp_table_voyages <- '`world-fishing-827.scratch_max.phl_misves_gendav_voyages_temp`'
+
+events_q <- readr::read_file(here::here("queries","PHL", "mis_ves_voyage_events_gen_dav.sql"))
+
+fishwatchr::gfw_query(query = glue::glue(events_q,
+                                          temp_table = temp_table_voyages),
+                                 run_query = TRUE,
+con = con)
 
 ```
 
@@ -180,33 +183,33 @@ port_iso <- '"PHL"'
 ```{r phl gensan dav mis voyages ais cov, echo=F, warning=F, include=FALSE}
 # note this in pipe 2.5 as the old analysis was so keeping all data consistent. 
 
-# cov_q <- readr::read_file(here::here("queries","PHL", "non-des ais cov.sql"))
-# 
-# fishwatchr::gfw_query(query = glue::glue(cov_q, 
-#                                         temp_table = temp_table_voyages,
-#                                         start_date = start_date,
-#                                         end_date = end_date),
-#                                  run_query = TRUE,
-#                                  con = con)
+cov_q <- readr::read_file(here::here("queries","PHL", "mis_ves_ais_cov_gen_dav.sql"))
+
+fishwatchr::gfw_query(query = glue::glue(cov_q,
+                                        temp_table = temp_table_voyages,
+                                        start_date = start_date,
+                                        end_date = end_date),
+                                 run_query = TRUE,
+                                 con = con)
 
 ```
 
 ```{r phl gensan dav mis voyages combined voyage events & cov, echo=F, warning=F, include=FALSE}
 # note this in pipe 2.5 as the old analysis was so keeping all data consistent. 
 
-# temp_table_events <- '`world-fishing-827.scratch_max.phl_nondes_events_temp`'
-# temp_table_cov <-'`world-fishing-827.scratch_max.phl_nondes_ais_cov_temp`'
-# 
-# combined_q <- readr::read_file(here::here("queries","PHL", "non-des combined.sql"))
-# 
-# non_des_all_data <- fishwatchr::gfw_query(query = glue::glue(combined_q, 
-#                                          temp_table_voyages = temp_table_voyages,
-#                                          temp_table_events = temp_table_events,
-#                                          temp_table_cov = temp_table_cov),
-#                                  run_query = TRUE,
-#                                  con = con)$data
-# 
-# write.csv(non_des_all_data, here::here("data", "PHL", paste('PHL_nondes_full_data_', Sys.Date(),".csv", sep='')), row.names=F)
+temp_table_events <- '`world-fishing-827.scratch_max.phl_misves_gendav_events_temp`'
+temp_table_cov <-'`world-fishing-827.scratch_max.phl_misves_gendav_cov_temp`'
+
+combined_q <- readr::read_file(here::here("queries","PHL", "mis_ves_gen_dav_combined.sql"))
+
+mis_ves_gen_dav_data <- fishwatchr::gfw_query(query = glue::glue(combined_q,
+                                         temp_table_voyages = temp_table_voyages,
+                                         temp_table_events = temp_table_events,
+                                         temp_table_cov = temp_table_cov),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+write.csv(mis_ves_gen_dav_data, here::here("data", "PHL", paste('PHL_misves_gen_dav_full_data_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 

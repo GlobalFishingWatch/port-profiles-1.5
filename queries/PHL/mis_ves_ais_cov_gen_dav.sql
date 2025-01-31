@@ -1,3 +1,6 @@
+-- 31/01/2025
+-- ais coverage
+
 ------------------------------------------------------------
 /* AIS coverage for Vessel Voyages in port profile
 Description:
@@ -25,8 +28,7 @@ CREATE TEMP FUNCTION end_timestamp() AS (TIMESTAMP({end_date}));
 --
 ------------------------------------------------------------
 
-
-CREATE TABLE `world-fishing-827.scratch_max.phl_nondes_ais_cov_temp`
+CREATE TABLE `world-fishing-827.scratch_max.phl_misves_gendav_cov_temp`
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ) AS
@@ -72,6 +74,8 @@ voyages_filtered AS (
     LEAST (trip_end, end_timestamp()) AS trip_end,
   FROM trip_ids
   WHERE trip_end >= start_timestamp()
+  -- AND ssvid IN('353033000', '224009000', '225989933') - test examples
+  -- AND ssvid IN('412209173') -- bad coverage test
 ),
 
 ---------------------------------------------------------------------
@@ -84,17 +88,10 @@ messages AS (
   SELECT
     vessel_id,
     timestamp
-  FROM `pipe_production_v20201001.research_messages` a
-  LEFT JOIN (
-    SELECT seg_id, vessel_id FROM `pipe_production_v20201001.segment_info`) b
-  USING (seg_id)
-  WHERE seg_id IN
-    (SELECT seg_id
-      FROM `pipe_production_v20201001.research_segs`
-      WHERE good_seg
-      AND NOT overlapping_and_short
-      )
-  AND _PARTITIONTIME BETWEEN start_timestamp() AND end_timestamp()
+  FROM `world-fishing-827.pipe_ais_v3_published.messages` a
+  WHERE
+  clean_segs = TRUE
+  AND timestamp BETWEEN start_timestamp() AND end_timestamp()
   AND vessel_id IN (SELECT vessel_id FROM trip_ids)
   -- AND ssvid IN('353033000', '224009000', '225989933')- test examples
   -- AND ssvid IN('412209173') -- example of bad coverage
@@ -183,3 +180,7 @@ FROM(
   USING (vessel_id, ssvid, trip_id, trip_start, trip_end, date)
   )
   GROUP BY 1,2,3,4,5
+-- JOIN vessels
+-- USING (vessel_id)
+-- ORDER BY ssvid, date
+
