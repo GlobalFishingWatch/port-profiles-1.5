@@ -20,10 +20,13 @@ CREATE TEMP FUNCTION  start_year() AS ({start_year});
 CREATE TEMP FUNCTION  end_year() AS ({end_year});
 
 ## set port and country (iso) of interest
-CREATE TEMP FUNCTION port_label() AS (CAST({port_label} AS STRING));
+CREATE TEMP FUNCTION port_label()
+RETURNS ARRAY<STRING> AS (
+    [{port_label}]
+);
 CREATE TEMP FUNCTION port_iso() AS (CAST({port_iso} AS STRING));
 
-CREATE TABLE `world-fishing-827.scratch_max.quarterly_summary_temp`
+CREATE TABLE {temp_table}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ) AS
@@ -857,7 +860,7 @@ num_encounters AS (
         FROM
           is_eu_iso3))
   # filter for ports of interest
-      AND end_port_label IN (port_label()) -- using parameters set at top of code for port and iso
+      AND end_port_label IN UNNEST(port_label()) -- using parameters set at top of code for port and iso
       AND end_port_iso3 IN (port_iso())
       ),
 
@@ -1026,4 +1029,5 @@ SELECT
   rfmos,
   fishing_hours
 FROM clean_info
-
+WHERE
+  vessel_flag_best != port_iso()

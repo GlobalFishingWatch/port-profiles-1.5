@@ -30,7 +30,7 @@ WITH
       trip_start,
       trip_end
     --FROM  temp_table()
-    FROM   `world-fishing-827.scratch_max.quarterly_summary_temp`
+    FROM   {temp_table}
     WHERE trip_start != '0001-02-03 00:00:00 UTC'
       AND trip_start <= end_date()
       AND trip_end >= start_date()
@@ -140,8 +140,18 @@ WITH
   ),
 
 -------------------------------------------------------------------------
--- voyages at physical dock defined by a latlon bounding box
+-- find the AIS after the voyage ends for the vessel with a two day window
+-- in_port -> AIS data indicates vessel goes to physical dock defined by a latlon bounding box
 --------------------------------------------------------------------------
+  after_trip_messages AS (
+    SELECT *
+    FROM voyages_filtered
+    LEFT JOIN messages
+    USING (vessel_id)
+    -- filter for AIS messages between the voyage dates +/- 2 days
+    --WHERE timestamp BETWEEN TIMESTAMP_SUB(trip_start, INTERVAL 2 DAY) AND TIMESTAMP_ADD(trip_start, INTERVAL 2 DAY)
+    WHERE timestamp BETWEEN TIMESTAMP_SUB(trip_end, INTERVAL 2 DAY) AND TIMESTAMP_ADD(trip_end, INTERVAL 2 DAY)
+  ),
 
   in_port AS (
     SELECT DISTINCT
@@ -153,7 +163,7 @@ WITH
       lat,
       lon,
       TRUE AS at_dock
-    FROM voyage_messages
+    FROM after_trip_messages
     WHERE
         lat BETWEEN port_lat_min() AND  port_lat_max()
         AND lon BETWEEN port_lon_min() AND  port_lon_max()
@@ -231,7 +241,7 @@ SELECT
   percent_ais_voyage,
   at_dock
 --FROM temp_table()
-FROM `world-fishing-827.scratch_max.quarterly_summary_temp`
+FROM {temp_table}
 LEFT JOIN (
  SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage, at_dock
  FROM ais_coverage) USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
