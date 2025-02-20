@@ -114,7 +114,7 @@ port_lat_min <- 5.265
 port_lat_max <- 5.320
 port_lon_min <- -4.03
 port_lon_max <- -4.01
-#temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp`"
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp`"
   
 voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
                                                     temp_table = temp_table,
@@ -174,6 +174,40 @@ voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
+
+write.csv(voyages_reformat, here::here("data", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+```
+
+
+```{r identity changes from TMT feedback, echo=F, warning=F, include=FALSE}
+tmt_review <- read.csv(here::here("data","proactive", "abidjan_Q3_2024_27Nov2024_tmt_review.csv"), header=T)
+
+# identify vessels for identity changes 
+identity_change <- filter(tmt_review, Action == 'IDENTITY CHANGE')
+
+# standardise the fields
+identity_change$Vessel.type[identity_change$Vessel.type== 'Support vessel'] <- 'purse_seine_support'
+identity_change$Vessel.type[identity_change$Vessel.type== 'Fishing vessel'] <- 'fishing'
+identity_change$Gear.type[identity_change$Gear.type== 'Purse seiner'] <- 'tuna_purse_seines'
+identity_change$Gear.type[identity_change$Gear.type== 'Trawlers'] <- 'trawlers'
+
+# isolate changes
+type_changes <- filter(identity_change, Vessel.type != '')
+gear_changes <- filter(identity_change, Gear.type != '')
+name_changes <- filter(identity_change, Name != '')
+
+# overide values
+# vessel type
+voyages_reformat$vessel_class[!is.na(match(voyages_reformat$MMSI,type_changes$MMSI))] <- type_changes$Vessel.type[na.omit(match(voyages_reformat$MMSI,type_changes$MMSI))]
+
+# gear
+voyages_reformat$vessel_type[!is.na(match(voyages_reformat$MMSI,gear_changes$MMSI))] <- gear_changes$Gear.type[na.omit(match(voyages_reformat$MMSI,gear_changes$MMSI))]
+
+# name
+voyages_reformat$vessel_name[!is.na(match(voyages_reformat$MMSI,name_changes$MMSI))] <- name_changes$Name[na.omit(match(voyages_reformat$MMSI,name_changes$MMSI))]
+
+# add manual overide for new vessel NEW SKY
+voyages_reformat$vessel_name[voyages_reformat$vessel_name == 'NEVSKIY'] <- 'NEW SKY'
 
 write.csv(voyages_reformat, here::here("data", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```

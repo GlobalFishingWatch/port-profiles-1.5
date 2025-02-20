@@ -1,0 +1,484 @@
+---
+title: "Recent port activity Philippines"
+author: "Max Schofield"
+date: "2025-02-04"
+output:
+  html_document:
+    df_print: paged
+  df_print: default
+  html_notebook: null
+highlight: pygments
+toc: yes
+toc_float:
+  toc_collapsed: yes
+toc_depth: 2
+editor_options:
+  chunk_output_type: inline
+---
+
+```{=html}
+<style>
+body {
+text-align: left}
+</style>
+```
+
+# Setup 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, echo=F, warning=F, include=FALSE}
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial") )
+
+# get fishwatch r independently 
+if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+
+# if (!require("extrafont"))
+#   install.packages("extrafont")
+
+# # Unfortunately `extrafont::font_import()` will fail on latest Rttf2pt1 package...
+# # so we need to install old version
+# devtools::install_version("Rttf2pt1", version = "1.3.8")
+# 
+# # Import fonts to R
+# # This will take few minutes
+# extrafont::font_import()
+
+# remove a package causing issues 
+#detach("package:plyr", unload=TRUE)
+```
+
+```{r connection to BQ, echo=F, warning=F, include=FALSE}
+con <- DBI::dbConnect(drv = bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+
+# set parameters for port of interest 
+
+```{r set date parameters, echo=F, warning=F, include=FALSE}
+start_date <- "'2024-10-01 00:00:00 UTC'" 
+end_date <- "'2024-12-31 23:59:59 UTC'"
+year <- 2024
+start_year <- 2024
+end_year <- 2024
+
+
+# file names
+month <- 'Q4'
+country <- 'PHL'
+
+```
+
+```{r set gensan port parameters, echo=F, warning=F, include=FALSE}
+country_iso3 <- "'PHL'"
+port_name <- "'GENERAL SANTOS'"
+port_lat_min <- 6.027
+port_lat_max <- 6.038
+port_lon_min <- 125.140
+port_lon_max <- 125.160
+```
+
+
+```{r voyages all gensan, echo=F, warning=F, include=FALSE}
+
+voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v4.sql"))
+
+fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+```{r voyages ais coverage gensan, echo=F, warning=F, include=FALSE}
+
+ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage.sql"))
+
+# set parameters for the in-dock area of a port (to capture port calls that touch the land as opposed to those where the vessel is in an anchorage)
+
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp`"
+  
+voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    port_lat_min = port_lat_min,
+                                                    port_lat_max = port_lat_max,
+                                                    port_lon_min = port_lon_min,
+                                                    port_lon_max = port_lon_max),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r add gfw hyperlink for voyage gensan, echo=F, warning=F, include=FALSE}
+
+# base componenets for VV string to accompany port profiles 
+base_string_p1 <- 'https://globalfishingwatch.org/map/vessel/'
+base_string_p2 <- '?&start='
+base_string_p3 <- '&end='
+start_date_url <- '2024-10-01'
+end_date_url <- '2024-12-31'
+
+#format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
+
+# paste string components together using vessel id, trip start and trip end from data 
+voyages_url <- bind_cols(voyages_with_coverage, 
+                         vv_url = paste('=HYPERLINK("',
+                          base_string_p1,
+                          voyages_with_coverage$vessel_id, 
+                          base_string_p2, 
+                          as.Date(format(voyages_with_coverage$trip_start, format='%Y-%m-%d'))-2, 
+                          base_string_p3, 
+                          as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
+                          '")', sep=''))
+
+
+```
+
+```{r format the data to TMT format gensan, echo=F, warning=F, include=FALSE}
+# change colnames to be sensible for an externally shared document 
+voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
+   Flag=vessel_flag_best, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, at_dock=at_dock, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   #gaps=1, num_gaps, total_gap_hours)
+
+# overwrite encounters T/F
+voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
+
+# overwrite loitering T/F
+voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
+
+# overwrite fishing T/F
+voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
+
+# overwrite fishing_hs T/F
+voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
+
+write.csv(voyages_reformat, here::here("data", "PHL", paste(country,'_GenSan_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+```
+
+# Davao
+
+```{r set davao port parameters, echo=F, warning=F, include=FALSE}
+country_iso3 <- "'PHL'"
+#port_name <- '"DAVAO", "TORIL"'
+port_name <- '"DAVAO", "TORIL"'
+# set parameters for the in-dock area of a port (to capture port calls that touch the land as opposed to those where the vessel is in an anchorage)
+port_lat_min <- 7.002
+port_lat_max <- 7.006
+port_lon_min <- 125.505
+port_lon_max <- 125.509
+```
+
+
+```{r voyages all davao, echo=F, warning=F, include=FALSE}
+
+voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v4.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp_davao`"
+
+fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+```{r voyages ais coverage davao, echo=F, warning=F, include=FALSE}
+
+ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage.sql"))
+
+voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    port_lat_min = port_lat_min,
+                                                    port_lat_max = port_lat_max,
+                                                    port_lon_min = port_lon_min,
+                                                    port_lon_max = port_lon_max),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r add gfw hyperlink for voyage davao, echo=F, warning=F, include=FALSE}
+
+# base componenets for VV string to accompany port profiles 
+base_string_p1 <- 'https://globalfishingwatch.org/map/vessel/'
+base_string_p2 <- '?&start='
+base_string_p3 <- '&end='
+start_date_url <- '2024-10-01'
+end_date_url <- '2024-12-31'
+
+#format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
+
+# paste string components together using vessel id, trip start and trip end from data 
+voyages_url <- bind_cols(voyages_with_coverage, 
+                         vv_url = paste('=HYPERLINK("',
+                          base_string_p1,
+                          voyages_with_coverage$vessel_id, 
+                          base_string_p2, 
+                          as.Date(format(voyages_with_coverage$trip_start, format='%Y-%m-%d'))-2, 
+                          base_string_p3, 
+                          as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
+                          '")', sep=''))
+
+
+```
+
+```{r format the data to TMT format davao, echo=F, warning=F, include=FALSE}
+# change colnames to be sensible for an externally shared document 
+voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
+   Flag=vessel_flag_best, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, at_dock=at_dock, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   #gaps=1, num_gaps, total_gap_hours)
+
+# overwrite encounters T/F
+voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
+
+# overwrite loitering T/F
+voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
+
+# overwrite fishing T/F
+voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
+
+# overwrite fishing_hs T/F
+voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
+
+write.csv(voyages_reformat, here::here("data", "PHL", paste(country,'_Davao_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+```
+
+
+# Subic
+
+```{r set subic port parameters, echo=F, warning=F, include=FALSE}
+country_iso3 <- "'PHL'"
+port_name <- '"SUBIC", "SUBIC BAY VICINITY", "SEATRIAL", "PH SUBIC", "W IN SUBIC BAY ONLY"'
+# set parameters for the in-dock area of a port (to capture port calls that touch the land as opposed to those where the vessel is in an anchorage)
+port_lat_min <- 14.79
+port_lat_max <- 14.83
+port_lon_min <- 120.26
+port_lon_max <- 120.30
+```
+
+
+```{r voyages all subic, echo=F, warning=F, include=FALSE}
+
+voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v4.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp_subic`"
+
+fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+```{r voyages ais coverage subic, echo=F, warning=F, include=FALSE}
+
+ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage.sql"))
+
+voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    port_lat_min = port_lat_min,
+                                                    port_lat_max = port_lat_max,
+                                                    port_lon_min = port_lon_min,
+                                                    port_lon_max = port_lon_max),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r add gfw hyperlink for voyage subic, echo=F, warning=F, include=FALSE}
+
+# base componenets for VV string to accompany port profiles 
+base_string_p1 <- 'https://globalfishingwatch.org/map/vessel/'
+base_string_p2 <- '?&start='
+base_string_p3 <- '&end='
+start_date_url <- '2024-10-01'
+end_date_url <- '2024-12-31'
+
+#format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
+
+# paste string components together using vessel id, trip start and trip end from data 
+voyages_url <- bind_cols(voyages_with_coverage, 
+                         vv_url = paste('=HYPERLINK("',
+                          base_string_p1,
+                          voyages_with_coverage$vessel_id, 
+                          base_string_p2, 
+                          as.Date(format(voyages_with_coverage$trip_start, format='%Y-%m-%d'))-2, 
+                          base_string_p3, 
+                          as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
+                          '")', sep=''))
+
+
+```
+
+```{r format the data to TMT format subic, echo=F, warning=F, include=FALSE}
+# change colnames to be sensible for an externally shared document 
+voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
+   Flag=vessel_flag_best, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, at_dock=at_dock, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   #gaps=1, num_gaps, total_gap_hours)
+
+# overwrite encounters T/F
+voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
+
+# overwrite loitering T/F
+voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
+
+# overwrite fishing T/F
+voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
+
+# overwrite fishing_hs T/F
+voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
+
+write.csv(voyages_reformat, here::here("data", "PHL", paste(country,'_Subic_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+```
+
+
+# Navotas
+
+```{r set navotas port parameters, echo=F, warning=F, include=FALSE}
+country_iso3 <- "'PHL'"
+port_name <- '"NAVOTAS", "MANILA", "NIUGAN"'
+# set parameters for the in-dock area of a port (to capture port calls that touch the land as opposed to those where the vessel is in an anchorage)
+port_lat_min <- 14.63
+port_lat_max <- 14.65
+port_lon_min <- 120.94
+port_lon_max <- 120.96
+```
+
+
+```{r voyages all navotas, echo=F, warning=F, include=FALSE}
+
+voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v4.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp_navotas`"
+
+fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+```{r voyages ais coverage navotas, echo=F, warning=F, include=FALSE}
+
+ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage.sql"))
+
+voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    port_lat_min = port_lat_min,
+                                                    port_lat_max = port_lat_max,
+                                                    port_lon_min = port_lon_min,
+                                                    port_lon_max = port_lon_max),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r add gfw hyperlink for voyage navotas, echo=F, warning=F, include=FALSE}
+
+# base componenets for VV string to accompany port profiles 
+base_string_p1 <- 'https://globalfishingwatch.org/map/vessel/'
+base_string_p2 <- '?&start='
+base_string_p3 <- '&end='
+start_date_url <- '2024-10-01'
+end_date_url <- '2024-12-31'
+
+#format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
+
+# paste string components together using vessel id, trip start and trip end from data 
+voyages_url <- bind_cols(voyages_with_coverage, 
+                         vv_url = paste('=HYPERLINK("',
+                          base_string_p1,
+                          voyages_with_coverage$vessel_id, 
+                          base_string_p2, 
+                          as.Date(format(voyages_with_coverage$trip_start, format='%Y-%m-%d'))-2, 
+                          base_string_p3, 
+                          as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
+                          '")', sep=''))
+
+
+```
+
+```{r format the data to TMT format navotas, echo=F, warning=F, include=FALSE}
+# change colnames to be sensible for an externally shared document 
+voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
+   Flag=vessel_flag_best, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, at_dock=at_dock, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   #gaps=1, num_gaps, total_gap_hours)
+
+# overwrite encounters T/F
+voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
+
+# overwrite loitering T/F
+voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
+
+# overwrite fishing T/F
+voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
+
+# overwrite fishing_hs T/F
+voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
+
+write.csv(voyages_reformat, here::here("data", "PHL", paste(country,'_Navotas_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+```

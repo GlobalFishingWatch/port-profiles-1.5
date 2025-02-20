@@ -20,10 +20,13 @@ CREATE TEMP FUNCTION  start_year() AS ({start_year});
 CREATE TEMP FUNCTION  end_year() AS ({end_year});
 
 ## set port and country (iso) of interest
-CREATE TEMP FUNCTION port_label() AS (CAST({port_label} AS STRING));
+CREATE TEMP FUNCTION port_label()
+RETURNS ARRAY<STRING> AS (
+    [{port_label}]
+);
 CREATE TEMP FUNCTION port_iso() AS (CAST({port_iso} AS STRING));
 
-CREATE TABLE `world-fishing-827.scratch_max.quarterly_summary_temp`
+CREATE TABLE {temp_table}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ) AS
@@ -72,7 +75,7 @@ WITH
        prod_geartype AS gear_type
      FROM
       -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` -- pipe 3 v is >100K more vessels... 292042
+      `pipe_ais_v3_published.product_vessel_info_summary` -- pipe 3 v is >100K more vessels... 292042
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -93,7 +96,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE
     year >= start_year() AND year <= end_year()
     AND prod_shiptype IN ("fishing")
@@ -121,7 +124,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240401` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE (
       prod_shiptype = 'fishing'
       OR prod_shiptype = 'discrepancy'
@@ -173,9 +176,24 @@ WITH
 ----------------------------------------------------------
 -- voyages for all identified fishing vessels
 ----------------------------------------------------------
-  fishing_voyages AS (
+fishing_voyages AS (
     SELECT
-      *
+      voyages.ssvid,
+      voyages.year,
+      voyages.vessel_id,
+      voyages.trip_start,
+      voyages.trip_end,
+      voyages.trip_start_anchorage_id,
+      voyages.trip_end_anchorage_id,
+      voyages.trip_start_visit_id,
+      voyages.trip_end_visit_id,
+      voyages.trip_start_confidence,
+      voyages.trip_end_confidence,
+      voyages.trip_id,
+      fv.vessel_iso3,
+      fv.class_confidence,
+      fv.vessel_class,
+      fv.gear_type
     FROM (
       SELECT
         *,
@@ -185,8 +203,8 @@ WITH
       WHERE
         trip_end BETWEEN start_date() AND end_date()
         AND trip_start < end_date()
-        )
-    INNER JOIN fishing_vessels
+        ) voyages
+    INNER JOIN fishing_vessels fv
     USING
       (ssvid, year)
       ),
@@ -205,7 +223,7 @@ WITH
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core_v20240501`
+      `pipe_ais_v3_published.identity_core`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -228,7 +246,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -249,7 +267,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240501`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -842,7 +860,7 @@ num_encounters AS (
         FROM
           is_eu_iso3))
   # filter for ports of interest
-      AND end_port_label IN (port_label()) -- using parameters set at top of code for port and iso
+      AND end_port_label IN UNNEST(port_label()) -- using parameters set at top of code for port and iso
       AND end_port_iso3 IN (port_iso())
       ),
 
@@ -1011,4 +1029,5 @@ SELECT
   rfmos,
   fishing_hours
 FROM clean_info
-
+WHERE
+  vessel_flag_best != port_iso()

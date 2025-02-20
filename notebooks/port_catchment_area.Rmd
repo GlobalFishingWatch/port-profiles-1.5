@@ -460,8 +460,8 @@ ggsave(gear_heatmap,
 ```
 
 
-
-# Mombasa 
+# Kenya
+## Mombasa 
 
 ```{r}
 # leave this here but don't apply new maps until the old versions are QA's and fed back to TMT
@@ -534,4 +534,531 @@ ggsave(dakar_fishing_catchment,
        dpi = 600)
 ```
 
+```{r}
+# leave this here but don't apply new maps until the old versions are QA's and fed back to TMT
+
+fishing_before_mombasa <- fishwatchr::gfw_query(
+  here::here("queries", "port_catchment", "port_catchment_example_mom.sql"),
+  run_query = TRUE,
+  con = con
+)$data
+
+bbox <- transform_box(
+  xlim = c(35, 70),
+  ylim = c(-15, 10),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+
+(dakar_fishing_catchment <- fishing_before_mombasa %>%
+    #group_by(port_id,lat_bin,lon_bin) %>%
+    #summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+    #fishwatchr::gfw_project_raster(x = 'lon_bin',
+    #                               y = 'lat_bin',
+    #                               fill = 'fishing_hours',
+    #                               output_crs = bbox$out_crs) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'grey80') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    #scale_fill_gradientn(colors = gfw_palettes$map_effort_dark) +
+    # geom_sf(data = outline %>% sf::st_make_valid(.) %>% 
+    #           sf::st_union(.) %>% 
+    #           sf::st_set_crs(., value = 4326) %>%
+    #           sf::st_transform(., crs = fishwatchr::gfw_projections("Equal Earth")$proj_string),
+    #         fill = NA,
+    #         color = 'orange') + 
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Mombasa, Kenya"))
+)
+
+ggsave(dakar_fishing_catchment, 
+       filename = here::here('outputs','figures','mombasa_fishingcatchment_map_v20230918_no_Ken.pdf'),
+       device = cairo_pdf,
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+
+ggsave(dakar_fishing_catchment, 
+       filename = here::here('outputs','figures','mombasa_fishingcatchment_map_v20230918_no_Ken.png'),
+       device = 'png',
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
+
+# Port Catchment Areas
+## Conakry, Guinea
+
+```{r import map data for Conakry Port Catchment Map, echo=F, include=F, warning=F}
+
+# code to create Conakry data is in github here https://github.com/GlobalFishingWatch/port-profiles-1.5/tree/main/queries/GIN
+# this requires running the voyages, overlapping voyages, events, ais_coverage and combined datasets scropts in that order
+# in this case I have imported the data from ports program google drive for simplicity 
+
+#fishing_gin <- fishwatchr::gfw_query("
+#    SELECT 
+#      *  
+#    FROM `world-fishing-827.scratch_joef.masterlist_conakry_2020-22_pipe25`",
+#  run_query = TRUE,
+#  con = con
+#)$data
+
+
+# this is the import form github datafile
+gin_data <- read.csv(here::here("data","GIN", "Conakry_2020-22_alternateVersion - MasterList.csv"), header=T)
+
+# filter to fishing events only 
+fishing_gin <- filter(gin_data, event_type == 'Fishing')
+
+# create fishing hour values 
+fishing_gin$fishing_hours <- as.numeric(difftime(fishing_gin$event_end, fishing_gin$event_start, units='secs')) / 3600 
+
+```
+
+```{r Port Catchment Map Conakry, echo=F, warning=F}
+# set bounding box limits 
+bbox <- transform_box(
+  xlim = c(-20, -12),
+  ylim = c(12, 7),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+# produce port catchment map
+(conakry_fishing_catchment <- fishing_gin %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Conakry, Guinea"))
+)
+
+# save output as pdf
+ggsave(conakry_fishing_catchment, 
+       filename = here::here('outputs','figures','catchment_maps',paste('conakry_guinea_catchment_map_v',Sys.Date(),'.pdf', sep='')),
+       device = cairo_pdf,
+       width = 150,
+       height = 250,
+       units = 'mm',
+       dpi = 600)
+
+# save output as png
+ggsave(conakry_fishing_catchment, 
+       filename = here::here('outputs','figures','catchment_maps',paste('conakry_guinea_catchment_map_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 150,
+       height = 250,
+       units = 'mm',
+       dpi = 600)
+```
+
+# Heatmap by flag
+
+```{r flag map fishing points, warning=F, echo=F}
+# look at flag distribution 
+table(fishing_gin$vessel_flag_best)
+
+# set key flags and other group
+fishing_gin$main_flag <- fishing_gin$vessel_flag_best
+
+# add other group of the smaller flags
+fishing_gin$main_flag[fishing_gin$main_flag %in% c('ESP', 'GNB', 'GBR', 'SEN', 'TUR', 'UKR', 'VNM')] <- 'Other'
+table(fishing_gin$main_flag)
+
+# look at top flags
+fishing_gin %>% group_by(main_flag) %>% summarise(fishing_events=n()) %>% arrange(desc(fishing_events))
+
+conakry_flag_catchment <- fishing_gin %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+ggplot() +
+  geom_sf(alpha = 1,
+          size = 0.2,
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Dakar, Senegal")) +
+  facet_wrap(~main_flag)
+
+ggsave(conakry_flag_catchment,
+       filename = here::here('outputs','figures','catchment_maps', paste('conakry_flag_catchment_map_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 300,
+       height = 200,
+       units = 'mm',
+       dpi = 600)
+```
+
+```{r flag heatmap conakry, warning=F, echo=F}
+
+# set plotting res for heatmaps
+res <- 0.1
+
+# create binned values
+fishing_gin$lat_bin <- round(fishing_gin$lat_mean/res)*res
+fishing_gin$lon_bin <- round(fishing_gin$lon_mean/res)*res
+
+# set plot upper limit
+upper <- 750
+
+# commented out image sizing moifications
+# plot.title = element_text(family = 'Roboto',
+#                           face = 'bold',
+#                           color = '#363c4c',
+#                           size = 18),
+# plot.subtitle = element_text(family = 'Roboto',
+#                              color = '#363c4c',
+#                              size = 16),
+# 
+# strip.text = element_text(family = 'Roboto',
+#                           face = 'bold',
+#                           color = '#363c4c',
+#                           size = 10),
+# legend.text = element_text(family = 'Roboto',
+#                            color = '#848b9b',
+#                            size = 8),
+# legend.title = element_text(family = 'Roboto',
+#                             face = 'bold',
+#                             color = '#363c4c',
+#                             size = 10),
+# legend.position = 'bottom',
+# legend.box = 'vertical',
+# legend.key.height = unit(3, 'mm'),
+# legend.key.width = unit(20,'mm'),
+# axis.title = element_text(family = 'Roboto',
+#                           face = 'bold',
+#                           color = '#848b9b',
+#                           size = 18),
+# axis.text = element_text(family = 'Roboto',
+#                          color = '#848b9b',
+#                          size = 14)
+
+
+# create heatmap for each flag
+chn <- 
+  filter(fishing_gin, main_flag == 'CHN') %>%
+    group_by(main_flag, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, 
+                    fill = fishing_hours),
+                    #fill = log10(fishing_hours)),
+                    #interpolate = TRUE
+                ) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)
+                       ) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("China"), fill = 'Fishing Hours')
+
+# extract legend from first heatmap
+legend <- get_legend(chn)
+chn_nl <- chn + theme(legend.position="none")
+
+blz <- 
+  filter(fishing_gin, main_flag == 'BLZ') %>%
+    group_by(main_flag, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Belize"), fill = 'Fishing Hours') +
+    theme(legend.position = "none")
+
+ita <- 
+  filter(fishing_gin, main_flag == 'ITA') %>%
+    group_by(main_flag, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Italy"), fill = 'Fishing Hours') +
+    theme(legend.position = "none")
+
+oth <- 
+  filter(fishing_gin, main_flag == 'Other') %>%
+    group_by(main_flag, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Other"), fill = 'Fishing Hours') +
+    theme(legend.position = "none")
+
+# compile individual heatmaps together 
+flag_heatmap <- grid.arrange(
+  chn_nl, blz, ita, oth, legend, 
+  ncol=2, nrow=3,
+  layout_matrix = rbind(c(1,2), c(3,4), c(5,5)),
+  heights = c(0.2, 0.2, 0.05),
+  widths = c(0.1, 0.1), 
+  top=textGrob("Catchment Areas for the top 4 flags, Conakry, Guinea"))
+
+ggsave(flag_heatmap, 
+       filename = here::here('outputs','figures','catchment_maps',paste('conakry_flag_catchment_heatmap_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 350,
+       height = 300,
+       units = 'mm',
+       dpi = 600)
+```
+# Maps by gear
+
+```{r gear heatmap guinea, warning=F, echo=F}
+
+# look at top gears 
+table(fishing_gin$geartype_best)
+
+# set key flags and other group
+fishing_gin$main_gear <- fishing_gin$geartype_best
+
+# add other group of the smaller flags
+fishing_gin$main_gear[fishing_gin$geartype_best %in% c('fishing','inconclusive')] <- 'inc'
+
+# make plotting df
+top_gears <- filter(fishing_gin, main_gear %in% c('inc', 'purse_seines', 'trawlers'))
+
+# check limits
+test_lim <- top_gears %>%
+    group_by(geartype_best, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop')
+quantile(test_lim$fishing_hours)
+
+
+trawl <- 
+  filter(top_gears, main_gear == 'trawlers') %>%
+    group_by(main_gear, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Trawl"), fill = 'Fishing Hours') 
+
+legend_gear <- get_legend(trawl)
+trawl_nl <- trawl + theme(legend.position="none")
+
+ps <- 
+  filter(top_gears, main_gear == 'purse_seines') %>%
+    group_by(main_gear, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Purse Seine"), fill = 'Fishing Hours') +
+    theme(legend.position = "none")
+
+
+
+fishing <- 
+  filter(top_gears, main_gear == 'inc') %>%
+    group_by(main_gear, lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(fishing_hours, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Unspecified Gear"), fill = 'Fishing Hours') +
+    theme(legend.position = "none")
+
+gear_heatmap <- grid.arrange(
+  trawl_nl, ps, legend_gear, 
+  ncol=2, nrow=2,
+  layout_matrix = rbind(c(1,2), c(3,3)),
+  heights = c(0.2, 0.05),
+  widths = c(0.1, 0.1), 
+  top=textGrob("Catchment Areas for the top gears, Conakry, Guinea"))
+
+ggsave(gear_heatmap, 
+       filename = here::here('outputs','figures','catchment_maps',paste('conakry_gear_catchment_heatmap_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 350,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
 
