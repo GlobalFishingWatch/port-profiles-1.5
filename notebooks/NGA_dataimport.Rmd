@@ -1,12 +1,12 @@
 
 ```{r}
-install.packages(c('DBI', 'bigrquery')) # already installed by fishwatchr
+# install.packages(c('DBI', 'bigrquery')) # already installed by fishwatchr
 library(DBI)
 library(bigrquery)
 
-install.packages("bigrquery")
+# install.packages("bigrquery")
 library(bigrquery)
-install.packages("dplyr")
+# install.packages("dplyr")
 library(dplyr)
 library(fishwatchr)
 
