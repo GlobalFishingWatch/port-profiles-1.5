@@ -28,13 +28,15 @@ WITH
       vessel_id,
       ssvid,
       trip_start,
-      trip_end
+      trip_end,
+      start_portvisit_timestamp,
+      end_portvisit_timestamp
     --FROM  temp_table()
     FROM   {temp_table}
     WHERE trip_start != '0001-02-03 00:00:00 UTC'
-      AND trip_start <= end_date()
-      AND trip_end >= start_date()
-    GROUP BY 1,2,3,4,5
+        AND trip_end BETWEEN start_date() AND end_date()
+        AND trip_start < end_date()
+    GROUP BY 1,2,3,4,5,6,7
     ),
 
 ------------------------------------------------------------
@@ -47,6 +49,8 @@ WITH
       ssvid,
       vessel_id,
       trip_id,
+      end_portvisit_timestamp,
+      start_portvisit_timestamp,
       GREATEST (trip_start, start_date()) AS trip_start,
       LEAST (trip_end, end_date()) AS trip_end,
     FROM trip_ids
@@ -143,6 +147,8 @@ WITH
 -- find the AIS after the voyage ends for the vessel with a two day window
 -- in_port -> AIS data indicates vessel goes to physical dock defined by a latlon bounding box
 --------------------------------------------------------------------------
+
+  -- look for near dock movements based on the port end dates
   after_trip_messages AS (
     SELECT *
     FROM voyages_filtered
@@ -150,7 +156,7 @@ WITH
     USING (vessel_id)
     -- filter for AIS messages between the voyage dates +/- 2 days
     --WHERE timestamp BETWEEN TIMESTAMP_SUB(trip_start, INTERVAL 2 DAY) AND TIMESTAMP_ADD(trip_start, INTERVAL 2 DAY)
-    WHERE timestamp BETWEEN TIMESTAMP_SUB(trip_end, INTERVAL 2 DAY) AND TIMESTAMP_ADD(trip_end, INTERVAL 2 DAY)
+    WHERE timestamp BETWEEN start_portvisit_timestamp AND end_portvisit_timestamp
   ),
 
   in_port AS (
@@ -205,6 +211,7 @@ SELECT
   year,
   shipname,
   vessel_flag_best,
+  mmsi_flag,
   callsign,
   imo,
   vessel_class_best,
@@ -243,7 +250,7 @@ SELECT
 --FROM temp_table()
 FROM {temp_table}
 LEFT JOIN (
- SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage, at_dock
+ SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage, at_dock,
  FROM ais_coverage) USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
 
 

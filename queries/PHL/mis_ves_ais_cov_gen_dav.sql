@@ -28,7 +28,8 @@ CREATE TEMP FUNCTION end_timestamp() AS (TIMESTAMP({end_date}));
 --
 ------------------------------------------------------------
 
-CREATE TABLE `world-fishing-827.scratch_max.phl_misves_gendav_cov_temp`
+--CREATE TABLE `world-fishing-827.scratch_max.phl_misves_gendav_cov_temp`
+CREATE TABLE {temp_table3}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ) AS

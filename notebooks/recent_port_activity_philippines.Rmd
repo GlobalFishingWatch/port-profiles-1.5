@@ -100,10 +100,13 @@ port_lon_max <- 125.160
 
 voyages_q <- readr::read_file(here::here("queries","proactive", "recent_port_activity_c2_v4.sql"))
 
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp_gensan`" 
+
 fishwatchr::gfw_query(query = glue::glue(voyages_q, 
                                                     start_date = start_date,
                                                     end_date = end_date,
                                                     year = year,
+                                                    temp_table = temp_table, 
                                                     start_year = start_year,
                                                     end_year = end_year,
                                                     port_label = port_name,
@@ -119,7 +122,7 @@ ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_cove
 
 # set parameters for the in-dock area of a port (to capture port calls that touch the land as opposed to those where the vessel is in an anchorage)
 
-temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp`"
+temp_table <- "`world-fishing-827.scratch_max.quarterly_summary_temp_gensan`"
   
 voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
                                                     temp_table = temp_table,

@@ -212,4 +212,113 @@ mis_ves_gen_dav_data <- fishwatchr::gfw_query(query = glue::glue(combined_q,
 write.csv(mis_ves_gen_dav_data, here::here("data", "PHL", paste('PHL_misves_gen_dav_full_data_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
+# 2024 data for Subic & Navotas
 
+```{r subic & navotas 2024, echo=F, warning=F, include=FALSE}
+# note this in pipe 2.5 as thr old analysis was so keeping all data consistent.
+
+start_date <- "'2024-01-01 00:00:00 UTC'" 
+end_date <- "'2024-12-31 23:59:59 UTC'"
+year <- 2024
+start_year <- 2024
+end_year <- 2024
+
+# file names
+month <- 'Q4'
+country <- 'PHL'
+country_iso3 <- "'PHL'"
+port_name <- "'SUBIC', 'SUBIC BAY VICINITY', 'SEATRIAL', 'PH SUBIC', 'W IN SUBIC BAY ONLY','NAVOTAS', 'MANILA', 'NIUGAN'"
+
+voyages_q <- readr::read_file(here::here("queries","PHL", "dav_sub_voyages_2024.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_temp`"
+  
+fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    temp_table = temp_table,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+
+```{r subic & navotas 2024 voyage events, echo=F, warning=F, include=FALSE}
+# note this in pipe 2.5 as thr old analysis was so keeping all data consistent.
+
+voyages_events_q <- readr::read_file(here::here("queries","PHL", "mis_ves_voyage_events_gen_dav.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_temp`"
+temp_table2 <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_events`"
+
+fishwatchr::gfw_query(query = glue::glue(voyages_events_q, 
+                                                    temp_table = temp_table,
+                                                    temp_table2 = temp_table2,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+
+```{r subic & navotas 2024 voyage ais cov, echo=F, warning=F, include=FALSE}
+# note this in pipe 2.5 as thr old analysis was so keeping all data consistent.
+
+ais_cov_q <- readr::read_file(here::here("queries","PHL", "mis_ves_ais_cov_gen_dav.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_temp`"
+temp_table2 <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_events`"
+temp_table3 <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_ais_cov`"
+
+fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
+                                                    temp_table = temp_table,
+                                                    temp_table2 = temp_table2,
+                                                    temp_table3 = temp_table3,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+```
+
+```{r subic & navotas 2024 voyages combined, echo=F, warning=F, include=FALSE}
+# note this in pipe 2.5 as thr old analysis was so keeping all data consistent.
+
+combined_q <- readr::read_file(here::here("queries","PHL", "mis_ves_gen_dav_combined.sql"))
+
+temp_table <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_temp`"
+temp_table2 <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_events`"
+temp_table3 <- "`world-fishing-827.scratch_max.dav_sub_2024_voyages_ais_cov`"
+
+sub_nav_combined <- fishwatchr::gfw_query(query = glue::glue(combined_q, 
+                                                    temp_table_voyages = temp_table,
+                                                    temp_table_events = temp_table2,
+                                                    temp_table_cov = temp_table3,
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    year = year,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    port_label = port_name,
+                                                    port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+write.csv(sub_nav_combined, here::here("data", "PHL", paste('PHL_nav_sub_2024_full_data_', Sys.Date(),".csv", sep='')), row.names=F)
+```

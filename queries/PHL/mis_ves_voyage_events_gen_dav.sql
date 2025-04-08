@@ -1,7 +1,7 @@
 # 31/01/2025
 #  events for the missing voyages table
 
-CREATE TABLE `world-fishing-827.scratch_max.phl_misves_gendav_events_temp`
+CREATE TABLE {temp_table2}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ) AS
