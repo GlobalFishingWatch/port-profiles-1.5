@@ -859,7 +859,7 @@ num_encounters AS (
           iso3
         FROM
           is_eu_iso3))
-  # filter for ports of interest
+  -- filter for ports of interest
       AND end_port_label IN UNNEST(port_label()) -- using parameters set at top of code for port and iso
       AND end_port_iso3 IN (port_iso())
       ),
@@ -915,10 +915,11 @@ num_encounters AS (
         callsign,
         imo,
         gfw_best_flag AS vessel_flag_best,
+        mmsi_flag,
         prod_shiptype AS vessel_class_best,
         prod_geartype AS geartype_best
       FROM
-        `pipe_ais_v3_published.product_vessel_info_summary_v20240501`)
+        `pipe_ais_v3_published.product_vessel_info_summary`)
       USING
         (vessel_id, year)),
 
@@ -937,6 +938,9 @@ num_encounters AS (
       FIRST_VALUE (vessel_flag_best) OVER (
         PARTITION BY ssvid, year
         ORDER BY vessel_flag_best DESC) AS vessel_flag_best,
+      FIRST_VALUE (mmsi_flag) OVER (
+        PARTITION BY ssvid, year
+        ORDER BY vessel_flag_best DESC) AS mmsi_flag,
       FIRST_VALUE (callsign) OVER (
         PARTITION BY ssvid, year
         ORDER BY callsign DESC) AS callsign,
@@ -995,6 +999,7 @@ SELECT
   year,
   shipname,
   vessel_flag_best,
+  mmsi_flag,
   callsign,
   imo,
   vessel_class_best,
@@ -1030,4 +1035,5 @@ SELECT
   fishing_hours
 FROM clean_info
 WHERE
-  vessel_flag_best != port_iso()
+  mmsi_flag != port_iso()
+  --vessel_flag_best != port_iso()
