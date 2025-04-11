@@ -52,6 +52,12 @@ setdiff(NGA_anchorages_corrected$s2id, NGA_anchorages_all$s2id)
 
 
 
+```{r} 
+
+Nigeria_2021_23_portprofiledata_MasterList <- read.csv2(file = here::here("data", "NGA", "Nigeria_2021_23_MasterList.csv"), sep = ",",)
+
+
+```
 
 
 
