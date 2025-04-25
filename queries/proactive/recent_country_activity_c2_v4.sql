@@ -20,6 +20,11 @@ CREATE TEMP FUNCTION  year() AS ({year});
 ## set port and country (iso) of interest
 CREATE TEMP FUNCTION port_iso() AS (CAST({port_iso} AS STRING));
 
+CREATE TEMP FUNCTION extra_ids()
+RETURNS ARRAY<STRING> AS (
+    [{missing_ssvids}]
+);
+
 CREATE TABLE {temp_table}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
@@ -31,20 +36,20 @@ WITH
 -- add in vessels missing from analysis e.g. identified by TMT QA or local partner insights
 ----------------------------------------------------------
 
-  -- additional_vessels AS(
-  --   SELECT DISTINCT
-  --     ssvid,
-  --     year,
-  --     IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
-  --     '4' as class_confidence,
-  --     'added_TMT' AS vessel_class,
-  --     prod_geartype AS gear_type
-  --    FROM
-  --     `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
-  --    WHERE
-  --     year <= year()
-  --     AND ssvid IN ("412209169", "412209178", "412209208", "412329514", "412331135", "412331136", "412440647", "412660240", "636013651", "412549434", "416007496", "271073172", "412420882", "412440842", "654000012") -- add additional vessels here
-  --    ),
+   additional_vessels AS(
+     SELECT DISTINCT
+       ssvid,
+       year,
+       IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
+       '4' as class_confidence,
+       'added_TMT' AS vessel_class,
+       prod_geartype AS gear_type
+      FROM
+       `pipe_ais_v3_published.product_vessel_info_summary`
+      WHERE
+       year <= year()
+       AND ssvid IN UNNEST(extra_ids()) -- add additional vessels here
+      ),
 
 ----------------------------------------------------------
 -- Define lists of high/med/low confidence for all fishing-related vessels
@@ -144,11 +149,11 @@ WITH
 -- combined fishing vessel table info
 ----------------------------------------------------------
   fishing_vessels AS (
-    -- SELECT
-    --   *
-    -- FROM
-    --   additional_vessels
-    -- UNION ALL
+     SELECT
+       *
+     FROM
+       additional_vessels
+     UNION ALL
 
     SELECT
       *
@@ -330,7 +335,7 @@ fishing_voyages AS (
       ON voyages.ssvid = carriers.ssvid
       -- filtering for trips that end within active phase of vessel id
       -- note that if end_date of period of interest is less than 2 months past vi_ssvid date, some voyages will be missed due to GFW dataset timing
-        AND voyages.trip_end >= carriers.first_timestamp AND voyages.trip_end <= carriers.last_timestamp
+      -- AND voyages.trip_end >= carriers.first_timestamp AND voyages.trip_end <= carriers.last_timestamp
         )
         ),
 
@@ -710,13 +715,36 @@ num_encounters AS (
       (trip_end_anchorage_id)),
 
 --------------------------------------
+-- create list of anchorages where the vessel has stopped in the visit
+--------------------------------------
+  anchorage_stops AS (
+      SELECT
+        *
+      FROM
+        add_visit_end_1
+      LEFT JOIN (
+        SELECT
+          visit_id AS trip_end_visit_id,
+          STRING_AGG(DISTINCT e.anchorage_id, ', ') AS stop_anchorage_ids
+        FROM
+          `world-fishing-827.pipe_ais_v3_published.port_visits`,
+          UNNEST (events) AS e
+        WHERE
+          end_timestamp > TIMESTAMP("2025-01-01")
+          AND visit_id IN (SELECT trip_end_visit_id FROM add_visit_end_1)
+          AND e.event_type = 'PORT_STOP_BEGIN'
+        GROUP BY 1
+      ) USING (trip_end_visit_id)
+  ),
+
+--------------------------------------
 -- Add end timestamp to end port visits
 --------------------------------------
   add_visit_end_2 AS (
     SELECT
       *
     FROM
-      add_visit_end_1
+      anchorage_stops
     INNER JOIN (
       SELECT
         visit_id AS trip_end_visit_id,
@@ -803,6 +831,7 @@ num_encounters AS (
       distance_from_shore_m,
       dock,
       trip_end_visit_id,
+      stop_anchorage_ids,
       start_latitude,
       start_longitude,
       num_encounters,
@@ -891,6 +920,7 @@ num_encounters AS (
       distance_from_shore_m,
       dock,
       trip_end_visit_id,
+      stop_anchorage_ids,
       start_latitude,
       start_longitude,
       num_encounters,
@@ -973,6 +1003,7 @@ num_encounters AS (
       distance_from_shore_m,
       dock,
       trip_end_visit_id,
+      stop_anchorage_ids,
       start_latitude,
       start_longitude,
       num_encounters,
@@ -1020,6 +1051,7 @@ SELECT
   distance_from_shore_m,
   dock,
   trip_end_visit_id,
+  stop_anchorage_ids,
   start_latitude,
   start_longitude,
   num_encounters,

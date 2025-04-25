@@ -26,6 +26,11 @@ RETURNS ARRAY<STRING> AS (
 );
 CREATE TEMP FUNCTION port_iso() AS (CAST({port_iso} AS STRING));
 
+CREATE TEMP FUNCTION extra_ids()
+RETURNS ARRAY<STRING> AS (
+    [{missing_ssvids}]
+);
+
 CREATE TABLE {temp_table}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
@@ -37,20 +42,20 @@ WITH
 -- add in vessels missing from analysis e.g. identified by TMT QA or local partner insights
 ----------------------------------------------------------
 
-  -- additional_vessels AS(
-  --   SELECT DISTINCT
-  --     ssvid,
-  --     year,
-  --     IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
-  --     '4' as class_confidence,
-  --     'added_TMT' AS vessel_class,
-  --     prod_geartype AS gear_type
-  --    FROM
-  --     `pipe_production_v20201001.all_vessels_byyear_v2_v20231201` -- **** update to pipe 3 when released ******
-  --    WHERE
-  --     year <= year()
-  --     AND ssvid IN ("412209169", "412209178", "412209208", "412329514", "412331135", "412331136", "412440647", "412660240", "636013651", "412549434", "416007496", "271073172", "412420882", "412440842", "654000012") -- add additional vessels here
-  --    ),
+   additional_vessels AS(
+     SELECT DISTINCT
+       ssvid,
+       year,
+       IFNULL(IFNULL(gfw_best_flag, core_flag), mmsi_flag) AS vessel_iso3,
+       '4' as class_confidence,
+       'added_TMT' AS vessel_class,
+       prod_geartype AS gear_type
+      FROM
+       `pipe_ais_v3_published.product_vessel_info_summary` -
+      WHERE
+       year <= year()
+       AND ssvid IN (extra_ids()) -- add additional vessels here
+      ),
 
 ----------------------------------------------------------
 -- Define lists of high/med/low confidence for all fishing-related vessels
@@ -150,11 +155,11 @@ WITH
 -- combined fishing vessel table info
 ----------------------------------------------------------
   fishing_vessels AS (
-    -- SELECT
-    --   *
-    -- FROM
-    --   additional_vessels
-    -- UNION ALL
+     SELECT
+       *
+     FROM
+       additional_vessels
+     UNION ALL
 
     SELECT
       *

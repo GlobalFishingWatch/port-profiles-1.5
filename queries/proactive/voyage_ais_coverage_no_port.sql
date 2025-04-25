@@ -5,18 +5,6 @@
 --# use a temp table for storage
 --CREATE TEMP FUNCTION  temp_table() AS ({temp_table});
 
-# set port lat and lon for 'in port'
-CREATE TEMP FUNCTION  port_lat_min() AS ({port_lat_min});
-CREATE TEMP FUNCTION  port_lat_max() AS ({port_lat_max});
-CREATE TEMP FUNCTION  port_lon_min() AS ({port_lon_min});
-CREATE TEMP FUNCTION  port_lon_max() AS ({port_lon_max});
-
-CREATE TEMP FUNCTION  port_lat_min2() AS ({port_lat_min2});
-CREATE TEMP FUNCTION  port_lat_max2() AS ({port_lat_max2});
-CREATE TEMP FUNCTION  port_lon_min2() AS ({port_lon_min2});
-CREATE TEMP FUNCTION  port_lon_max2() AS ({port_lon_max2});
-
-
 # voyages will be truncated to this start timestamp, if needed
 CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP({start_date}));
 --
@@ -149,54 +137,6 @@ WITH
     GROUP BY 1,2,3,4,5,6
   ),
 
--------------------------------------------------------------------------
--- find the AIS after the voyage ends for the vessel with a two day window
--- in_port -> AIS data indicates vessel goes to physical dock defined by a latlon bounding box
---------------------------------------------------------------------------
-
-  -- look for near dock movements based on the port end dates
-  after_trip_messages AS (
-    SELECT *
-    FROM voyages_filtered
-    LEFT JOIN messages
-    USING (vessel_id)
-    -- filter for AIS messages between the voyage dates +/- 2 days
-    --WHERE timestamp BETWEEN TIMESTAMP_SUB(trip_start, INTERVAL 2 DAY) AND TIMESTAMP_ADD(trip_start, INTERVAL 2 DAY)
-    WHERE timestamp BETWEEN start_portvisit_timestamp AND end_portvisit_timestamp
-  ),
-
-  in_port AS (
-    SELECT DISTINCT
-      vessel_id,
-      ssvid,
-      trip_id,
-      trip_start,
-      trip_end,
-      lat,
-      lon,
-      TRUE AS at_dock_p1
-    FROM after_trip_messages
-    WHERE
-        lat BETWEEN port_lat_min() AND  port_lat_max()
-        AND lon BETWEEN port_lon_min() AND  port_lon_max()
-  ),
-
-
-  in_port2 AS (
-    SELECT DISTINCT
-      vessel_id,
-      ssvid,
-      trip_id,
-      trip_start,
-      trip_end,
-      lat,
-      lon,
-      TRUE AS at_dock_p2
-    FROM after_trip_messages
-    WHERE
-        lat BETWEEN port_lat_min2() AND  port_lat_max2()
-        AND lon BETWEEN port_lon_min2() AND  port_lon_max2()
-  ),
 
 -------------------------------------------------------------------------
 -- join voyage hours with ais hours and group by voyage for by voyage metrics
@@ -210,8 +150,6 @@ ais_coverage AS(
     trip_id,
     trip_start,
     trip_end,
-    at_dock_p1,
-    at_dock_p2,
     sum(n_voyage_hours) AS total_voyage_h,
     sum(n_ais_hours) AS total_ais_h,
     ROUND(sum(n_ais_hours) / sum(n_voyage_hours) * 100, 1) as percent_ais_voyage,
@@ -224,9 +162,7 @@ ais_coverage AS(
       voyages_ais_hours
     USING (vessel_id, ssvid, trip_id, trip_start, trip_end, date)
     )
-    LEFT JOIN in_port USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
-    LEFT JOIN in_port2 USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
-  GROUP BY 1,2,3,4,5,6,7)
+  GROUP BY 1,2,3,4,5)
 
 
 SELECT
@@ -271,13 +207,10 @@ SELECT
   rfmos,
   fishing_hours,
   percent_ais_voyage,
-  at_dock_p1,
-  at_dock_p2,
 --FROM temp_table()
 FROM {temp_table}
 LEFT JOIN (
- SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage, at_dock_p1,
-    at_dock_p2,
+ SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage
  FROM ais_coverage) USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
 
 
