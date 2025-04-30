@@ -32,7 +32,7 @@ load_or_install_libraries <- function(x){
 }
 
 #  Then try/install packages...
-load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial") )
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "ggrepel") )
 
 # get fishwatch r independently 
 if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
@@ -153,7 +153,7 @@ port_stops <- voyages_url %>%
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
 voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
-   Flag=vessel_flag_best, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
+   Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
    end_port = end_port_label, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
@@ -174,59 +174,191 @@ voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE,
 write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
-```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
+```{r update changes for CIV, echo=F, warning=F, include=FALSE}
 # pull in TMT review data from Matt
 tmt_civ <- read.csv(here::here("data","2025_q1", "TMT_feedback", "CIV - Q1 2025.csv"), header=T)
 
-# make MMSI character for joining 
+# make MMSI char for joining 
 tmt_civ$MMSI <- as.character(tmt_civ$MMSI)
 
-# standardise gear changes 
-gear_changes <- filter(tmt_civ, Gear_type != "")
-gear_changes$Gear_type[gear_changes$Gear_type == "Tuna purse seine"] <- "tuna_purse_seines"
-gear_changes$Gear_type[gear_changes$Gear_type == "Trawl"] <- "trawlers"
-gear_changes$Gear_type[gear_changes$Gear_type == "Drifting longline"] <- "drifting_longlines"
+# drop rows with action to remove 
+tmt_civ_ret <- tmt_civ %>% filter(!str_detect(Action, "REMOVE"))
 
-# join on MMSI replace if needed 
+# standardise gear changes 
+gear_changes <- filter(tmt_civ_ret, Gear.type != "")
+
 gear_corrected <- voyages_reformat %>%
   left_join(
-    gear_changes %>% 
-      select(MMSI, Gear_type) %>%
+    gear_changes %>%
+      select(MMSI, new_vt = vessel_type) %>%
       distinct(MMSI, .keep_all = TRUE),
     by = "MMSI") %>%
-  mutate(vessel_type = ifelse(!is.na(Gear_type), Gear_type, vessel_type)) %>%
-  select(-Gear_type)
+  mutate(vessel_type = ifelse(!is.na(new_vt), new_vt, vessel_type)) %>%
+  select(-new_vt)
 
 # standardise type changes 
-ves_changes <- filter(tmt_gha, vessel_class == "other")
-ves_changes$Master_type[ves_changes$Master_type == "Refrigerated Cargo Ship"] <- "carrier"
-ves_changes$Master_type[ves_changes$Master_type == "Fishing vessel"] <- "fishing"
+type_changes <- filter(tmt_civ_ret, Vessel.type != "")
 
-# join on MMSI replace if needed 
-class_corrected <- gear_corrected %>%
+type_corrected <- gear_corrected %>%
   left_join(
-      ves_changes %>% 
-      select(MMSI, Master_type) %>%
-      distinct(MMSI, .keep_all = TRUE),  
+    type_changes %>%
+      select(MMSI, new_vc = vessel_class_cat) %>%
+      distinct(MMSI, .keep_all = TRUE),
     by = "MMSI") %>%
-  mutate(vessel_class  = ifelse(!is.na(Master_type), Master_type, vessel_class)) %>%
-  select(-Master_type)
+  mutate(vessel_class = ifelse(!is.na(new_vc), new_vc, vessel_class)) %>%
+  select(-new_vc)
 
-# examine new vessels added with code change 
-new_ves <- filter(voyages_reformat, !MMSI %in% tmt_gha$MMSI)
-# ARGOS REEFER looks genuine others should drop out 
+# standardise flag changes 
+flag_changes <- filter(tmt_civ_ret, Flag != "")
 
-# manual addition of missing vessel
-extra <- data.frame("ATLANTIC GLORY", "312864000", "Belize", "Belize", "8919403", "Fishing","high",  "Fishing", "tuna_purse_seines", "CIV", "ABIDJAN", as.POSIXct("2025-03-20 08:26:00", format = "%Y-%m-%d %H:%M:%S"), "4", as.POSIXct("2025-03-21 09:00:00", format = "%Y-%m-%d %H:%M:%S"), "4", "1","TEMA", FALSE, FALSE, TRUE, FALSE, FALSE, NA, NA, FALSE, NA, FALSE, 0, FALSE, 0, 100, "")
-colnames(extra) <- colnames(class_corrected)
+flag_corrected <- type_corrected %>%
+  left_join(
+    flag_changes %>%
+      select(MMSI, new_flag = Flag) %>%
+      distinct(MMSI, .keep_all = TRUE),
+    by = "MMSI") %>%
+  mutate(Flag = ifelse(!is.na(new_flag), new_flag, Flag)) %>%
+  select(-new_flag)
 
-additions <- rbind(class_corrected, extra)
+# mannually correct vessel name 
+flag_corrected$vessel_name[flag_corrected$MMSI == '312797000'] <- 'BAO WIN'
 
-# drop out vessels that aren't relevant 
-final_list <- filter(class_corrected,  MMSI %in% filter(tmt_gha, Relevant=="Use")$MMSI) 
 
-write.csv(final_list, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
+# # examine new vessels added with code change 
+new_ves <- filter(voyages_reformat, !MMSI %in% tmt_civ$MMSI)
+# # MSC UNITE VI & OBS VENUS - both look like they should drop out of the analysis 
+
+# # manual addition of missing vessel
+# extra <- data.frame("ATLANTIC GLORY", "312864000", "Belize", "Belize", "8919403", "Fishing","high",  "Fishing", "tuna_purse_seines", "CIV", "ABIDJAN", as.POSIXct("2025-03-20 08:26:00", format = "%Y-%m-%d %H:%M:%S"), "4", as.POSIXct("2025-03-21 09:00:00", format = "%Y-%m-%d %H:%M:%S"), "4", "1","TEMA", FALSE, FALSE, TRUE, FALSE, FALSE, NA, NA, FALSE, NA, FALSE, 0, FALSE, 0, 100, "")
+# colnames(extra) <- colnames(class_corrected)
+# 
+# additions <- rbind(class_corrected, extra)
+# 
+# # drop out vessels that aren't relevant 
+# final_list <- filter(class_corrected,  MMSI %in% filter(tmt_gha, Relevant=="Use")$MMSI) 
+
+# remove vessels from TMT review saying drop 
+plot_df_civ <-  filter(flag_corrected, MMSI %in% unique(tmt_civ_ret$MMSI))
+
+
+write.csv(plot_df_civ, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
 ```
+
+```{r CIV graphs, echo=F, warning=F, include=FALSE}
+install.packages("viridis")
+library(viridis)
+
+
+# flag pie chart 
+data <- plot_df_civ %>%
+  group_by(Flag) %>%
+  summarize(vessels = n()) %>%
+  mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(Flag, "\n", vessels)
+  )
+
+ggplot(data, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = Flag)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  #scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  #scale_fill_viridis(option="plasma", discrete=TRUE)+
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 3,
+    nudge_x = 0.3,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Côte D'ivore voyages by Flag")
+
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "civ_fishing_flags_",str_replace_all(Sys.Date(), '-','_'),"v2.png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+
+#------------------------------------------------------
+# Vessel class pie chart  
+plot_dat_class <- plot_df_civ %>%
+  group_by(vessel_class) %>%
+  summarize(vessels = n()) %>%
+  mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(vessel_class, "\n", vessels)
+  ) 
+
+ggplot(plot_dat_class, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = vessel_class)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  theme(legend.position = "none") +
+  geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  # geom_text_repel(
+  #   aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+  #   size = 3,
+  #   nudge_x = 0.3,
+  #   segment.color = "grey50",   # optional: draws a line from label to pie
+  #   show.legend = FALSE,
+  #   direction = "y",
+  #   force = 1,
+  #   max.overlaps = 20
+  # ) +
+  ggtitle("Côte D'ivore voyages \n by vessel type")
+
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "vessel_class_",str_replace_all(Sys.Date(), '-','_'),"v2.png")), 
+       units = 'cm', 
+       width = 7, 
+       height = 7,
+       bg = '#f7f7f7')
+
+
+#------------------------------------------------------
+# Vessel type pie chart  
+plot_dat <- plot_df_civ %>%
+  group_by(vessel_type) %>%
+  summarize(vessels = n()) %>%
+    mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(vessel_type, "\n", vessels)
+  ) 
+
+ggplot(plot_dat, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = vessel_type)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  theme(legend.position = "none") +
+  geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  ggtitle("Côte D'ivore voyages by gear")
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "fishing_gears_",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+
+
+```
+
 
 # Ghana 
 
@@ -421,7 +553,7 @@ colnames(extra) <- colnames(class_corrected)
 additions <- rbind(class_corrected, extra)
 
 # drop out vessels that aren't relevant 
-final_list <- filter(class_corrected,  MMSI %in% filter(tmt_gha, Relevant=="Use")$MMSI) 
+final_list <- filter(additions,  !MMSI %in% filter(tmt_gha, Relevant=="Don’t use")$MMSI) 
 
 write.csv(final_list, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
 ```
@@ -549,6 +681,9 @@ port_name <- "'DAKAR'"
 month <- 'Q1'
 country <- 'SEN'
 
+
+missing_ssvids <- '"630123009", "306881000", "412209113", "663250000"'
+
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_max.sen_q1_25_all_voyages_temp`'
 ```
@@ -564,6 +699,7 @@ fishwatchr::gfw_query(query = glue::glue(voyages_q,
                                                     start_year = start_year,
                                                     end_year = end_year,
                                                     temp_table = temp_table_voyages,
+                                                    missing_ssvids = missing_ssvids,
                                                     port_iso = country_iso3),
                                  run_query = TRUE,
                                  con = con)
@@ -572,22 +708,18 @@ fishwatchr::gfw_query(query = glue::glue(voyages_q,
 
 ```{r voyages ais coverage, echo=F, warning=F, include=FALSE}
 
-ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage.sql"))
+ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage_no_port.sql"))
 
 # set parameters for the in-dock area of a port in Abidjan
-port_lat_min <- 14.681
-port_lat_max <- 14.689
-port_lon_min <- -17.435
-port_lon_max <- -17.429
+# port_lat_min <- 14.681
+# port_lat_max <- 14.689
+# port_lon_min <- -17.435
+# port_lon_max <- -17.429
 
 voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
                                                     temp_table = temp_table_voyages,
                                                     start_date = start_date,
-                                                    end_date = end_date,
-                                                    port_lat_min = port_lat_min,
-                                                    port_lat_max = port_lat_max,
-                                                    port_lon_min = port_lon_min,
-                                                    port_lon_max = port_lon_max),
+                                                    end_date = end_date),
                                  run_query = TRUE,
                                  con = con)$data
 
@@ -618,13 +750,32 @@ voyages_url <- bind_cols(voyages_with_coverage,
 ```
 
 
+```{r add in port information for SEN using anchorage stops}
+anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, label, sublabel FROM `world-fishing-827.anchorages.named_anchorages_v20240117` WHERE iso3 = 'SEN'"),
+                       run_query = TRUE,
+                       con = con)$data
+
+table(anchorages$sublabel)
+
+# s2ids for port features of interest 
+general <- c("0ec17253", "0ec173ad", "0ec173b3", "0ec173b1", "0ec173af", "0ec173a9")
+fishing <- c("0ec17301", "0ec173ab", "0ec172ff", "0ec17255")
+
+port_stops <- voyages_url %>%
+  rowwise() %>%
+  mutate(dak_general = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% general),
+         dak_fishing = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% fishing))
+
+```
+
+
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
-voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
+voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, flag_ais=mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, at_dock=at_dock, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, dak_general, dak_fishing, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
@@ -642,39 +793,190 @@ voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE,
 write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
-```{r format the data to TMT format Senegal, echo=F, warning=F, include=FALSE}
+```{r update the data based on TMT review Senegal, echo=F, warning=F, include=FALSE}
 # pull in TMT review data from Matt
 tmt_sen <- read.csv(here::here("data","2025_q1", "TMT_feedback", "DAKAR- Q1 2025.csv"), header=T)
 
 # make MMSI character for joining 
 tmt_sen$MMSI <- as.character(tmt_sen$MMSI)
 
+# drop rows with action to remove identify rows to drop 
+tmt_sen_drop <- tmt_sen %>% filter(str_detect(Action, "REMOVE"))
+tmt_sen_ret <- tmt_sen %>% filter(!str_detect(Action, "REMOVE"))
+
 # standardise gear changes 
-gear_changes <- filter(tmt_sen, Gear_type != "")
-gear_changes$Gear_type[gear_changes$Gear_type == "Tuna purse seine"] <- "tuna_purse_seines"
-gear_changes$Gear_type[gear_changes$Gear_type == "Trawl"] <- "trawlers"
-gear_changes$Gear_type[gear_changes$Gear_type == "Drifting longline"] <- "drifting_longlines"
+gear_changes <- filter(tmt_sen_ret, Gear.type != "")
 
-# join on MMSI replace if needed 
 gear_corrected <- voyages_reformat %>%
-  left_join(select(gear_changes, MMSI, Gear_type), by = "MMSI") %>%
-  mutate(vessel_type = ifelse(!is.na(Gear_type), Gear_type, vessel_type)) %>%
-  select(-Gear_type)
+  left_join(
+    gear_changes %>%
+      select(MMSI, new_vt = vessel_type) %>%
+      distinct(MMSI, .keep_all = TRUE),
+    by = "MMSI") %>%
+  mutate(vessel_type = ifelse(!is.na(new_vt), new_vt, vessel_type)) %>%
+  select(-new_vt)
 
-# examine new vessels added with code change 
+# standardise use of fishing and unknown
+gear_corrected$vessel_type[gear_corrected$vessel_type %in% c('fishing')] <- 'unknown'
+
+
+# standardise type changes 
+type_changes <- filter(tmt_sen_ret, Vessel.type != "")
+
+type_corrected <- gear_corrected %>%
+  left_join(
+    type_changes %>%
+      select(MMSI, new_vc = vessel_class) %>%
+      distinct(MMSI, .keep_all = TRUE),
+    by = "MMSI") %>%
+  mutate(vessel_class = ifelse(!is.na(new_vc), new_vc, vessel_class)) %>%
+  select(-new_vc)
+
+# manual override for incomplete values 
+type_corrected$vessel_class[type_corrected$vessel_class %in% c('other','seismic_vessel','cargo','gear')] <- 'fishing'
+
+# mannually correct vessel name 
+type_corrected$vessel_name[type_corrected$MMSI == '412440842'] <- 'FU YUAN YU 7857'
+type_corrected$vessel_name[type_corrected$MMSI == '412201826'] <- 'SHENG HAI 3'
+
+
+# # examine new vessels added with code change 
 new_ves <- filter(voyages_reformat, !MMSI %in% tmt_sen$MMSI)
-# ARGOS REEFER looks genuine others should drop out 
+# no new vessels
 
-# manual addition of missing vessel
-extra <- data.frame("ATLANTIC GLORY", "312864000", "Belize", "Belize", "8919403", "Fishing","high",  "Fishing", "tuna_purse_seines", "CIV", "ABIDJAN", as.POSIXct("2025-03-20 08:26:00", format = "%Y-%m-%d %H:%M:%S"), "4", as.POSIXct("2025-03-21 09:00:00", format = "%Y-%m-%d %H:%M:%S"), "4", "1","TEMA", FALSE, FALSE, TRUE, FALSE, FALSE, NA, NA, FALSE, NA, FALSE, 0, FALSE, 0, 100, "")
-colnames(extra) <- colnames(gear_corrected)
+# # manual addition of missing vessel
+extra <- data.frame("ARTIKE", "306881000", "CUW", "CUW", "9808120", "Fishing","high",  "support", "purse_seine_support", "CIV", "ABIDJAN", as.POSIXct("2025-03-08 08:02:00", format = "%Y-%m-%d %H:%M:%S"), "4", as.POSIXct("2025-03-20 11:00:00", format = "%Y-%m-%d %H:%M:%S"), "4", "12","DAKAR", FALSE, FALSE, FALSE, NA, NA, FALSE, NA, FALSE, 0, FALSE, 0, 75, "")
+colnames(extra) <- colnames(type_corrected)
 
-additions <- rbind(gear_corrected, extra)
+additions <- data.frame(rbind(type_corrected, extra))
+# 
+# # drop out vessels that aren't relevant 
+# final_list <- filter(class_corrected,  MMSI %in% filter(tmt_gha, Relevant=="Use")$MMSI) 
 
-# drop out vessels that aren't relevant 
-final_list <- filter(voyages_reformat,  MMSI %in% filter(tmt_sen, Action=="REMOVE")$MMSI) 
+# remove vessels from TMT review saying drop 
+plot_df_sen <-  filter(additions, !MMSI %in% unique(tmt_sen_drop$MMSI))
 
-write.csv(final_list, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
+write.csv(plot_df_sen, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
+```
+
+```{r SEN graphs, echo=F, warning=F, include=FALSE}
+# flag pie chart 
+data <- plot_df_sen %>%
+  group_by(Flag) %>%
+  summarize(vessels = n()) %>%
+  mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(Flag, "\n", vessels)
+  )
+
+ggplot(data, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = Flag)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  #scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  #scale_fill_viridis(option="plasma", discrete=TRUE)+
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 2.5,
+    nudge_x = 0.5,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Senegal voyages by Flag")
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "fishing_flags-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+
+#------------------------------------------------------
+# Vessel class pie chart  
+plot_dat_class <- plot_df_sen %>%
+  group_by(vessel_class) %>%
+  summarize(vessels = n()) %>%
+  mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(vessel_class, "\n", vessels)
+  ) 
+
+ggplot(plot_dat_class, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = vessel_class)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 3,
+    nudge_x = 0.3,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Senegal voyages \n by vessel type")
+
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "vessel_class-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 7, 
+       height = 7,
+       bg = '#f7f7f7')
+
+
+#------------------------------------------------------
+# Vessel type pie chart  
+plot_dat <- plot_df_sen %>%
+  group_by(vessel_type) %>%
+  summarize(vessels = n()) %>%
+    mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(vessel_type, "\n", vessels)
+  ) 
+
+ggplot(plot_dat, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = vessel_type)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 2.5,
+    nudge_x = 0.5,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Senegal voyages by gear")
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "fishing_gears-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+
+
 ```
 
 
