@@ -34,8 +34,7 @@ fishing AS(
       ISO_TER1,
       lat_mean,
       lon_mean,
-    FROM
-      `pipe_production_v20201001.published_events_fishing_v2`
+  FROM `world-fishing-827.pipe_ais_v3_published.fishing_events`
     LEFT JOIN UNNEST (regions_mean_position.high_seas) AS high_sea
     LEFT JOIN UNNEST (regions_mean_position.rfmo) AS rfmo
     LEFT JOIN UNNEST (regions_mean_position.eez) AS eez

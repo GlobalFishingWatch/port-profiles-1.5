@@ -67,13 +67,15 @@ WITH
     LEFT JOIN (
       SELECT seg_id, vessel_id FROM `pipe_ais_v3_published.segment_info`) b
     USING (seg_id)
-    WHERE seg_id IN
-      (SELECT seg_id
-        FROM `pipe_ais_v3_published.segs_activity`
-        WHERE good_seg
-        AND NOT overlapping_and_short
-        )
-    AND timestamp BETWEEN start_date() AND end_date()
+    WHERE
+ --   seg_id IN
+   --   (SELECT seg_id
+     --   FROM `pipe_ais_v3_published.segs_activity`
+       -- WHERE good_seg
+      --  AND NOT overlapping_and_short
+      --  )
+    --AND timestamp BETWEEN start_date() AND end_date()
+     timestamp BETWEEN start_date() AND end_date()
     AND a.vessel_id IN (SELECT vessel_id FROM trip_ids)
   ),
 
@@ -206,11 +208,13 @@ SELECT
   eezs,
   rfmos,
   fishing_hours,
+  total_voyage_h,
+  total_ais_h,
   percent_ais_voyage,
 --FROM temp_table()
 FROM {temp_table}
 LEFT JOIN (
- SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage
+ SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage, total_voyage_h, total_ais_h,
  FROM ais_coverage) USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
 
 

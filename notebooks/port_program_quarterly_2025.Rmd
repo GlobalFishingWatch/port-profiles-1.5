@@ -555,7 +555,13 @@ additions <- rbind(class_corrected, extra)
 # drop out vessels that aren't relevant 
 final_list <- filter(additions,  !MMSI %in% filter(tmt_gha, Relevant=="Don’t use")$MMSI) 
 
-write.csv(final_list, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
+# drop out container reefers
+final_list_v2 <- filter(final_list,  !MMSI %in% c('311000958', '566341000', 
+                                                  '636013068','636014240', '311000876', 
+                                                  '636014241', '563237900', '636013073',
+                                                  '563229800')) 
+
+write.csv(final_list_v2, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
 ```
 
 ```{r GHA graphs, echo=F, warning=F, include=FALSE}
@@ -563,9 +569,9 @@ install.packages("viridis")
 library(viridis)
 
 # flag pie chart 
-final_list$Flag  <- final_list$AIS_Flag 
+final_list_v2$Flag  <- final_list_v2$AIS_Flag 
 
-data <- final_list %>%
+data <- final_list_v2 %>%
   group_by(Flag) %>%
   summarize(vessels = n()) %>%
   mutate(
@@ -597,7 +603,9 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(co
 # Vessel class pie chart  
 library(ggrepel)
 
-plot_dat <- final_list %>%
+final_list_v2$vessel_class[final_list_v2$vessel_class=='Fishing'] <- 'fishing'
+
+plot_dat <- final_list_v2 %>%
   group_by(vessel_class) %>%
   summarize(vessels = n()) %>%
   mutate(
@@ -627,9 +635,9 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(co
 
 #------------------------------------------------------
 # Vessel type pie chart  
-final_list$vessel_type[final_list$vessel_type=='other'] <- 'carrier'
+final_list_v2$vessel_type[final_list_v2$vessel_type=='other'] <- 'carrier'
 
-plot_dat <- final_list %>%
+plot_dat <- final_list_v2 %>%
   group_by(vessel_type) %>%
   summarize(vessels = n()) %>%
     mutate(
@@ -654,13 +662,6 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(co
        width = 10, 
        height = 10,
        bg = '#f7f7f7')
-
-
-```
-
-```{r GHA heatmaps, echo=F, warning=F, include=FALSE}
-# heatmaps
-
 
 
 ```
