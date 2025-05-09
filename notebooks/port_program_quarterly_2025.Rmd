@@ -32,7 +32,7 @@ load_or_install_libraries <- function(x){
 }
 
 #  Then try/install packages...
-load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "ggrepel") )
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "ggrepel", "tibble") )
 
 # get fishwatch r independently 
 if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
@@ -356,6 +356,116 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(co
        height = 10,
        bg = '#f7f7f7')
 
+
+```
+
+```{r CIV pull in the fishing data, echo=F, warning=F, include=FALSE}
+
+q_fishing_events <- readr::read_file(here::here("queries","proactive", "proactive_fishing_locations.sql"))
+
+fishing <- fishwatchr::gfw_query(query = glue::glue(q_fishing_events,
+                                               voyages_table = "`world-fishing-827.scratch_max.civ_q1_25_all_voyages_temp`" 
+                                               ),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+# sense check the data 
+fishing %>%
+    group_by(ssvid) %>%
+      summarise(positions = n(), 
+                min_date = min(event_start), 
+                max_date = max(event_end))
+
+# add gear from TMT review 
+gear <- distinct(dplyr::select(plot_df_civ, MMSI, Flag, vessel_type)) %>% 
+  mutate(ssvid=as.character(MMSI))
+
+fishing_data <- left_join(fishing, gear, by = join_by(ssvid))
+
+
+```
+
+```{r CIV voyage activity longline maps, echo=F, warning=F, include=FALSE}
+# bin the data
+fishing_data$lat_bin <- round(fishing_data$lat_mean/0.5)*0.5
+fishing_data$lon_bin <- round(fishing_data$lon_mean/0.5)*0.5
+
+
+# count positions in each lat lon bin
+ps_raster <- 
+  # filter out low speeds while vessel in port 
+  #filter(fishing_data, vessel_type %in% c('purse_seine_support','tuna_purse_seines')) %>%
+  filter(fishing_data, vessel_type %in% c('tuna_purse_seines')) %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+# look at data distribution
+quantile(ps_raster$fishing_hours)
+
+# set upper limit
+up_lim <- 200 
+#set plot center 
+new_center <- 40
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=40 +wktext"
+
+# set plot limits bound on the data
+bounding_atl <- transform_box(xlim = c(-25, 5),
+                          ylim = c(10, -8),
+                          output_crs = best_proj)
+
+# map for atlantic longline 
+atl_full <- ps_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    # geom_sf(pipa, fill=NA, colour='green')+
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                      limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atl$box_out[['xmin']], bounding_atl$box_out[['xmax']]),
+      ylim = c(bounding_atl$box_out[['ymin']], bounding_atl$box_out[['ymax']]),
+      crs = bounding_atl$out_crs) +
+    # scale_x_continuous(breaks = custom_breaks, labels = custom_labels)+
+    labs(fill = 'Fishing Hours') +
+    theme_gfw_map(theme = 'light') +
+    theme(legend.text = element_text(family = 'Roboto',
+                                 color = '#848b9b',
+                                 size = 6),
+        legend.title = element_text(family = 'Roboto',
+                                  face = 'bold',
+                                  color = '#363c4c',
+                                  size = 6),
+      legend.position = 'bottom',
+      legend.box = 'vertical',
+      legend.key.height = unit(2, 'mm'),
+      legend.key.width = unit(15,'mm'))
+
+
+fishwatchr::add_little_globe(atl_full,
+                             main_box = bounding_atl,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+ggsave(filename = here::here('outputs', 'figures','q1_25_proactive', paste0(country,"_", month,"_", "ps_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 15, 
+       height = 17,
+       bg = '#f7f7f7')
 
 ```
 
@@ -981,6 +1091,198 @@ ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(co
 ```
 
 
+```{r SEN pull in the fishing data, echo=F, warning=F, include=FALSE}
+
+q_confidence <- readr::read_file(here::here("queries","proactive", "proactive_fishing_locations.sql"))
+
+fishing <- fishwatchr::gfw_query(query = glue::glue(q_confidence,
+                                               voyages_table = "`world-fishing-827.scratch_max.sen_q1_25_all_voyages_temp`" 
+                                               ),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+# sense check the data 
+fishing %>%
+    group_by(ssvid) %>%
+      summarise(positions = n(), 
+                min_date = min(event_start), 
+                max_date = max(event_end))
+
+# add gear from TMT review 
+gear <- distinct(dplyr::select(plot_df_sen, MMSI, Flag, vessel_type)) %>% 
+  mutate(ssvid=as.character(MMSI))
+
+fishing_data <- left_join(fishing, gear, by = join_by(ssvid))
+
+
+```
+
+```{r SEN voyage activity longline maps, echo=F, warning=F, include=FALSE}
+
+# bin the data
+fishing_data$lat_bin <- round(fishing_data$lat_mean/0.5)*0.5
+fishing_data$lon_bin <- round(fishing_data$lon_mean/0.5)*0.5
+
+table(fishing_data$vessel_type)
+
+# count positions in each lat lon bin
+longline_raster <- 
+  # filter out low speeds while vessel in port 
+  filter(fishing_data, vessel_type %in% c('drifting_longlines')) %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+# set upper limit
+up_lim <- 500 
+#set plot center 
+new_center <- 40
+
+# 
+quantile(longline_raster$fishing_hours)
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=40 +wktext"
+
+# set plot limits bound on the data
+bounding_atl <- transform_box(xlim = c(-45, 0),
+                          ylim = c(15, -15),
+                          output_crs = best_proj)
+
+# map for atlantic longline 
+atl_full <- longline_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    # geom_sf(pipa, fill=NA, colour='green')+
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                      limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atl$box_out[['xmin']], bounding_atl$box_out[['xmax']]),
+      ylim = c(bounding_atl$box_out[['ymin']], bounding_atl$box_out[['ymax']]),
+      crs = bounding_atl$out_crs) +
+    # scale_x_continuous(breaks = custom_breaks, labels = custom_labels)+
+    labs(fill = 'Fishing Hours') +
+    theme_gfw_map(theme = 'light') +
+    theme(legend.text = element_text(family = 'Roboto',
+                                 color = '#848b9b',
+                                 size = 6),
+        legend.title = element_text(family = 'Roboto',
+                                  face = 'bold',
+                                  color = '#363c4c',
+                                  size = 6),
+      legend.position = 'bottom',
+      legend.box = 'vertical',
+      legend.key.height = unit(2, 'mm'),
+      legend.key.width = unit(15,'mm'))
+
+
+fishwatchr::add_little_globe(atl_full,
+                             main_box = bounding_atl,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+ggsave(filename = here::here('outputs', 'figures','q1_25_proactive', paste0(country,"_", month,"_", "longline_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 15, 
+       height = 17,
+       bg = '#f7f7f7')
+
+```
+
+
+```{r SEN voyage activity trawl maps, echo=F, warning=F, include=FALSE}
+# add a different lat lon bin 
+fishing_data$lat_bin <- round(fishing_data$lat_mean/0.1)*0.1
+fishing_data$lon_bin <- round(fishing_data$lon_mean/0.1)*0.1
+
+
+# count positions in each lat lon bin
+trawl_raster <- 
+  # filter out low speeds while vessel in port 
+  filter(fishing_data, vessel_type %in% c('trawlers')) %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+# set upper limit
+up_lim <- 9000 
+#set plot center 
+new_center <- 17
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=17 +wktext"
+
+# set plot limits bound on the data
+bounding_wa <- transform_box(xlim = c(-20, -14),
+                          ylim = c(16, 8.5),
+                          output_crs = best_proj)
+
+# trawl map 
+trawl_full <- trawl_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                       limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_wa$box_out[['xmin']], bounding_wa$box_out[['xmax']]),
+      ylim = c(bounding_wa$box_out[['ymin']], bounding_wa$box_out[['ymax']]),
+      crs = bounding_wa$out_crs) +
+    labs(fill = 'Fishing Hours') +
+    theme_gfw_map(theme = 'light')  +
+    theme(legend.text = element_text(family = 'Roboto',
+                                 color = '#848b9b',
+                                 size = 6),
+        legend.title = element_text(family = 'Roboto',
+                                  face = 'bold',
+                                  color = '#363c4c',
+                                  size = 6),
+      legend.position = 'bottom',
+      legend.box = 'vertical',
+      legend.key.height = unit(2, 'mm'),
+      legend.key.width = unit(15,'mm'))
+
+
+fishwatchr::add_little_globe(trawl_full,
+                             main_box = bounding_wa,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+ggsave(filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "trawl_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 15, 
+       height = 17,
+       bg = '#f7f7f7')
+
+```
+
+
+
 # Kenya  
 
 # set parameters for analysis 
@@ -1020,22 +1322,18 @@ fishwatchr::gfw_query(query = glue::glue(voyages_q,
 
 ```{r voyages ais coverage, echo=F, warning=F, include=FALSE}
 
-ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage.sql"))
+ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage_no_port.sql"))
 
 # set parameters for the in-dock area of a port in Abidjan
-port_lat_min <- -4.071
-port_lat_max <- -4.0686
-port_lon_min <- 39.656
-port_lon_max <- 39.658
+# port_lat_min <- -4.071
+# port_lat_max <- -4.0686
+# port_lon_min <- 39.656
+# port_lon_max <- 39.658
 
 voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
                                                     temp_table = temp_table_voyages,
                                                     start_date = start_date,
-                                                    end_date = end_date,
-                                                    port_lat_min = port_lat_min,
-                                                    port_lat_max = port_lat_max,
-                                                    port_lon_min = port_lon_min,
-                                                    port_lon_max = port_lon_max),
+                                                    end_date = end_date),
                                  run_query = TRUE,
                                  con = con)$data
 
@@ -1066,13 +1364,46 @@ voyages_url <- bind_cols(voyages_with_coverage,
 ```
 
 
+
+```{r add in port information for SEN using anchorage stops}
+anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, lat, lon, label, sublabel FROM `world-fishing-827.anchorages.named_anchorages_v20240117` WHERE iso3 = 'KEN'"),
+                       run_query = TRUE,
+                       con = con)$data
+
+table(anchorages$sublabel)
+
+# write.csv(anchorages, here::here("data","2025_q1", paste(country,'anchorages-', Sys.Date(),".csv", sep='')), row.names=F)
+
+
+# s2ids for port features of interest 
+general <- c("18401349", "18401347",  "18406d2b", "18406d31", 
+             "18406d13", "18406d6b", "18406d15", "18406d2d", "18406d41", "18406d47", 
+             "18406d37", "18406d33", "18406d49", "18406d0d")
+fishing <- c("18401331", "1840132d")
+dry_dock <- c("18401337","18401339")
+fish_harbour <- c("18406cd3", "18406ccd" , "18406ccf",  "18406cd1")
+harbor <- c("18406d0f", "18406da9", "18406d07", "18406daf", "18406d09", "18406da7",
+            "18406cd7", "18406d2f", "18406d29")
+
+
+port_stops <- voyages_url %>%
+  rowwise() %>%
+  mutate(mom_general = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% general),
+         mom_fishing = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% fishing),
+         mom_fishing_harbor = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% fish_harbour),
+         mom_drydock = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% dry_dock),
+         mom_harbor = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% harbor))
+
+```
+
+
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
-voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
+voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, at_dock_mom=at_dock, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, mom_general, mom_fishing, mom_fishing_harbor, mom_harbor, mom_drydock,  fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
@@ -1087,8 +1418,189 @@ voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+# write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 
+```{r update the data based on TMT review Kenya, echo=F, warning=F, include=FALSE}
+# pull in TMT review data from Matt
+tmt_ken <- read.csv(here::here("data","2025_q1", "TMT_feedback", "KEN - Q1 2025.csv"), header=T)
 
+table(tmt_ken$Action)
+
+# make MMSI character for joining 
+tmt_ken$MMSI <- as.character(tmt_ken$MMSI)
+
+# drop rows with action to remove identify rows to drop 
+tmt_ken_drop <- tmt_ken %>% filter(str_detect(Action, "Remove"))
+
+plot_df_ken <-  filter(voyages_reformat, !MMSI %in% unique(tmt_ken_drop$MMSI))
+
+# update incorrect vessel class 
+plot_df_ken$vessel_class[plot_df_ken$vessel_class == 'passenger'] <- "fishing"
+
+# update vessel gear
+plot_df_ken$vessel_type[plot_df_ken$MMSI %in% c("412460035")] <- "unknown_set_gear"
+plot_df_ken$vessel_type[plot_df_ken$MMSI %in% c("412411792", "412411789", "412411788", "412411791")] <- "unknown_set_gear"
+plot_df_ken$vessel_type[plot_df_ken$vessel_type == 'passenger'] <- "longline"
+
+# manually create extra df rows for port visits to non-designated anchorages 
+extra <- data.frame(tibble(
+  vessel_name = c("XING WANG 805", "ZONG YANG 36", "ZONG YANG 38"),
+  MMSI = c("412411791", "412460034", "412460035"),
+  Flag = c("CHN", "CHN", "CHN"),
+  imo = c("8549961", "9753478", "9753480"),
+  vessel_class_cat = c("Fishing", "Fishing", "Fishing"),
+  vessel_class_confidence = c("high", "high", "high"),
+  vessel_class = c("fishing", "fishing", "fishing"),
+  vessel_type = c("unknown_set_gear", "unknown_set_gear", "unknown_set_gear"),
+  previous_port_country = c("KEN", "KEN", "KEN"),
+  previous_port = c("MOMBASA", "MOMBASA", "MOMBASA"),
+  trip_start = as.POSIXct(c("2025-02-24 14:20:00", "2025-03-14 13:33:00", "2025-02-22 12:31:00")),
+  trip_start_confidence = c(4, 4, 4),
+  trip_end = as.POSIXct(c("2025-03-09 17:00:00", "2025-03-25 07:00:00", "2025-02-26 07:00:00")),
+  trip_end_confidence = c(2, 2, 2),
+  trip_duration_days = c(13, 11, 4),
+  end_port = c("LAMU", "KILIFI", "KILIFI"),
+  mom_general = c(FALSE, FALSE, FALSE),
+  mom_fishing = c(FALSE, FALSE, FALSE),
+  mom_fishing_harbor = c(FALSE, FALSE, FALSE),
+  mom_harbour = c(FALSE, FALSE, FALSE),
+  mom_drydock = c(FALSE, FALSE, FALSE),
+  fishing = c(TRUE, TRUE, TRUE),
+  fishing_hours = c(NA, 40, 15),
+  fishing_eez = c("SOM", "KEN", "KEN"),
+  fishing_hs = c(FALSE, FALSE, FALSE),
+  fishing_rfmos = c(NA, NA, NA),
+  encounter = c(FALSE, FALSE, FALSE),
+  num_encounters = c(0, 0, 0),
+  loitering = c(FALSE, FALSE, FALSE),
+  num_loitering = c(0, 0, 0),
+  percent_ais_voyage = c(11, 20, 18),
+  vv_url = c("", "", "")
+))
+
+# add new rows to existing dataframe
+additions <- bind_rows(plot_df_ken, extra)
+
+write.csv(additions, here::here("data","2025_q1", paste(country,'_', month,'_', year,'-', Sys.Date(),"_v2.csv", sep='')), row.names=F)
+```
+
+```{r KEN graphs, echo=F, warning=F, include=FALSE}
+# flag pie chart 
+data <- additions %>%
+  group_by(Flag) %>%
+  summarize(vessels = n()) %>%
+  mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(Flag, "\n", vessels)
+  )
+
+ggplot(data, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = Flag)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  #scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  #scale_fill_viridis(option="plasma", discrete=TRUE)+
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 2.5,
+    nudge_x = 0.5,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Kenya voyages by Flag")
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "fishing_flags-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+
+
+# Vessel class pie chart  
+plot_dat_class <- additions %>%
+  group_by(vessel_class) %>%
+  summarize(vessels = n()) %>%
+  mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(vessel_class, "\n", vessels)
+  ) 
+
+ggplot(plot_dat_class, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = vessel_class)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 3,
+    nudge_x = 0.3,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Kenya voyages \n by vessel type")
+
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "vessel_class-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 7, 
+       height = 7,
+       bg = '#f7f7f7')
+
+
+# Vessel type pie chart 
+plot_dat <- additions %>%
+  group_by(vessel_type) %>%
+  summarize(vessels = n()) %>%
+    mutate(
+    fraction = vessels / sum(vessels),
+    ymax = cumsum(fraction),
+    ymin = lag(ymax, default = 0),
+    label = paste0(vessel_type, "\n", vessels)
+  ) 
+
+ggplot(plot_dat, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = vessel_type)) +
+  geom_rect() +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  scale_fill_manual(values=gfw_palettes[['tracks']]) + 
+  theme(legend.position = "none") +
+  # geom_text(x = 3.5, aes(y = (ymin + ymax)/2, label = label), size = 3) +
+  geom_text_repel(
+    aes(x = 3.5, y = (ymin + ymax)/2, label = label),
+    size = 2.5,
+    nudge_x = 0.5,
+    segment.color = "grey50",   # optional: draws a line from label to pie
+    show.legend = FALSE,
+    direction = "y",
+    force = 1,
+    max.overlaps = 20
+  ) +
+  ggtitle("Kenya voyages by gear")
+
+ggsave( filename = here::here('outputs', 'figures', 'q1_25_proactive', paste0(country,"_", month,"_", "fishing_gears-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 10, 
+       height = 10,
+       bg = '#f7f7f7')
+
+
+```
