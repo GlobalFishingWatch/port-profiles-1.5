@@ -76,7 +76,7 @@ WITH
       -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
       `pipe_ais_v3_published.product_vessel_info_summary` -- pipe 3 v is >100K more vessels... 292042
      WHERE
-      year >= year() AND year <= year()
+      year >= year()
       AND prod_shiptype IN ("fishing")
       AND on_fishing_list_best
      ),
@@ -732,7 +732,7 @@ num_encounters AS (
         WHERE
           end_timestamp > TIMESTAMP("2025-01-01")
           AND visit_id IN (SELECT trip_end_visit_id FROM add_visit_end_1)
-          AND e.event_type = 'PORT_STOP_BEGIN'
+          -- AND e.event_type = 'PORT_STOP_BEGIN'
         GROUP BY 1
       ) USING (trip_end_visit_id)
   ),

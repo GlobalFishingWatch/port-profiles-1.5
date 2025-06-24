@@ -77,8 +77,6 @@ fishwatchr::gfw_query(query = glue::glue(voyages_q,
                                                     start_date = start_date,
                                                     end_date = end_date,
                                                     year = year,
-                                                    start_year = start_year,
-                                                    end_year = end_year,
                                                     missing_ssvids = missing_ssvids,
                                                     temp_table = temp_table_voyages,
                                                     port_iso = country_iso3),
@@ -94,11 +92,12 @@ ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_cove
 voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q, 
                                                     temp_table = temp_table_voyages,
                                                     start_date = start_date,
-                                                    end_date = end_date,
-                                                    port_lat_min = port_lat_min,
-                                                    port_lat_max = port_lat_max,
-                                                    port_lon_min = port_lon_min,
-                                                    port_lon_max = port_lon_max),
+                                                    end_date = end_date
+                                                    # port_lat_min = port_lat_min,
+                                                    # port_lat_max = port_lat_max,
+                                                    # port_lon_min = port_lon_min,
+                                                    # port_lon_max = port_lon_max
+                                                    ),
                                  run_query = TRUE,
                                  con = con)$data
 
