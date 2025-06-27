@@ -1062,3 +1062,344 @@ ggsave(gear_heatmap,
        dpi = 600)
 ```
 
+## Cotonou, Benin 
+
+```{r import fishing data for Cotonou Port Catchment Map, echo=F, include=F, warning=F}
+
+fishing_ben <- fishwatchr::gfw_query("
+    SELECT 
+      * 
+    FROM `world-fishing-827.PortsProgramme.BEN_events_2021-23` 
+    WHERE event_type = 'Fishing'",
+ run_query = TRUE,
+ con = con
+)$data
+
+
+```
+
+```{r Port Catchment Map Conakry, echo=F, warning=F}
+# set bounding box limits 
+bbox <- transform_box(
+  xlim = c(-2, 5),
+  ylim = c(2, 7),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+# produce port catchment map
+(cotonou_fishing_catchment <- fishing_ben %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Cotonou, Benin"))
+)
+
+# save output as pdf
+ggsave(cotonou_fishing_catchment, 
+       filename = here::here('outputs','figures','catchment_maps',paste('cotonou_benin_catchment_map_v',Sys.Date(),'.pdf', sep='')),
+       device = cairo_pdf,
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+
+# save output as png
+ggsave(cotonou_fishing_catchment, 
+       filename = here::here('outputs','figures','catchment_maps',paste('cotonou_benin_catchment_map_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
+
+```{r gear heatmap benin, warning=F, echo=F}
+
+# set plotting res for heatmaps
+res <- 0.1
+
+# create binned values
+fishing_ben$lat_bin <- round(fishing_ben$lat_mean/res)*res
+fishing_ben$lon_bin <- round(fishing_ben$lon_mean/res)*res
+
+# look at top gears 
+table(fishing_ben$geartype_best)
+table(fishing_ben$shipname)
+# only three vessel make a combined heatmap
+
+# check limits
+test_lim <- fishing_ben %>%
+    group_by(lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(event_duration_hrs, na.rm = TRUE), .groups = 'drop')
+quantile(test_lim$fishing_hours)
+
+# set plot upper limit
+upper <- 500
+
+
+fishing_heatmap <- 
+  fishing_ben %>%
+    group_by(lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(event_duration_hrs, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing"), fill = 'Fishing Hours') 
+
+
+ggsave(fishing_heatmap, 
+       filename = here::here('outputs','figures','catchment_maps',paste('cotonou_gear_catchment_heatmap_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 150,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
+
+
+## Lome, Togo
+
+```{r import fishing data for Lome Port Catchment Map, echo=F, include=F, warning=F}
+
+fishing_tog <- fishwatchr::gfw_query("
+    SELECT 
+      * 
+    FROM `world-fishing-827.PortsProgramme.TGO_events_2021-23` 
+    WHERE event_type = 'Fishing'",
+ run_query = TRUE,
+ con = con
+)$data
+
+
+```
+
+```{r Port Catchment Map Lome, echo=F, warning=F}
+# set bounding box limits 
+bbox <- transform_box(
+  xlim = c(-4, 4),
+  ylim = c(2, 7),
+  output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+)
+
+# produce port catchment map
+(lome_fishing_catchment <- fishing_tog %>%
+  sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
+  fishwatchr::recenter_sf(.) %>%
+ggplot() +
+  geom_sf(alpha = 1, 
+          size = 0.2, 
+          shape = 21,
+          fill = NA,
+          color = fishwatchr::gfw_palettes$tracks[9]) +
+  geom_sf(data = fao_major,
+        size = 0.2,
+        alpha = 1,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.2,
+                 alpha = 1,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing before entering Lome, Togo"))
+)
+
+# save output as pdf
+ggsave(lome_fishing_catchment, 
+       filename = here::here('outputs','figures','catchment_maps',paste('lome_togo_catchment_map_v',Sys.Date(),'.pdf', sep='')),
+       device = cairo_pdf,
+       width = 200,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+
+# save output as png
+ggsave(lome_fishing_catchment, 
+       filename = here::here('outputs','figures','catchment_maps',paste('lome_togo_catchment_map_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 200,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
+
+```{r gear heatmap togo, warning=F, echo=F}
+
+# set plotting res for heatmaps
+res <- 0.1
+
+# create binned values
+fishing_tog$lat_bin <- round(fishing_tog$lat_mean/res)*res
+fishing_tog$lon_bin <- round(fishing_tog$lon_mean/res)*res
+
+# look at top gears 
+table(fishing_tog$geartype_best)
+table(fishing_tog$shipname)
+# only eight vessel make a combined heatmap
+
+# check limits
+test_lim <- fishing_tog %>%
+    group_by(lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(event_duration_hrs, na.rm = TRUE), .groups = 'drop')
+quantile(test_lim$fishing_hours)
+
+# set plot upper limit
+upper <- 500
+
+
+fishing_heatmap <- 
+  fishing_tog %>%
+    group_by(lat_bin, lon_bin) %>%
+    summarize(fishing_hours = sum(event_duration_hrs, na.rm = TRUE), .groups = 'drop') %>%
+    filter(fishing_hours > 0) %>%
+    fishwatchr::gfw_project_raster(x = 'lon_bin',
+                                   y = 'lat_bin',
+                                   fill = 'fishing_hours',
+                                   output_crs = bbox$out_crs) %>%
+ggplot() +
+    geom_gfw_land() +
+    geom_raster(aes(lon_bin, lat_bin, fill = fishing_hours)) +
+  scale_fill_gradientn(colors = gfw_palettes$map_effort_dark,
+                       limits = c(0,upper)) +
+  geom_sf(data = fao_major,
+        size = 0.1,
+        alpha = 0.5,
+       fill = NA,
+       color = 'yellow2') +
+    geom_gfw_land() +
+    geom_gfw_eez(size = 0.1,
+                 alpha = 0.5,
+                 color = '#ffffff') +
+    theme_gfw_map() +
+    coord_sf(xlim = c(bbox$box_out[['xmin']], bbox$box_out[['xmax']]),
+             ylim = c(bbox$box_out[['ymin']], bbox$box_out[['ymax']]),
+             crs = bbox$out_crs) +
+    labs(title = glue::glue("Fishing"), fill = 'Fishing Hours') 
+
+
+ggsave(fishing_heatmap, 
+       filename = here::here('outputs','figures','catchment_maps',paste('lome_gear_catchment_heatmap_v',Sys.Date(),'.png', sep='')),
+       device = 'png',
+       width = 200,
+       height = 150,
+       units = 'mm',
+       dpi = 600)
+```
+```{r import voyage ais data for Lome port profile voyages, echo=F, include=F, warning=F}
+
+start_date <- "'2021-01-01 00:00:00 UTC'"
+end_date <- "'2024-01-01 00:00:00 UTC'"
+voyages_table <- "`world-fishing-827.PortsProgramme.TGO_voyages_2021-23`"
+
+voyages_ais_q <- readr::read_file(here::here("queries","port_catchment", "voyage_ais_data.sql"))
+
+voyage_ais <- fishwatchr::gfw_query(query = glue::glue(voyages_ais_q, 
+                                    start_date = start_date,
+                                    end_date = end_date,
+                                    voyage_table = voyages_table),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r Make a voyage line plot map, echo=F, warning=F}
+
+#set plot center to centre of IO
+# new_center <- -15
+new_center <- 2.5
+
+# set proj for bounding box
+# best_proj <- "+proj=eqearth +lon_0=-15 +wktext"
+best_proj <- "+proj=eqearth +lon_0=2.5 +wktext"
+
+# set plot limits for Atlantic 
+# bounding_atlan <- transform_box(xlim = c(-70, 20),
+#                           ylim = c(-55, 55),
+#                           output_crs = best_proj)
+
+bounding_atlan <- transform_box(xlim = c(-20, 15),
+                          ylim = c(-5, 35),
+                          output_crs = best_proj)
+
+# make track into sf object 
+voyage_ais_line <- voyage_ais %>%
+  dplyr::select(trip_id,colour, timestamp, lat, lon) %>%
+  sf::st_as_sf(., 
+               coords = c("lon", "lat"), 
+               crs = 4326) %>%
+  group_by(trip_id, colour) %>%
+  arrange(timestamp) %>%
+  summarize(do_union = FALSE) %>%
+  sf::st_cast(., "LINESTRING") %>%
+  fishwatchr::recenter_sf(., center = new_center, buffer=0)
+
+# make make   
+tog_carrier_map <- 
+  ggplot() +
+  geom_gfw_land(theme = 'dark', center = new_center) +
+  geom_gfw_eez(theme = 'dark', alpha = 0.4, center = new_center) +
+  geom_sf(data = voyage_ais_line, aes(colour=colour), alpha=0.2) +
+  scale_colour_manual(values=gfw_palettes[['primary']]) +
+  theme_gfw_map(theme = "dark") +
+  theme(legend.position="right") +
+  labs(colour = 'MMSI') +
+  coord_sf(xlim = c(bounding_atlan$box_out[['xmin']], bounding_atlan$box_out[['xmax']]),
+           ylim = c(bounding_atlan$box_out[['ymin']], bounding_atlan$box_out[['ymax']]),
+           crs = bounding_atlan$out_crs) 
+
+# add globe# add globevalues()
+tog_carrier_map_glob <- fishwatchr::add_little_globe(tog_carrier_map,
+                             main_box = bounding_atlan,
+                             globe_rel_size = 0.25,
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+# save object 
+ggsave(tog_carrier_map_glob, 
+       filename = here::here('outputs','figures','catchment_maps',
+                             paste('lome_carrier_lines_highres_v',Sys.Date(),'.png', sep='')), 
+       width = 8, 
+       height = 10)
+
+```

@@ -127,9 +127,11 @@ voyages_url <- bind_cols(voyages_with_coverage,
 ```
 
 ```{r add in port information for CIV using anchorage stops}
-anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, label, sublabel FROM `world-fishing-827.anchorages.named_anchorages_v20240117` WHERE iso3 = 'CIV'"),
+anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, lat, lon, label, sublabel FROM `world-fishing-827.anchorages.named_anchorages_v20240117` WHERE iso3 = 'CIV'"),
                        run_query = TRUE,
                        con = con)$data
+
+write.csv(anchorages, here::here("data","2025_q1", paste('Abidjan_anchorages','_', Sys.Date(),".csv", sep='')), row.names=F)
 
 table(anchorages$sublabel)
 
@@ -138,13 +140,15 @@ vridi <- filter(anchorages, sublabel == 'ABIDJAN VRIDI')$s2id
 lagoon <- filter(anchorages, sublabel == 'ABIDJAN LAGOON')$s2id
 cargo <- filter(anchorages, sublabel == 'ABIDJAN TREICHVILLE CARGO')$s2id
 fishing <- filter(anchorages, sublabel == 'ABIDJAN TREICHVILLE FISHING')$s2id
+offshore <- filter(anchorages, sublabel %in% c('ABIDJAN OFFSHORE', 'PORT BOUET', 'ABIDJAN PORT BOUET OFFSHORE'))$s2id
 
 port_stops <- voyages_url %>%
   rowwise() %>%
   mutate(abj_lagoon = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% lagoon),
          abj_vridi = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% vridi),
          abj_cargo = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% cargo),
-         abj_fishing = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% fishing))
+         abj_fishing = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% fishing),
+         abj_offshore = any(str_trim(str_split(stop_anchorage_ids, ",")[[1]]) %in% offshore))
 
 ```
 
@@ -155,7 +159,7 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, abj_offshore, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
