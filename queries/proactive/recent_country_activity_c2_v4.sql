@@ -15,6 +15,7 @@
 ## set time frame of interest
 CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP({start_date}));
 CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP({end_date}));
+CREATE TEMP FUNCTION  prev_visit_search_date() AS (TIMESTAMP({prev_visit_search_date}));
 CREATE TEMP FUNCTION  year() AS ({year});
 
 ## set port and country (iso) of interest
@@ -27,7 +28,7 @@ RETURNS ARRAY<STRING> AS (
 
 CREATE TABLE {temp_table}
 OPTIONS (
-  expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
+  expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
 ) AS
 
 WITH
@@ -73,8 +74,7 @@ WITH
        'fishing' AS vessel_class,
        prod_geartype AS gear_type
      FROM
-      -- `pipe_production_v20201001.all_vessels_byyear_v2_v20240401` -- **** update to pipe 3 when released ****** 187112
-      `pipe_ais_v3_published.product_vessel_info_summary` -- pipe 3 v is >100K more vessels... 292042
+      `pipe_ais_v3_published.product_vessel_info_summary` --
      WHERE
       year >= year()
       AND prod_shiptype IN ("fishing")
@@ -430,6 +430,9 @@ fishing_voyages AS (
 -- Identify how many encounters occurred on each voyage
 --------------------------------------
 
+--------------------------------------
+-- Identify how many encounters occurred on each voyage
+--------------------------------------
 num_encounters AS (
   SELECT
     vessel_id,
@@ -439,7 +442,13 @@ num_encounters AS (
     SELECT
       vessel_id,
       event_start,
-      event_end
+      event_end,
+      JSON_EXTRACT_SCALAR(event_vessels, "$[0].type") as product_shiptype,
+      -- ## encountered vessel information
+      JSON_EXTRACT_SCALAR(event_vessels, "$[1].type") as enc_product_shiptype,
+      JSON_EXTRACT_SCALAR(event_vessels, "$[1].id") as enc_product_vessel_id,
+      JSON_EXTRACT_SCALAR(event_vessels, "$[1].ssvid") as enc_product_ssvid,
+      start_distance_from_port_km
     FROM `pipe_ais_v3_published.product_events_encounter`) enc
     INNER JOIN (
       SELECT
@@ -451,6 +460,8 @@ num_encounters AS (
         named_voyages) voyages
     USING (vessel_id)
       WHERE event_start BETWEEN trip_start AND trip_end
+      AND  product_shiptype != 'gear' AND enc_product_shiptype != 'gear'
+      AND start_distance_from_port_km > 10 -- matches map
     GROUP BY
        vessel_id, trip_id
     ),
@@ -543,6 +554,36 @@ num_encounters AS (
       vessel_id, trip_id
       ),
 
+--------------------------------------
+-- Identify how many intentional disabling events occurred on each voyage
+--------------------------------------
+  num_gaps AS(
+    SELECT
+      vessel_id,
+      trip_id,
+      COUNT(*) AS num_AISdisabling
+    FROM (
+      SELECT
+        vessel_id,
+        event_start,
+        event_end
+      FROM
+        `pipe_ais_v3_published.product_events_ais_disabling`) a
+    INNER JOIN (
+      SELECT
+        vessel_id,
+        trip_id,
+        trip_start,
+        trip_end
+      FROM
+        named_voyages)
+    USING
+      (vessel_id)
+    WHERE
+      event_start BETWEEN trip_start AND trip_end
+    GROUP BY
+      vessel_id, trip_id
+      ),
 
   --------------------------------------
   -- label voyage if it had at least
@@ -610,6 +651,25 @@ num_encounters AS (
       1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29),
 
 --------------------------------------
+-- label voyage if it had at least one disabling event
+--------------------------------------
+  add_gaps AS (
+    SELECT
+      g.*,
+      h.num_AISdisabling,
+    IF
+      (h.num_AISdisabling > 0, TRUE, FALSE) AS had_AISdisabling
+    FROM
+      add_fishing AS g
+    LEFT JOIN
+      num_gaps h
+    USING
+      (vessel_id,
+        trip_id)
+    GROUP BY
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),
+
+--------------------------------------
 -- label if voyages represents a 'real' voyage
 -- 'real': TRUE if the start and end
 -- 'port' are different and the voyage
@@ -644,7 +704,7 @@ num_encounters AS (
       END
         AS true_voyage
       FROM
-        add_fishing)
+        add_gaps)
     WHERE
       true_voyage IS TRUE ),
 
@@ -837,6 +897,7 @@ num_encounters AS (
       num_encounters,
       num_loitering,
       num_fishing,
+      num_AISdisabling,
       high_seas,
       eezs,
       rfmos,
@@ -926,6 +987,7 @@ num_encounters AS (
       num_encounters,
       num_loitering,
       num_fishing,
+      num_AISdisabling,
       high_seas,
       eezs,
       rfmos,
@@ -1009,18 +1071,132 @@ num_encounters AS (
       num_encounters,
       num_loitering,
       num_fishing,
+      num_AISdisabling,
       high_seas,
       eezs,
       rfmos,
       fishing_hours
-    FROM add_vessel_info)
+    FROM add_vessel_info),
 
 --------------------------------------
 -- pull voyages ending in port visit in POI
 -- comment this block out if want vessel info/list
 --------------------------------------
+POI_visits AS(
+  SELECT
+    vessel_id,
+    ssvid,
+    year,
+    shipname,
+    vessel_flag_best,
+    mmsi_flag,
+    callsign,
+    imo,
+    vessel_class_best,
+    geartype_best,
+    vessel_class_initial,
+    class_confidence_initial,
+    trip_id,
+    trip_start,
+    start_port_iso3,
+    start_port_label,
+    trip_start_confidence,
+    trip_end,
+    end_port_iso3,
+    end_port_label,
+    end_port_sublabel,
+    trip_end_anchorage_id,
+    trip_end_confidence,
+    trip_duration_days,
+    start_portvisit_timestamp,
+    end_portvisit_timestamp,
+    port_event_duration_days,
+    distance_from_shore_m,
+    dock,
+    trip_end_visit_id,
+    stop_anchorage_ids,
+    start_latitude,
+    start_longitude,
+    CASE WHEN num_encounters IS NULL THEN 0 ELSE num_encounters END AS num_encounters,
+    CASE WHEN num_loitering IS NULL THEN 0 ELSE num_loitering END AS num_loitering,
+    CASE WHEN num_fishing IS NULL THEN 0 ELSE num_fishing END AS num_fishing,
+    CASE WHEN num_AISdisabling IS NULL THEN 0 ELSE num_AISdisabling END AS num_AISdisabling,
+    high_seas,
+    eezs,
+    rfmos,
+    fishing_hours
+  FROM clean_info
+  WHERE
+    mmsi_flag != port_iso()
+    --vessel_flag_best != port_iso()
+  ),
 
-SELECT
+--------------------------------------
+-- adding last known visit to same port
+-- first pull all port visits for vessel_ids in voyages table
+--------------------------------------
+ port_events AS (
+  SELECT DISTINCT
+    visit_id,
+    vessel_id,
+    end_timestamp,
+    end_anchorage_id,
+  FROM `world-fishing-827.pipe_ais_v3_published.port_visits` --,
+  WHERE
+    end_timestamp > prev_visit_search_date()
+    AND
+    vessel_id IN (
+      SELECT vessel_id
+      FROM
+      POI_visits
+    )),
+
+--------------------------------------
+-- Add names to all port events
+--------------------------------------
+name_events AS(
+  SELECT
+    * EXCEPT(s2id, label, iso3),
+    c.label AS end_label,
+    c.iso3 AS end_iso3
+  FROM port_events
+  LEFT JOIN
+    anchorage_names c
+  ON
+    end_anchorage_id = s2id
+  ),
+
+--------------------------------------
+-- inner join all visits for same vessel_id in time period
+-- set any in future to null to allow sorting in next step
+--------------------------------------
+join_visits AS(
+  SELECT
+    *,
+    IF (end_timestamp >= end_portvisit_timestamp, NULL, end_timestamp) AS prev_visit_ts
+  FROM
+  (SELECT *
+    FROM POI_visits AS voyages
+    INNER JOIN
+      (SELECT
+        -- visit_id,
+        vessel_id as ves_id,
+        end_anchorage_id,
+        end_label,
+        end_iso3,
+        end_timestamp
+      FROM name_events
+      WHERE end_iso3 = port_iso()) AS visits
+      ON voyages.vessel_id = visits.ves_id
+      AND voyages.end_port_label = visits.end_label
+    )
+)
+
+--------------------------------------
+-- collapse back down to each individual voyage,
+-- keeping just most recent previous visit to same port label
+--------------------------------------
+SELECT DISTINCT
   vessel_id,
   ssvid,
   year,
@@ -1057,11 +1233,14 @@ SELECT
   num_encounters,
   num_loitering,
   num_fishing,
+  num_AISdisabling,
   high_seas,
   eezs,
   rfmos,
-  fishing_hours
-FROM clean_info
-WHERE
-  mmsi_flag != port_iso()
-  --vessel_flag_best != port_iso()
+  fishing_hours,
+  FIRST_VALUE (prev_visit_ts) OVER (
+    PARTITION BY trip_id
+    ORDER BY prev_visit_ts DESC) AS prev_visit_timestamp,
+FROM join_visits
+
+

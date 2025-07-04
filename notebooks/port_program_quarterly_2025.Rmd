@@ -69,6 +69,31 @@ missing_ssvids <- '"231257000", "311001586", "311001574", "311043800", "31104050
 temp_table_voyages <- '`world-fishing-827.scratch_max.civ_q1_25_all_voyages_temp`'
 ```
 
+# Ghana  
+# set parameters for analysis 
+
+```{r set date and port parameters, echo=F, warning=F, include=FALSE}
+start_date <- "'2025-04-01 00:00:00 UTC'" 
+end_date <- "'2025-06-30 23:59:59 UTC'"
+year <- 2025
+
+prev_visit_search_date <- "'2022-01-01 00:00:00 UTC'" 
+
+country_iso3 <- "'GHA'"
+port_name <- "'ABIDJAN'"
+
+# file names
+month <- 'Q2'
+country <- 'GHA'
+
+# potential MMSIs to force in 
+missing_ssvids <- '""'
+
+# create a temp table for query 
+temp_table_voyages <- '`world-fishing-827.scratch_joef.gha_q2_25_all_voyages_temp`'
+```
+
+# run voyage query
 ```{r voyages all, echo=F, warning=F, include=FALSE}
 
 voyages_q <- readr::read_file(here::here("queries","proactive", "recent_country_activity_c2_v4.sql"))
@@ -79,7 +104,8 @@ fishwatchr::gfw_query(query = glue::glue(voyages_q,
                                                     year = year,
                                                     missing_ssvids = missing_ssvids,
                                                     temp_table = temp_table_voyages,
-                                                    port_iso = country_iso3),
+                                                    port_iso = country_iso3,
+                                                    prev_visit_search_date = prev_visit_search_date),
                                  run_query = TRUE,
                                  con = con)
 
@@ -124,6 +150,9 @@ voyages_url <- bind_cols(voyages_with_coverage,
                           base_string_p3, 
                           as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
                           '")', sep=''))
+
+write.csv(voyages_url, here::here("data","proactive", paste('GHA_Q2_test','-', Sys.Date(),".csv", sep='')), row.names=F)
+
 ```
 
 ```{r add in port information for CIV using anchorage stops}

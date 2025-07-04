@@ -211,6 +211,7 @@ SELECT
   total_voyage_h,
   total_ais_h,
   percent_ais_voyage,
+  prev_visit_timestamp,
 --FROM temp_table()
 FROM {temp_table}
 LEFT JOIN (
