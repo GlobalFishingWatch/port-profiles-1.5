@@ -204,6 +204,7 @@ SELECT
   num_encounters,
   num_loitering,
   num_fishing,
+  num_AISdisabling,
   high_seas,
   eezs,
   rfmos,
