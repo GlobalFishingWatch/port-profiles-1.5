@@ -218,7 +218,7 @@ voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data","q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 
@@ -375,7 +375,7 @@ voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data", "proactive", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 # Senegal  
@@ -526,7 +526,7 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data", "proactive", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 
