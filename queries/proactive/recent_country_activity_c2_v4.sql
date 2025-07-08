@@ -26,7 +26,7 @@ RETURNS ARRAY<STRING> AS (
     [{missing_ssvids}]
 );
 
-CREATE TABLE {temp_table}
+CREATE OR REPLACE TABLE {temp_table}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
 ) AS
@@ -594,7 +594,7 @@ num_encounters AS (
       a.*,
       b.num_encounters,
     IF
-      (b.num_encounters > 0, TRUE, FALSE) AS had_encounter
+      (b.num_encounters > 0, TRUE, FALSE) AS encounter
     FROM
       named_voyages AS a
     LEFT JOIN
@@ -614,7 +614,7 @@ num_encounters AS (
       c.*,
       d.num_loitering,
     IF
-      (d.num_loitering > 0, TRUE, FALSE) AS had_loitering
+      (d.num_loitering > 0, TRUE, FALSE) AS loitering
     FROM
       add_encounters c
     LEFT JOIN
@@ -639,7 +639,7 @@ num_encounters AS (
       f.num_fishing,
       f.fishing_hours,
     IF
-      (f.num_fishing > 0, TRUE, FALSE) AS had_fishing
+      (f.num_fishing > 0, TRUE, FALSE) AS fishing
     FROM
       add_loitering AS e
     LEFT JOIN
@@ -658,7 +658,7 @@ num_encounters AS (
       g.*,
       h.num_AISdisabling,
     IF
-      (h.num_AISdisabling > 0, TRUE, FALSE) AS had_AISdisabling
+      (h.num_AISdisabling > 0, TRUE, FALSE) AS AISdisabling
     FROM
       add_fishing AS g
     LEFT JOIN
@@ -694,9 +694,9 @@ num_encounters AS (
         CASE
           WHEN CONCAT(start_label, start_iso3) != CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 1 THEN TRUE
           WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3)
-          AND (had_encounter IS TRUE
-          OR had_loitering IS TRUE
-          OR had_fishing IS TRUE)
+          AND (encounter IS TRUE
+          OR loitering IS TRUE
+          OR fishing IS TRUE)
           AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 2 THEN TRUE
           WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 3 THEN TRUE
         ELSE
@@ -898,6 +898,10 @@ num_encounters AS (
       num_loitering,
       num_fishing,
       num_AISdisabling,
+      encounter,
+      loitering,
+      fishing,
+      AISdisabling,
       high_seas,
       eezs,
       rfmos,
@@ -988,6 +992,10 @@ num_encounters AS (
       num_loitering,
       num_fishing,
       num_AISdisabling,
+      encounter,
+      loitering,
+      fishing,
+      AISdisabling,
       high_seas,
       eezs,
       rfmos,
@@ -1072,6 +1080,10 @@ num_encounters AS (
       num_loitering,
       num_fishing,
       num_AISdisabling,
+      encounter,
+      loitering,
+      fishing,
+      AISdisabling,
       high_seas,
       eezs,
       rfmos,
@@ -1121,10 +1133,14 @@ POI_visits AS(
     CASE WHEN num_loitering IS NULL THEN 0 ELSE num_loitering END AS num_loitering,
     CASE WHEN num_fishing IS NULL THEN 0 ELSE num_fishing END AS num_fishing,
     CASE WHEN num_AISdisabling IS NULL THEN 0 ELSE num_AISdisabling END AS num_AISdisabling,
+    encounter,
+    loitering,
+    fishing,
+    AISdisabling,
     high_seas,
     eezs,
     rfmos,
-    fishing_hours
+    CASE WHEN fishing_hours IS NULL THEN 0 ELSE fishing_hours END AS fishing_hours
   FROM clean_info
   WHERE
     mmsi_flag != port_iso()
@@ -1234,6 +1250,10 @@ SELECT DISTINCT
   num_loitering,
   num_fishing,
   num_AISdisabling,
+  encounter,
+  loitering,
+  fishing,
+  AISdisabling,
   high_seas,
   eezs,
   rfmos,
