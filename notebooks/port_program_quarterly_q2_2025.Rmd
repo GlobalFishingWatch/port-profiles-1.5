@@ -66,7 +66,6 @@ country <- 'CIV'
 # when to look for previous visits
 prev_visit_search_date <- "'2020-01-01 00:00:00 UTC'" 
 
-
 # potential MMSIs to force in 
 missing_ssvids <- ''
 
@@ -110,18 +109,26 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
 # import QA vessel list from TMT for identity corrections 
 abj_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Abidjan_08Jul2025.csv"), header=T) 
 
+# reset some column values
+abj_ves$VesselType[abj_ves$VesselType=='Carrier vessel'] <- 'carrier'
+abj_ves$VesselType[abj_ves$VesselType=='Fishing vessel'] <- 'fishing'
+abj_ves$VesselType[abj_ves$VesselType=='Support vessel'] <- 'support'
+abj_ves$GearType[abj_ves$GearType=='Pole and line'] <- 'pole_and_line'
+abj_ves$GearType[abj_ves$GearType=='Purse seine'] <- 'tuna_purse_seines'
+abj_ves$GearType[abj_ves$GearType=='Trawl'] <- 'trawlers'
+
 # reset ssvid to characher
 abj_ves$ssvid <- as.character(abj_ves$ssvid)
 
 # Join update data to main data
-merged_df <- left_join(voyages_with_coverage, abj_ves, by = "ssvid", suffix = c("", "_tmt"))
+merged_df <- left_join(voyages_with_coverage, abj_ves, by = "ssvid")
 
 # update columns when they aren't NA 
 # map columns to update
 column_mapping <- list(
-  vessel_flag_best = "CurrentFlag_tmt",
-  vessel_class_best  = "VesselType_tmt",
-  geartype_best = "GearType_tmt"            
+  vessel_flag_best = "CurrentFlag",
+  vessel_class_best  = "VesselType",
+  geartype_best = "GearType"            
 )
 
 # Replace values in gfw_df with tmt_df values (if not NA)
@@ -131,8 +138,6 @@ for (main_col in names(column_mapping)) {
     merged_df[[main_col]] <- ifelse(!is.na(merged_df[[update_col]]), 
                                      merged_df[[update_col]], 
                                      merged_df[[main_col]])
-    # Optionally remove the update column after replacement
-    merged_df[[update_col]] <- NULL
   }
 }
 
@@ -215,7 +220,6 @@ voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE,
 
 write.csv(voyages_reformat, here::here("data","q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
-
 
 
 # Ghana 
@@ -489,6 +493,9 @@ country_iso3 <- "'KEN'"
 month <- 'Q1'
 country <- 'KEN'
 
+# when to look for previous visits
+prev_visit_search_date <- "'2020-01-01 00:00:00 UTC'" 
+
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_max.ken_q1_25_all_voyages_temp`'
 ```
@@ -523,6 +530,49 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
 
 ```
 
+```{r gear type corrections for Kenya from TMT data, echo=F, warning=F, include=FALSE}
+# import QA vessel list from TMT for identity corrections 
+ken_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Mombasa_08Jul2025.csv"), header=T) 
+
+# reset some column values
+ken_ves$VesselType[ken_ves$VesselType=='Carrier vessel'] <- 'carrier'
+ken_ves$VesselType[ken_ves$VesselType=='Fishing vessel'] <- 'fishing'
+ken_ves$VesselType[ken_ves$VesselType=='Support vessel'] <- 'support'
+ken_ves$GearType[ken_ves$GearType=='Pole and line'] <- 'pole_and_line'
+ken_ves$GearType[ken_ves$GearType=='Purse seine'] <- 'tuna_purse_seines'
+ken_ves$GearType[ken_ves$GearType=='Longline'] <- 'longliners'
+ken_ves$GearType[ken_ves$GearType=='Trawl'] <- 'trawlers'
+ken_ves$GearType[ken_ves$GearType=='Pots and traps'] <- 'pots_and_traps'
+ken_ves$GearType[ken_ves$GearType=='UNKNOWN '] <- NA
+
+
+# reset ssvid to characher
+ken_ves$ssvid <- as.character(ken_ves$ssvid)
+
+# Join update data to main data
+merged_df <- left_join(voyages_with_coverage, abj_ves, by = "ssvid")
+
+# update columns when they aren't NA 
+# map columns to update
+column_mapping <- list(
+  vessel_flag_best = "CurrentFlag",
+  vessel_class_best  = "VesselType",
+  geartype_best = "GearType"            
+)
+
+# Replace values in gfw_df with tmt_df values (if not NA)
+for (main_col in names(column_mapping)) {
+  update_col <- column_mapping[[main_col]]
+  if (update_col %in% names(merged_df)) {
+    merged_df[[main_col]] <- ifelse(!is.na(merged_df[[update_col]]), 
+                                     merged_df[[update_col]], 
+                                     merged_df[[main_col]])
+  }
+}
+
+```
+
+
 ```{r add gfw hyperlink for voyage, echo=F, warning=F, include=FALSE}
 
 # base componenets for VV string to accompany port profiles 
@@ -535,7 +585,7 @@ end_date_url <- '2025-3-31'
 #format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
 
 # paste string components together using vessel id, trip start and trip end from data 
-voyages_url <- bind_cols(voyages_with_coverage, 
+voyages_url <- bind_cols(merged_df, 
                          vv_url = paste('=HYPERLINK("',
                           base_string_p1,
                           voyages_with_coverage$vessel_id, 
