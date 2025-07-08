@@ -60,12 +60,15 @@ port_name <- "'ABIDJAN'"
 prev_visit_search_date <- "'2022-01-01 00:00:00 UTC'" 
 
 # file names
-month <- 'Q1'
+month <- 'Q2'
 country <- 'CIV'
 
+# when to look for previous visits
+prev_visit_search_date <- "'2020-01-01 00:00:00 UTC'" 
+
+
 # potential MMSIs to force in 
-missing_ssvids <- '"231257000", "311001586", "311001574", "311043800", "311040500", "306097000", "311001555", "311001159", "228385700", "306097000", "352004341", "412483273", 
-"412483274", "412483275"'
+missing_ssvids <- ''
 
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_max.civ_q2_25_all_voyages_temp`'
@@ -125,7 +128,7 @@ voyages_url <- bind_cols(voyages_with_coverage,
                           as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
                           '")', sep=''))
 
-write.csv(voyages_url, here::here("data", "proactive", paste('GHA_Q2_test','-', Sys.Date(),".csv", sep='')), row.names=F)
+# write.csv(voyages_url, here::here("data","proactive", paste('GHA_Q2_test','-', Sys.Date(),".csv", sep='')), row.names=F)
 
 ```
 
@@ -134,7 +137,7 @@ anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, lat, lon, label, sub
                        run_query = TRUE,
                        con = con)$data
 
-write.csv(anchorages, here::here("data","2025_q1", paste('Abidjan_anchorages','_', Sys.Date(),".csv", sep='')), row.names=F)
+# write.csv(anchorages, here::here("data","2025_q1", paste('Abidjan_anchorages','_', Sys.Date(),".csv", sep='')), row.names=F)
 
 table(anchorages$sublabel)
 
@@ -162,7 +165,7 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, abj_offshore, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, at_dock=dock, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, abj_offshore, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
@@ -180,27 +183,30 @@ voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE,
 write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
+```{r gear type corrections from TMT data, echo=F, warning=F, include=FALSE}
+tmt_civ <- read.csv(here::here("data","2025_q1", "TMT_feedback", "CIV - Q1 2025.csv"), header=T)
+
+
+```
 
 # Ghana 
 
 # set parameters for analysis 
 
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
-start_date <- "'2025-04-01 00:00:00 UTC'" 
-end_date <- "'2025-06-30 23:59:59 UTC'"
+start_date <- "'2025-01-01 00:00:00 UTC'" 
+end_date <- "'2025-03-31 23:59:59 UTC'"
 year <- 2025
 
 country_iso3 <- "'GHA'"
 port_name <- "'TEMA', 'TAKORADI'"
 
 # file names
-month <- 'Q2'
+month <- 'Q1'
 country <- 'GHA'
 
-prev_visit_search_date <- "'2022-01-01 00:00:00 UTC'" 
-
 # create a temp table for query 
-temp_table_voyages <- '`world-fishing-827.scratch_joef.gha_q2_25_all_voyages_temp`'
+temp_table_voyages <- '`world-fishing-827.scratch_max.gha_q1_25_all_voyages_temp`'
 
 # potential MMSIs to force in 
 missing_ssvids <- '"577030000", "311001187", "311009700", '
@@ -297,8 +303,8 @@ voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, tema_general, tema_fuel, tema_fishing, takoradi_general, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url,
-   AISdisabling=1, num_AISdisabling) #, total_gap_hours)
+   end_port = end_port_label, tema_general, tema_fuel, tema_fishing, takoradi_general, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite encounters T/F
 voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
@@ -309,13 +315,10 @@ voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALS
 # overwrite fishing T/F
 voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 
-# overwrite fishing T/F
-voyages_reformat$AISdisabling <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
-
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data", "proactive", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 # Senegal  
