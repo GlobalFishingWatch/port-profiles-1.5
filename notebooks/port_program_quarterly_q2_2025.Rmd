@@ -203,17 +203,8 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, at_dock=dock, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, abj_offshore, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, prev_visit_timestamp, at_dock=dock, abj_lagoon, abj_vridi, abj_cargo, abj_fishing, abj_offshore, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos,encounter, num_encounters, loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
-
-# overwrite encounters T/F
-voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
-
-# overwrite loitering T/F
-voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
-
-# overwrite fishing T/F
-voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
@@ -535,40 +526,43 @@ write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(cou
 ## set parameters for analysis 
 
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
-start_date <- "'2025-01-01 00:00:00 UTC'" 
-end_date <- "'2025-03-31 23:59:59 UTC'"
+start_date <- "'2025-04-01 00:00:00 UTC'" 
+end_date <- "'2025-06-30 23:59:59 UTC'"
 year <- 2025
 
 country_iso3 <- "'KEN'"
 #port_name <- "'MOMBASA'"
 
 # file names
-month <- 'Q1'
+month <- 'Q2'
 country <- 'KEN'
 
 # when to look for previous visits
-prev_visit_search_date <- "'2020-01-01 00:00:00 UTC'" 
+prev_visit_search_date <- "'2022-01-01 00:00:00 UTC'" 
 
 # create a temp table for query 
-temp_table_voyages <- '`world-fishing-827.scratch_max.ken_q1_25_all_voyages_temp`'
+temp_table_voyages <- '`world-fishing-827.scratch_max.ken_q2_25_all_voyages_temp`'
 ```
+
+## create voyage temporary table 
+
 
 ```{r voyages all, echo=F, warning=F, include=FALSE}
 
 voyages_q <- readr::read_file(here::here("queries","proactive", "recent_country_activity_c2_v4.sql"))
 
 fishwatchr::gfw_query(query = glue::glue(voyages_q, 
-                                                    start_date = start_date,
-                                                    end_date = end_date,
-                                                    year = year,
-                                                    start_year = start_year,
-                                                    end_year = end_year,
-                                                    temp_table = temp_table_voyages,
-                                                    port_iso = country_iso3),
+                                    start_date = start_date,
+                                    end_date = end_date,
+                                    year = year,                                                                              prev_visit_search_date = prev_visit_search_date,
+                                    temp_table = temp_table_voyages,
+                                    port_iso = country_iso3),
                                  run_query = TRUE,
                                  con = con)
 
 ```
+
+## add AIS coverage
 
 ```{r voyages ais coverage, echo=F, warning=F, include=FALSE}
 
@@ -582,6 +576,8 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
                                  con = con)$data
 
 ```
+
+## add gear type corrections from previous work with TMT
 
 ```{r gear type corrections for Kenya from TMT data, echo=F, warning=F, include=FALSE}
 # import QA vessel list from TMT for identity corrections 
@@ -625,6 +621,7 @@ for (main_col in names(column_mapping)) {
 
 ```
 
+## add gfw hyperlink
 
 ```{r add gfw hyperlink for voyage, echo=F, warning=F, include=FALSE}
 
@@ -650,7 +647,7 @@ voyages_url <- bind_cols(merged_df,
 
 ```
 
-
+## add anchorage information to datafram
 
 ```{r add in port information for SEN using anchorage stops}
 anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, lat, lon, label, sublabel FROM `world-fishing-827.anchorages.named_anchorages_v20240117` WHERE iso3 = 'KEN'"),
@@ -683,6 +680,7 @@ port_stops <- voyages_url %>%
 
 ```
 
+## reformat the data for external sharing
 
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
@@ -690,22 +688,13 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, mom_general, mom_fishing, mom_fishing_harbor, mom_harbor, mom_drydock,  fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, prev_visit_timestamp, mom_general, mom_fishing, mom_fishing_harbor, mom_harbor, mom_drydock,  fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter, num_encounters, loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
-
-# overwrite encounters T/F
-voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
-
-# overwrite loitering T/F
-voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
-
-# overwrite fishing T/F
-voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-# write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data","proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 
