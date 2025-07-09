@@ -47,7 +47,7 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
 
 # Cote Divore  
 
-# set parameters for analysis 
+## set parameters for analysis 
 
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
 start_date <- "'2025-04-01 00:00:00 UTC'" 
@@ -74,7 +74,7 @@ temp_table_voyages <- '`world-fishing-827.scratch_max.civ_q2_25_all_voyages_temp
 ```
 
 
-# run voyage query
+## run voyage query
 ```{r voyages all, echo=F, warning=F, include=FALSE}
 
 voyages_q <- readr::read_file(here::here("queries","proactive", "recent_country_activity_c2_v4.sql"))
@@ -218,7 +218,7 @@ voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data","q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 
@@ -278,6 +278,39 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
                                  con = con)$data
 
 ```
+## gear corrections
+```{r gear type corrections from TMT data, echo=F, warning=F, include=FALSE}
+# import QA vessel list from TMT for identity corrections 
+tem_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Tema_08Jul2025.csv"), header=T) 
+
+# reset ssvid to characher
+tem_ves$ssvid <- as.character(tem_ves$ssvid)
+
+# Join update data to main data
+merged_df <- left_join(voyages_with_coverage, tem_ves, by = "ssvid", suffix = c("", "_tmt"))
+
+# update columns when they aren't NA 
+# map columns to update
+column_mapping <- list(
+  vessel_flag_best = "CurrentFlag_tmt",
+  vessel_class_best  = "VesselType_tmt",
+  geartype_best = "GearType_tmt"            
+)
+
+# Replace values in gfw_df with tmt_df values (if not NA)
+for (main_col in names(column_mapping)) {
+  update_col <- column_mapping[[main_col]]
+  if (update_col %in% names(merged_df)) {
+    merged_df[[main_col]] <- ifelse(!is.na(merged_df[[update_col]]), 
+                                     merged_df[[update_col]], 
+                                     merged_df[[main_col]])
+    # Optionally remove the update column after replacement
+    merged_df[[update_col]] <- NULL
+  }
+}
+
+```
+
 ## add urls
 ```{r add gfw hyperlink for voyage, echo=F, warning=F, include=FALSE}
 
@@ -291,7 +324,7 @@ end_date_url <- '2025-3-31'
 #format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
 
 # paste string components together using vessel id, trip start and trip end from data 
-voyages_url <- bind_cols(voyages_with_coverage, 
+voyages_url <- bind_cols(merged_df, 
                          vv_url = paste('=HYPERLINK("',
                           base_string_p1,
                           voyages_with_coverage$vessel_id, 
@@ -330,6 +363,7 @@ voyages_url$takoradi_general <- sapply(voyages_url$stop_anchorage_ids, function(
 
 ```
 
+
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
 voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
@@ -341,32 +375,36 @@ voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 # Senegal  
 
-# set parameters for analysis 
+## set parameters for analysis 
 
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
-start_date <- "'2025-01-01 00:00:00 UTC'" 
-end_date <- "'2025-03-31 23:59:59 UTC'"
+start_date <- "'2025-04-01 00:00:00 UTC'" 
+end_date <- "'2025-06-30 23:59:59 UTC'"
 year <- 2025
 
+prev_visit_search_date <- "'2022-01-01 00:00:00 UTC'" 
+
 country_iso3 <- "'SEN'"
-port_name <- "'DAKAR'"
+# port_name <- "'DAKAR'"
 
 # file names
-month <- 'Q1'
+month <- 'Q2'
 country <- 'SEN'
 
-
-missing_ssvids <- '"630123009", "306881000", "412209113", "663250000"'
+# potential MMSIs to force in 
+missing_ssvids <- '""'
 
 # create a temp table for query 
-temp_table_voyages <- '`world-fishing-827.scratch_max.sen_q1_25_all_voyages_temp`'
+temp_table_voyages <- '`world-fishing-827.scratch_joef.sen_q2_25_all_voyages_temp`'
+
 ```
 
+## run voyage query
 ```{r voyages all, echo=F, warning=F, include=FALSE}
 
 voyages_q <- readr::read_file(here::here("queries","proactive", "recent_country_activity_c2_v4.sql"))
@@ -385,6 +423,7 @@ fishwatchr::gfw_query(query = glue::glue(voyages_q,
 
 ```
 
+## run AIS query
 ```{r voyages ais coverage, echo=F, warning=F, include=FALSE}
 
 ais_cov_q <- readr::read_file(here::here("queries","proactive", "voyage_ais_coverage_no_port.sql"))
@@ -398,6 +437,40 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
 
 ```
 
+## gear corrections
+```{r gear type corrections from TMT data, echo=F, warning=F, include=FALSE}
+# import QA vessel list from TMT for identity corrections 
+sen_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Dakar_08Jul2025.csv"), header=T) 
+
+# reset ssvid to characher
+sen_ves$ssvid <- as.character(sen_ves$ssvid)
+
+# Join update data to main data
+merged_df <- left_join(voyages_with_coverage, sen_ves, by = "ssvid", suffix = c("", "_tmt"))
+
+# update columns when they aren't NA 
+# map columns to update
+column_mapping <- list(
+  vessel_flag_best = "CurrentFlag_tmt",
+  vessel_class_best  = "VesselType_tmt",
+  geartype_best = "GearType_tmt"            
+)
+
+# Replace values in gfw_df with tmt_df values (if not NA)
+for (main_col in names(column_mapping)) {
+  update_col <- column_mapping[[main_col]]
+  if (update_col %in% names(merged_df)) {
+    merged_df[[main_col]] <- ifelse(!is.na(merged_df[[update_col]]), 
+                                     merged_df[[update_col]], 
+                                     merged_df[[main_col]])
+    # Optionally remove the update column after replacement
+    merged_df[[update_col]] <- NULL
+  }
+}
+
+```
+
+## add urls
 ```{r add gfw hyperlink for voyage, echo=F, warning=F, include=FALSE}
 
 # base componenets for VV string to accompany port profiles 
@@ -422,7 +495,7 @@ voyages_url <- bind_cols(voyages_with_coverage,
 
 ```
 
-
+## add port info
 ```{r add in port information for SEN using anchorage stops}
 anchorages <- fishwatchr::gfw_query(query = c("SELECT s2id, label, sublabel FROM `world-fishing-827.anchorages.named_anchorages_v20240117` WHERE iso3 = 'SEN'"),
                        run_query = TRUE,
@@ -445,31 +518,21 @@ port_stops <- voyages_url %>%
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
 voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
-   Flag=vessel_flag_best, flag_ais=mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
+   Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, dak_general, dak_fishing, fishing=num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= 1, num_encounters=num_encounters, loitering=1, num_loitering, percent_ais_voyage=percent_ais_voyage, vv_url)
-   #gaps=1, num_gaps, total_gap_hours)
-
-# overwrite encounters T/F
-voyages_reformat$encounter <- ifelse(is.na(voyages_reformat$num_encounters), FALSE, TRUE)
-
-# overwrite loitering T/F
-voyages_reformat$loitering <- ifelse(is.na(voyages_reformat$num_loitering), FALSE, TRUE)
-
-# overwrite fishing T/F
-voyages_reformat$fishing <- ifelse(is.na(voyages_reformat$fishing), FALSE, TRUE)
+   end_port = end_port_label, dak_general, dak_fishing, num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter, num_encounters, loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url) #, total_gap_hours)
 
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
-write.csv(voyages_reformat, here::here("data","2025_q1", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+write.csv(voyages_reformat, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 
 # Kenya  
 
-# set parameters for analysis 
+## set parameters for analysis 
 
 ```{r set date and port parameters, echo=F, warning=F, include=FALSE}
 start_date <- "'2025-01-01 00:00:00 UTC'" 

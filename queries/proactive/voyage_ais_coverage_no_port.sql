@@ -220,7 +220,7 @@ SELECT
 --FROM temp_table()
 FROM {temp_table}
 LEFT JOIN (
- SELECT vessel_id, ssvid, trip_id, trip_start, trip_end, percent_ais_voyage, total_voyage_h, total_ais_h,
- FROM ais_coverage) USING (vessel_id, ssvid, trip_id, trip_start, trip_end)
+ SELECT vessel_id, ssvid, trip_id, percent_ais_voyage, total_voyage_h, total_ais_h,
+ FROM ais_coverage) USING (vessel_id, ssvid, trip_id)
 
 
