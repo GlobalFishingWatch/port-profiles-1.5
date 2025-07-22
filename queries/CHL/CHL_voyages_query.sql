@@ -3,11 +3,11 @@
   --
 
 ## set time frame of interest
-CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2014-01-01 00:00:00 UTC'));
-CREATE TEMP FUNCTION  start_year() AS (2014);
+CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP('2025-01-01 00:00:00 UTC'));
+CREATE TEMP FUNCTION  start_year() AS (2025);
   # voyages will be truncated to this end timestamp, if needed
-CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP('2023-12-31 23:59:59 UTC'));
-CREATE TEMP FUNCTION  end_year() AS (2023);
+CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP('2025-06-30 23:59:59 UTC'));
+CREATE TEMP FUNCTION  end_year() AS (2025);
 
 ## set port and country (iso) of interest - using anchorage list
 -- CREATE TEMP FUNCTION port_label() AS (CAST("CONAKRY" AS STRING));
@@ -38,7 +38,7 @@ WITH
        'fishing' AS vessel_class,
        prod_geartype AS gear_type
      FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240701`
+      `pipe_ais_v3_published.product_vessel_info_summary`
      WHERE
       year >= start_year() AND year <= end_year()
       AND prod_shiptype IN ("fishing")
@@ -60,7 +60,7 @@ WITH
       -- IFNULL(IFNULL(best.best_vessel_class, ARRAY_TO_STRING(registry_info.best_known_vessel_class,'')), inferred.inferred_vessel_class_ag) AS gear_type
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240701` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE
     year >= start_year() AND year <= end_year()
     -- AND on_fishing_list_best -- vi_ssvid approach
@@ -88,7 +88,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary_v20240701` AS vi_table
+      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE (
       prod_shiptype = 'fishing'
       OR prod_shiptype = 'discrepancy'
@@ -135,18 +135,34 @@ WITH
 -- voyages for all identified fishing vessels
 ----------------------------------------------------------
   fishing_voyages AS (
-    SELECT
-      *
+    SELECT DISTINCT
+      voyages.ssvid,
+      voyages.year,
+      voyages.vessel_id,
+      voyages.trip_start,
+      voyages.trip_end,
+      voyages.trip_start_anchorage_id,
+      voyages.trip_end_anchorage_id,
+      voyages.trip_start_visit_id,
+      voyages.trip_end_visit_id,
+      voyages.trip_start_confidence,
+      voyages.trip_end_confidence,
+      voyages.trip_id,
+      fv.vessel_iso3,
+      fv.class_confidence,
+      fv.vessel_class,
+      fv.gear_type
     FROM (
       SELECT
         *,
         EXTRACT(year FROM trip_end) AS year
       FROM
-        `pipe_ais_v3_published.voyages_c3`
+         `pipe_ais_v3_published.voyages_c3`
       WHERE
-        trip_end >= start_date() AND trip_start <= end_date()
-        )
-    INNER JOIN fishing_vessels
+        trip_end BETWEEN start_date() AND end_date()
+        AND trip_start < end_date()
+        ) voyages
+    INNER JOIN fishing_vessels fv
     USING
       (ssvid, year)
       ),
@@ -164,7 +180,7 @@ WITH
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core_v20240701`
+      `pipe_ais_v3_published.identity_core`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -187,7 +203,7 @@ WITH
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v20240701`
+      `pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -679,14 +695,26 @@ WITH
     SELECT
       vessel_id,
       trip_id,
-      COUNT(*) AS num_fishing
+      STRING_AGG(DISTINCT high_seas, ', ') as high_seas,
+      STRING_AGG(DISTINCT rfmo,', ') as rfmos,
+      STRING_AGG(DISTINCT ISO_TER1,', ') as eezs,
+      COUNT(*) AS num_fishing,
+      SUM(TIMESTAMP_DIFF(event_end, event_start, SECOND) / 3600) AS fishing_hours,
     FROM (
       SELECT
         vessel_id,
         event_start,
-        event_end
+        event_end,
+        high_seas,
+        rfmo,
+        eez,
+        ISO_TER1,
       FROM
-        `pipe_ais_v3_published.product_events_fishing`) a
+        `pipe_ais_v3_published.product_events_fishing`
+      LEFT JOIN UNNEST (regions_mean_position.high_seas) AS high_seas
+      LEFT JOIN UNNEST (regions_mean_position.rfmo) AS rfmo
+      LEFT JOIN UNNEST (regions_mean_position.eez) AS eez
+      LEFT JOIN (SELECT MRGID, ISO_TER1 FROM `world-fishing-827.ocean_shapefiles_all_purpose.marine_regions_v11`) ON (eez=CAST(MRGID AS string)))
     INNER JOIN (
       SELECT
         vessel_id,
@@ -743,7 +771,7 @@ WITH
       a.*,
       b.num_encounters,
     IF
-      (b.num_encounters > 0, TRUE, FALSE) AS had_encounter
+      (b.num_encounters > 0, TRUE, FALSE) AS encounter
     FROM
       updated_pan_voyages AS a
     LEFT JOIN
@@ -763,7 +791,7 @@ WITH
       c.*,
       d.num_loitering,
     IF
-      (d.num_loitering > 0, TRUE, FALSE) AS had_loitering
+      (d.num_loitering > 0, TRUE, FALSE) AS loitering
     FROM
       add_encounters c
     LEFT JOIN
@@ -781,9 +809,13 @@ WITH
   add_fishing AS (
     SELECT
       e.*,
+      f.high_seas,
+      f.rfmos,
+      f.eezs,
       f.num_fishing,
+      f.fishing_hours,
     IF
-      (f.num_fishing > 0, TRUE, FALSE) AS had_fishing
+      (f.num_fishing > 0, TRUE, FALSE) AS fishing
     FROM
       add_loitering AS e
     LEFT JOIN
@@ -792,7 +824,7 @@ WITH
       (vessel_id,
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29),
 
 --------------------------------------
 -- label voyage if it had at least one gap event
@@ -802,7 +834,7 @@ WITH
       g.*,
       h.num_AISdisabling,
     IF
-      (h.num_AISdisabling > 0, TRUE, FALSE) AS had_AISdisabling
+      (h.num_AISdisabling > 0, TRUE, FALSE) AS AISdisabling
     FROM
       add_fishing AS g
     LEFT JOIN
@@ -811,7 +843,7 @@ WITH
       (vessel_id,
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),
 
 --------------------------------------
 -- label if voyages represents a 'real' voyage
@@ -838,9 +870,9 @@ WITH
         CASE
           WHEN CONCAT(start_label, start_iso3) != CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 1 THEN TRUE
           WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3)
-          AND (had_encounter IS TRUE
-          OR had_loitering IS TRUE
-          OR had_fishing IS TRUE)
+          AND (encounter IS TRUE
+          OR loitering IS TRUE
+          OR fishing IS TRUE)
           AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 2 THEN TRUE
           WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 3 THEN TRUE
         ELSE
@@ -1018,7 +1050,15 @@ WITH
       num_encounters,
       num_loitering,
       num_fishing,
-      num_AISdisabling
+      num_AISdisabling,
+      encounter,
+      loitering,
+      fishing,
+      AISdisabling,
+      high_seas,
+      eezs,
+      rfmos,
+      fishing_hours,
     FROM
       add_visit_end_2
     WHERE
@@ -1066,7 +1106,15 @@ WITH
       num_encounters,
       num_loitering,
       num_fishing,
-      num_AISdisabling
+      num_AISdisabling,
+      encounter,
+      loitering,
+      fishing,
+      AISdisabling,
+      high_seas,
+      eezs,
+      rfmos,
+      fishing_hours
     FROM all_voyages )
     JOIN (
       SELECT
@@ -1154,7 +1202,6 @@ WITH
         WHEN class_confidence_initial = "1" THEN "high"
         WHEN class_confidence_initial = "2" THEN "med"
         WHEN class_confidence_initial = "3" THEN "low"
-        WHEN class_confidence_initial = "4" THEN "TMT"
         END AS class_confidence_initial,
       trip_id,
       trip_start,
@@ -1179,7 +1226,15 @@ WITH
       num_encounters,
       num_loitering,
       num_fishing,
-      num_AISdisabling
+      num_AISdisabling,
+      encounter,
+      loitering,
+      fishing,
+      AISdisabling,
+      high_seas,
+      eezs,
+      rfmos,
+      fishing_hours
     FROM foreign_voyages)
 
 --------------------------------------
@@ -1205,7 +1260,7 @@ WITH
     trip_end,
     end_port_iso3,
     end_port_label,
-    -- end_port_sublabel,
+    end_port_sublabel,
     trip_end_anchorage_id,
     trip_end_confidence,
     trip_duration_days,
@@ -1217,10 +1272,17 @@ WITH
     trip_end_visit_id,
     start_latitude,
     start_longitude,
-    num_encounters,
-    num_loitering,
-    num_fishing,
-    num_AISdisabling
+    CASE WHEN num_encounters IS NULL THEN 0 ELSE num_encounters END AS num_encounters,
+    CASE WHEN num_loitering IS NULL THEN 0 ELSE num_loitering END AS num_loitering,
+    CASE WHEN num_fishing IS NULL THEN 0 ELSE num_fishing END AS num_fishing,
+    CASE WHEN num_AISdisabling IS NULL THEN 0 ELSE num_AISdisabling END AS num_AISdisabling,
+    encounter,
+    loitering,
+    fishing,
+    AISdisabling,
+    high_seas,
+    eezs,
+    rfmos,
   FROM clean_info
 
 
