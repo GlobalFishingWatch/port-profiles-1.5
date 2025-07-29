@@ -7,6 +7,8 @@ output:
     theme: united
     highlight: tango
   pdf_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -17,18 +19,28 @@ knitr::opts_chunk$set(echo = FALSE,
 ```
 
 ## load packages
+
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
-library(bigrquery)
-library(sf)
-library(ggplot2)
+
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI", "glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "ggrepel", "tibble", "ggplot2",
+                             "purr", "readr", "dplyr", "feather") )
+
+# get fishwatch r independently 
+# if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
 library(fishwatchr)
-library(glue)
-library(here)
-library(purrr)
-library(readr)
-library(dplyr)
-library(feather)
-library(ggrepel)
 
 con <- DBI::dbConnect(bigrquery::bigquery(),
   project = "world-fishing-827",
@@ -37,13 +49,26 @@ con <- DBI::dbConnect(bigrquery::bigquery(),
 ```
 
 ## query/load data
+
 ```{r message=FALSE, warning=FALSE, include=TRUE}
+# voyages_q <- readr::read_file(here::here("queries", "CHL", "CHL_voyages_query.sql"))
+# 
+# fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+#                                                     start_date = start_date,
+#                                                     end_date = end_date,
+#                                                     year = year,
+#                                                     missing_ssvids = missing_ssvids,
+#                                                     temp_table = temp_table_voyages,
+#                                                     port_iso = country_iso3,
+#                                                     prev_visit_search_date = prev_visit_search_date),
+#                                  run_query = TRUE,
+#                                  con = con)
 
 # v2 == version with panama canal adjustment
-CHL_ports <- fishwatchr::gfw_query(query = here::here("queries", "CHL", "CHL_voyages_query.sql"), run_query = TRUE, con = con)$data
+CHL_ports_2025 <- fishwatchr::gfw_query(query = here::here("queries", "CHL", "CHL_voyages_query.sql"), run_query = TRUE, con = con)$data
 
 ## filter to keep just reefers and specialized reefers for carriers, according to vessel info table
-CHL_ports <- CHL_ports %>% 
+CHL_ports_2025 <- CHL_ports_2025 %>% 
               filter(vessel_class_best == "fishing" | vessel_class_best == "carrier") %>%
               filter(vessel_flag_best != "UNK")
 
@@ -51,20 +76,20 @@ CHL_ports <- CHL_ports %>%
 # entry_port_c4_v2 <- read_feather(here::here("data", "entry_port_c4_v2.feather"))
 
 # set df to use in figures
-visits_df <- CHL_ports
+visits_df <- CHL_ports %>% filter(year != 2025)
 
-
+CHL_ports_2025 <- CHL_ports %>% filter(year == 2025)
 ```
 
 ## country lists
+
 ```{r}
 # country_map <- c(
 #   "Peru", "Chile", "Colombia", "Ecuador", "Argentina", "Uruguay", "Panama", "Nicaragua",
 #   "Guatamala", "Honduras", "El Salvador", "Brasil", "Costa Rica", "Mexico"
 # )
 
-country_map <- c("Chile"
-)
+country_map <- c("Chile")
 # country_map <- c(
 #   "Argentina", "Belize", "Brasil", "Chile", "Colombia", 
 #   "Costa Rica", "Ecuador", "El Salvador", "French Guiana", "Guatamala", "Guyana",
@@ -76,13 +101,14 @@ names(country_map) <- c("CHL")
   
 ```
 
-##Port State Profiles #####################################################################################
+##Port State Profiles \#####################################################################################
 
 ### Visits over Time by Foreign Fishing and Carrier Vessels by Port State
+
 ```{r message=FALSE, warning=FALSE, include=TRUE}
 
 iso3s <- c("CHL")
-limits <- c(500)
+limits <- c(300)
 
 # purrr::map(
 purrr::map2(
@@ -96,12 +122,13 @@ purrr::map2(
 ```
 
 ### Visits over Time by Foreign Fishing Vessels by Flag State for each Port State
+
 ```{r}
 safe_visits_to_portstate_by_flag_bar <- purrr::possibly(
   .f = visits_to_portstate_by_flag_bar,
   otherwise = "Error"
 )
-limits <- c(1000)
+limits <- c(400)
 
 purrr::map(
   .x = iso3s,
@@ -114,6 +141,7 @@ purrr::map(
 ```
 
 ### Visits over Time by Foreign Carrier Vessels by Flag Sate for each Port State
+
 ```{r}
 purrr::map(
   .x = iso3s,
@@ -125,8 +153,8 @@ purrr::map(
 
 ```
 
-
 ### Visits over Time by Foreign Fishing Vessels by Port for each Port State
+
 ```{r}
 
 safe_visits_to_portstate_by_port_bar <- purrr::possibly(
@@ -144,8 +172,8 @@ purrr::map(
 
 ```
 
-
 ### Visits over Time by Foreign Carrier Vessels by Port for each Port State
+
 ```{r}
 purrr::map(
   .x = iso3s,
@@ -157,8 +185,8 @@ purrr::map(
 
 ```
 
-
 ### Visits over Time by Foreign Fishing Vessels by Vessel Class for each Port State
+
 ```{r}
 safe_visits_to_portstate_by_gear_bar <- purrr::possibly(
   .f = visits_to_portstate_by_gear_bar,
@@ -187,6 +215,7 @@ purrr::map(
 ```
 
 ### Visits over Time by Foreign Fishing Vessels by Flag State by Vessel Class for each Port State
+
 ```{r}
 
 # safe_visits_to_portstate_by_gear_flag_bar <- purrr::possibly(
@@ -204,6 +233,7 @@ purrr::map(
 ```
 
 ## visits by gear type across all ETP countries (port state aggregated)
+
 ```{r}
 # gear plot for all gear flags in the region OR port states
 visits_by_gear_flag_bar <- function(df, vessel_type = "fishing") {
@@ -336,6 +366,7 @@ visits_by_gear_flag_bar(visits_df)
 ```
 
 ## visits by gear type across all port states
+
 ```{r}
 # gear plot for all gear flags in the region OR port states
 visits_by_gear_port_bar <- function(df, vessel_type = "fishing") {
@@ -456,6 +487,7 @@ visits_by_gear_port_bar(visits_df)
 ```
 
 ### Visits over Time by Foreign Fishing Vessels by Vessel Class by Port for each Port State
+
 ```{r}
 
 safe_visits_to_portstate_by_port_gear_bar <- purrr::possibly(
@@ -472,8 +504,8 @@ purrr::map(
 
 ```
 
-
 ### Visits over Time by Foreign Fishing Vessels by Flag State by Port for each Port State
+
 ```{r}
 
 safe_visits_to_portstate_by_port_flagstate_bar <- purrr::possibly(
@@ -489,8 +521,3 @@ purrr::map(
 )
 
 ```
-
-
-
-
-

@@ -8,7 +8,7 @@ visits_by_portstate_line <- function(df, iso3, max_limit, country_map) {
     filter(end_port_iso3 == {{ iso3 }}) %>%
     group_by(vessel_class_best, year) %>%
     summarize(Total = n()) %>% 
-    tidyr::complete(year=2014:2023, fill = list(Total = 0))
+    tidyr::complete(year=2015:2024, fill = list(Total = 0))
 
 
   p <- ggplot(
@@ -26,7 +26,7 @@ visits_by_portstate_line <- function(df, iso3, max_limit, country_map) {
     #   point.padding = 5, direction = 'y',
     #   show.legend = FALSE, size = 3
     # ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
     ylim(0, max_limit) +
     theme_gfw() +
     theme(
@@ -82,7 +82,7 @@ visits_to_portstate_by_flag_bar <- function(df, port_state, country_map,
         color = plot_flag
       )
     ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
     scale_fill_manual(
       breaks = c(top_flag_state_v, "Otros"),
       values = c(
@@ -180,7 +180,7 @@ visits_to_portstate_by_port_bar <- function(df, port_state, top_n = 5,
         color = plot_port
       )
     ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
     scale_fill_manual(
       breaks = c(top_port_v, "Otros"),
       values = c(
@@ -274,7 +274,7 @@ visits_to_portstate_by_gear_bar <- function(df, port_state, country_map) {
         fill = plot_gear
       )
     ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
     scale_fill_manual(values = c(
       "squid_jigger" = gfw_palettes$chart[5],
       "trawlers" = gfw_palettes$chart[1],
@@ -394,7 +394,7 @@ visits_to_portstate_by_gear_flag_bar <- function(df, port_state, country_map, ve
             fill = plot_flag
           )
         ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
         scale_fill_manual(
           breaks = c(top_flag_state_v, "Others"),
           values = c(
@@ -499,7 +499,7 @@ visits_to_portstate_by_port_gear_bar <- function(df, port_state, top_n = 5, coun
           fill = plot_gear
         )
       ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
       scale_fill_manual(
         values = c(
         "squid_jigger" = gfw_palettes$chart[5],
@@ -592,7 +592,7 @@ visits_to_portstate_by_port_flagstate_bar <- function(df, port_state, top_n = 5,
             fill = plot_flag
           )
         ) +
-  scale_x_continuous(limits=c(2013.5,2023.5), breaks = c(2014:2023), expand=c(0,0.2)) +
+  scale_x_continuous(limits=c(2014.5,2024.5), breaks = c(2015:2024), expand=c(0,0.2)) +
         scale_fill_manual(
           breaks = c(top_flag_state_v, "Others"),
           values = c(
