@@ -65,18 +65,15 @@ con <- DBI::dbConnect(bigrquery::bigquery(),
 #                                  con = con)
 
 # v2 == version with panama canal adjustment
-CHL_ports_2025 <- fishwatchr::gfw_query(query = here::here("queries", "CHL", "CHL_voyages_query.sql"), run_query = TRUE, con = con)$data
-
-## filter to keep just reefers and specialized reefers for carriers, according to vessel info table
-CHL_ports_2025 <- CHL_ports_2025 %>% 
-              filter(vessel_class_best == "fishing" | vessel_class_best == "carrier") %>%
-              filter(vessel_flag_best != "UNK")
-
-# write_feather(entry_port_c4_v2, here::here("data", "entry_port_c4_v2.feather"))
-# entry_port_c4_v2 <- read_feather(here::here("data", "entry_port_c4_v2.feather"))
+CHL_ports_2015_25 <- fishwatchr::gfw_query(query = here::here("queries", "CHL", "CHL_voyages_query.sql"), run_query = TRUE, con = con)$data
 
 # set df to use in figures
-visits_df <- CHL_ports %>% filter(year != 2025)
+visits_df <- CHL_ports_2015_25 %>% filter(year > 2015)
+
+## filter to keep just reefers and specialized reefers for carriers, according to vessel info table
+visits_df <- visits_df %>% 
+              filter(vessel_class_best == "fishing" | vessel_class_best == "carrier") %>%
+              filter(vessel_flag_best != "UNK")
 
 CHL_ports_2025 <- CHL_ports %>% filter(year == 2025)
 ```
@@ -521,3 +518,85 @@ purrr::map(
 )
 
 ```
+
+
+## CHN only
+```{r}
+# set df to use in figures
+visits_df_chn <- CHL_ports_2015_25 %>% 
+  filter(year > 2015) %>% 
+  filter(vessel_flag_best == 'CHN') %>% 
+  filter(vessel_class_best == "fishing")
+  
+
+country_map <- c("Chile")
+names(country_map) <- c("CHL")
+
+
+safe_visits_to_portstate_by_flag_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_flag_bar,
+  otherwise = "Error"
+)
+limits <- c(400)
+purrr::map(
+  .x = iso3s,
+  # .y = limits,
+  .f = safe_visits_to_portstate_by_flag_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_flag_bar,
+  df = visits_df_chn,
+  country_map = country_map,
+  vessel_type = "carrier"
+)
+
+## visits by port
+safe_visits_to_portstate_by_port_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_port_bar,
+  otherwise = "Error"
+)
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_port_bar,
+  df = visits_df_chn,
+  country_map = country_map,
+  vessel_type = "fishing"
+)
+
+## visits by vessel class
+safe_visits_to_portstate_by_gear_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_gear_bar,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_gear_bar,
+  df = visits_df_chn,
+  country_map = country_map
+)
+```
+
+
+## some 
+```{r}
+visits_df_chn %>% 
+  filter(end_port_label != c('PUNTA ARENAS'))
+  # filter(!end_port_label %in% c('PUNTA ARENAS', 'TALCAHUANO', 'VALPARAISO'))
+  mutate(month = floor_date(trip_end, unit = "month")) %>% 
+  mutate(semester = semester(trip_end)) %>% 
+  group_by(year, semester) %>%
+  summarise(total_visits = n(), .groups = "drop") %>% View()
+
+visits_df_chn %>% 
+  # filter(end_port_label != c('PUNTA ARENAS'))
+  filter(!end_port_label %in% c('PUNTA ARENAS', 'TALCAHUANO', 'VALPARAISO')) %>% 
+  distinct(shipname) %>% View()
+
+```
+
+
