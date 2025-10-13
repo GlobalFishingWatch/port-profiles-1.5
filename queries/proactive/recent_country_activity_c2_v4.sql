@@ -28,7 +28,7 @@ RETURNS ARRAY<STRING> AS (
 
 CREATE OR REPLACE TABLE {temp_table}
 OPTIONS (
-  expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
+  expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
 ) AS
 
 WITH
@@ -74,7 +74,7 @@ WITH
        'fishing' AS vessel_class,
        prod_geartype AS gear_type
      FROM
-      `pipe_ais_v3_published.product_vessel_info_summary` --
+      `global-fishing-watch.pipe_ais_v3_published.product_vessel_info_summary` --
      WHERE
       year >= year()
       AND prod_shiptype IN ("fishing")
@@ -95,7 +95,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
+      `global-fishing-watch.pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE
     year >= year() AND year <= year()
     AND prod_shiptype IN ("fishing")
@@ -123,7 +123,7 @@ WITH
       'fishing' AS vessel_class,
       prod_geartype AS gear_type
     FROM
-      `pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
+      `global-fishing-watch.pipe_ais_v3_published.product_vessel_info_summary` AS vi_table
     WHERE (
       prod_shiptype = 'fishing'
       OR prod_shiptype = 'discrepancy'
@@ -222,7 +222,7 @@ fishing_voyages AS (
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core`
+      `global-fishing-watch.pipe_ais_v3_published.identity_core`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
@@ -245,7 +245,7 @@ fishing_voyages AS (
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v`
+      `global-fishing-watch.pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -266,7 +266,7 @@ fishing_voyages AS (
       activity.first_timestamp,
       activity.last_timestamp
     FROM
-      `pipe_ais_v3_published.vi_ssvid_byyear_v`
+      `global-fishing-watch.pipe_ais_v3_published.vi_ssvid_byyear_v`
     WHERE
       TIMESTAMP(activity.first_timestamp) <= end_date() AND
       TIMESTAMP(activity.last_timestamp) >= start_date() AND
@@ -398,7 +398,7 @@ fishing_voyages AS (
     label,
     iso3
   FROM
-    `anchorages.named_anchorages_v20240117`
+    `global-fishing-watch.anchorages.named_anchorages_v20240117`
     ),
 
 --------------------------------------
@@ -429,10 +429,6 @@ fishing_voyages AS (
 --------------------------------------
 -- Identify how many encounters occurred on each voyage
 --------------------------------------
-
---------------------------------------
--- Identify how many encounters occurred on each voyage
---------------------------------------
 num_encounters AS (
   SELECT
     vessel_id,
@@ -449,7 +445,7 @@ num_encounters AS (
       JSON_EXTRACT_SCALAR(event_vessels, "$[1].id") as enc_product_vessel_id,
       JSON_EXTRACT_SCALAR(event_vessels, "$[1].ssvid") as enc_product_ssvid,
       start_distance_from_port_km
-    FROM `pipe_ais_v3_published.product_events_encounter`) enc
+    FROM `global-fishing-watch.pipe_ais_v3_published.product_events_encounter`) enc
     INNER JOIN (
       SELECT
         vessel_id,
@@ -480,13 +476,13 @@ num_encounters AS (
         event_start,
         event_end,
       FROM
-        `pipe_ais_v3_published.product_events_loitering`
+        `global-fishing-watch.pipe_ais_v3_published.product_events_loitering`
       WHERE
         seg_id IN (
         SELECT
           seg_id
         FROM
-          `pipe_ais_v3_published.segs_activity`
+          `global-fishing-watch.pipe_ais_v3_published.segs_activity`
         WHERE
           good_seg IS TRUE
           AND overlapping_and_short IS FALSE)
@@ -533,7 +529,7 @@ num_encounters AS (
         eez,
         ISO_TER1,
       FROM
-        `pipe_ais_v3_published.product_events_fishing`
+        `global-fishing-watch.pipe_ais_v3_published.product_events_fishing`
       LEFT JOIN UNNEST (regions_mean_position.high_seas) AS high_seas
       LEFT JOIN UNNEST (regions_mean_position.rfmo) AS rfmo
       LEFT JOIN UNNEST (regions_mean_position.eez) AS eez
@@ -568,7 +564,7 @@ num_encounters AS (
         event_start,
         event_end
       FROM
-        `pipe_ais_v3_published.product_events_ais_disabling`) a
+        `global-fishing-watch.pipe_ais_v3_published.product_events_ais_disabling`) a
     INNER JOIN (
       SELECT
         vessel_id,
@@ -727,7 +723,7 @@ num_encounters AS (
           AND callsign.value IS NULL
           AND imo.value IS NULL), TRUE, FALSE) AS poor_id
     FROM
-      `pipe_ais_v3_published.vessel_info` ),
+      `global-fishing-watch.pipe_ais_v3_published.vessel_info` ),
 
 --------------------------------------
 -- Filter the voyages to those that
@@ -770,7 +766,7 @@ num_encounters AS (
         distance_from_shore_m,
         dock
       FROM
-        `anchorages.named_anchorages_v20240117` )
+        `global-fishing-watch.anchorages.named_anchorages_v20240117` )
     USING
       (trip_end_anchorage_id)),
 
@@ -787,7 +783,7 @@ num_encounters AS (
           visit_id AS trip_end_visit_id,
           STRING_AGG(DISTINCT e.anchorage_id, ', ') AS stop_anchorage_ids
         FROM
-          `world-fishing-827.pipe_ais_v3_published.port_visits`,
+          `global-fishing-watch.pipe_ais_v3_published.port_visits`,
           UNNEST (events) AS e
         WHERE
           end_timestamp > TIMESTAMP("2025-01-01")
@@ -815,7 +811,7 @@ num_encounters AS (
         ROUND(end_lat, 2) AS end_latitude,
         ROUND(end_lon, 2) AS end_longitude
       FROM
-        `pipe_ais_v3_published.port_visits`
+        `global-fishing-watch.pipe_ais_v3_published.port_visits`
       WHERE
         EXTRACT(YEAR
         FROM
@@ -846,7 +842,7 @@ num_encounters AS (
           timestamp,
           LEAD(timestamp) OVER(PARTITION BY visit_id ORDER BY timestamp) AS next_timestamp
         FROM
-        `pipe_ais_v3_published.port_visits`,
+        `global-fishing-watch.pipe_ais_v3_published.port_visits`,
           UNNEST(events)
         WHERE
           EXTRACT(YEAR
@@ -1014,7 +1010,7 @@ num_encounters AS (
         prod_shiptype AS vessel_class_best,
         prod_geartype AS geartype_best
       FROM
-        `pipe_ais_v3_published.product_vessel_info_summary`)
+        `global-fishing-watch.pipe_ais_v3_published.product_vessel_info_summary`)
       USING
         (vessel_id, year)),
 
@@ -1157,7 +1153,7 @@ POI_visits AS(
     vessel_id,
     end_timestamp,
     end_anchorage_id,
-  FROM `world-fishing-827.pipe_ais_v3_published.port_visits` --,
+  FROM `global-fishing-watch.pipe_ais_v3_published.port_visits` --,
   WHERE
     end_timestamp > prev_visit_search_date()
     AND
