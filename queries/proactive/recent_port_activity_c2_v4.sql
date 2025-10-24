@@ -228,7 +228,7 @@ fishing_voyages AS (
       first_timestamp,
       last_timestamp
     FROM
-      `pipe_ais_v3_published.identity_core`
+      `pipe_ais_v3_published.identity_core_v*`
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND

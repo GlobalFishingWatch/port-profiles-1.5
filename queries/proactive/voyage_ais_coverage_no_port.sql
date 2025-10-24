@@ -63,9 +63,9 @@ WITH
       lat,
       lon,
       timestamp
-    FROM `pipe_ais_v3_published.messages` a
+    FROM `global-fishing-watch.pipe_ais_v3_published.messages` a
     LEFT JOIN (
-      SELECT seg_id, vessel_id FROM `pipe_ais_v3_published.segment_info`) b
+      SELECT seg_id, vessel_id FROM `global-fishing-watch.pipe_ais_v3_published.segment_info`) b
     USING (seg_id)
     WHERE
  --   seg_id IN
