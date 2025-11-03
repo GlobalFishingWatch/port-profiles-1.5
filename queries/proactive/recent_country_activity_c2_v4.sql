@@ -46,7 +46,7 @@ WITH
        'added_TMT' AS vessel_class,
        prod_geartype AS gear_type
       FROM
-       `pipe_ais_v3_published.product_vessel_info_summary`
+       `global-fishing-watch.pipe_ais_v3_published.product_vessel_info_summary`
       WHERE
        year <= year()
        AND ssvid IN UNNEST(extra_ids()) -- add additional vessels here
