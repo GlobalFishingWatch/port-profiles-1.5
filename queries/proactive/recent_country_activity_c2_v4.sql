@@ -1151,6 +1151,7 @@ POI_visits AS(
  port_events AS (
   SELECT DISTINCT
     visit_id,
+    ssvid,
     vessel_id,
     end_timestamp,
     end_anchorage_id,
@@ -1158,10 +1159,14 @@ POI_visits AS(
   WHERE
     end_timestamp > prev_visit_search_date()
     AND
-    vessel_id IN (
-      SELECT vessel_id
+    ssvid IN (
+      SELECT ssvid
       FROM
       POI_visits
+--    vessel_id IN (
+--      SELECT vessel_id
+--      FROM
+--      POI_visits
     )),
 
 --------------------------------------
@@ -1194,13 +1199,15 @@ join_visits AS(
       (SELECT
         -- visit_id,
         vessel_id as ves_id,
+        ssvid as visits_ssvid,
         end_anchorage_id,
         end_label,
         end_iso3,
         end_timestamp
       FROM name_events
       WHERE end_iso3 = port_iso()) AS visits
-      ON voyages.vessel_id = visits.ves_id
+      --ON voyages.vessel_id = visits.ves_id
+      ON voyages.ssvid = visits.visits_ssvid
       AND voyages.end_port_label = visits.end_label
     )
 )
