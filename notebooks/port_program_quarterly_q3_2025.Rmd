@@ -893,9 +893,10 @@ for (main_col in names(column_mapping)) {
     merged_df[[update_col]] <- NULL
   }
 }
+ 
 
+merged_df <- filter(merged_df, Include != 'No' | is.na(Include))
 
-merged_df <- filter(merged_df, Include != 'No')
 # filter out the values from the master spreadsheet we shouldn't include
 #'merged_df_inc <- filter(merged_df, Include != 'Yes')
 
@@ -1520,7 +1521,7 @@ write.csv(voyages_reformat, here::here("data","proactive", "q3_2025", paste(coun
 
 ```{r edits based on TMT feedback, echo=F, warning=F, include=FALSE}
 # removals
-exclude_mmsi <- c(511100417)
+exclude_mmsi <- c(257384000, 259023000, 257248000, 636019515, 677084900, 511100417)
 
 # filter out removals
 voyages_filtered <- voyages_reformat %>%
