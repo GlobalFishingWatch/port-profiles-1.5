@@ -506,7 +506,7 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
 ## gear corrections
 ```{r gear type corrections from TMT data, echo=F, warning=F, include=FALSE}
 # import QA vessel list from TMT for identity corrections 
-tmt_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v3_Q3_2025.csv"), header=T) 
+tmt_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v4_Q3_2025.csv"), header=T) 
 
 # reset ssvid to character
 tmt_ves$ssvid <- as.character(tmt_ves$ssvid)
@@ -569,26 +569,46 @@ voyages_url <- bind_cols(merged_df_inc,
 ## add port info
 ```{r add in port information for Ghana using anchorage stops}
 # s2ids for port features of interest 
-general_port <- c("102078b1", "102078bb", "102078a5", "102078a3", "102078bd", "10207899")
-fuel <- c("102078bf")
-fishing_port <- c("102078b7", "102078c7", "102078b9")
-takoradi_gen <- c("0fe770a9", "0fe770a7", "0fe770a1", "0fe770a3", "0fe770a5", "0fe770af")
+tema_general <- c("102078b1", "102078bb", "102078a5", "102078a3", "102078bd", "10207899")
+tema_fuel <- c("102078bf")
+tema_fishing <- c("102078b7", "102078c7", "102078b9")
+tema_offshore <- c("0fdf8781","0fdf8785","0fdf8787","0fdf8789","0fdf878b","0fdf878d","0fdf878f","0fdf87ed","0fdf87f1","0fdf87f3","0fdf87f5","0fdf87f7","0fdf87f9","0fdf87fd","0fdf87ff","0fdf8801","0fdf8803","102070ab","1020770b","10207713","10207715","10207743","10207745","10207747","10207749","1020774f","10207753","10207755","10207757","10207759","1020775b","1020775d","1020775f","10207761","10207763","10207765","10207767","10207769","1020776b","1020776d","1020776f","10207771","10207773","10207775","10207777","10207779","1020777b","1020777d","1020777f","10207781","10207783","10207785","10207787","10207789","1020778b","1020778d","1020778f","10207791","10207793","10207795","10207797","10207799","1020779b","1020779d","1020779f","102077a1","102077a3","102077a5","102077bd","102077c3","102077e1","102077e3","102077e5","102077e7","102077e9","102077eb","102077ed","102077ef","102077f1","102077f3","102077f5","102077f7","102077f9","102077fb","102077fd","102077ff","10207801","10207803","10207805","10207807","10207809","1020780b","1020780d","1020780f","10207811","10207813","10207815","10207817","10207819","1020781b","1020781d","1020781f","10207821","10207823","10207825","10207827","10207829","1020782b","1020782d","1020782f","10207831","10207833","10207835","10207837","10207839","1020783b","1020783d","1020783f","10207841","10207843","10207845","10207847","10207849","1020784b","1020784d","1020784f","10207851","10207853","10207855","10207857","10207859","1020785b","1020785d","1020785f","10207861","10207863","10207865","10207867","10207869","1020786b","1020786d","1020786f","10207871","10207873","10207875","10207877","10207879","1020787b","1020787d","1020787f","10207881","10207885","10207887","10207889","1020788b","1020788d","1020788f","10207891","10207893","10207895","102078e1","102078e3","102078e5","102078e7","102078e9","102078eb","102078ed","102078ef","102078f1","102078f3","102078f5","102078f7","102078f9","102078fb","102078fd","102078ff","10207901","10207903","10207905","10207907","10207909","1020791b","1020791d","10207991","10207993","10207995","10207997","10207999","102079a3","102079a5","102079a7","102079a9","102079ab","102079ad","102079af","102079b1","102079b3","102079b5","102079b7","102079b9","102079bb","102079bd","102079bf","102079c1","102079c3","102079c5","102079c7","102079c9","102079cb","102079cd","102079cf","102079d1","102079d3","102079d5","102079d7","102079d9","102079db","102079dd","102079df","102079e1","102079e3","102079e5","102079e7","102079e9","102079eb","102079ed","102079ef","102079f1","102079f3","102079f9","102079fb","102079fd","102079ff","10207be3","10207eab")
+takoradi_general <- c("0fe770a9", "0fe770a7", "0fe770a1", "0fe770a3", "0fe770a5", "0fe770af")
+takoradi_north <- c("0fe77a09", "0fe77a0b")
+sekondi_takoradi <- c("0fe77b3d", "0fe77b17", "0fe77b11", "0fe77b05", "0fe77b1b", "0fe77b19", "0fe77b1d")
+takoradi_offshore <- c("0fe7654b","0fe76fdd","0fe76fdf","0fe76fe1","0fe76ff9","0fe76fff","0fe77003","0fe77005","0fe77007","0fe77009","0fe7700b","0fe7700d","0fe7700f","0fe77011","0fe77013","0fe77015","0fe77017","0fe77019","0fe7701b","0fe7701d","0fe7701f","0fe77021","0fe77023","0fe7703d","0fe7703f","0fe77041","0fe77043","0fe77069","0fe7706b","0fe7706d","0fe7706f","0fe77071","0fe77073","0fe77075","0fe77077","0fe7707b","0fe77a5d","0fe77a5f","0fe77a61","0fe77a63","0fe77a65","0fe77a67","0fe77a83","0fe77a85","0fe77a87","0fe77a89","0fe77a8b","0fe77a8d","0fe77a8f","0fe77a91","0fe77a93","0fe77a95","0fe77a97","0fe77a99","0fe77a9b","0fe77a9d","0fe77a9f","0fe77aa1","0fe77aa3","0fe77aa5","0fe77aa7","0fe77aa9","0fe77aab","0fe77aad","0fe77aaf","0fe77ab1","0fe77ab3","0fe77ab5","0fe77ab7","0fe77ab9","0fe77abb","0fe77abd","0fe77abf","0fe77ac1","0fe77ac3","0fe77ac5","0fe77ac7","0fe77ac9","0fe77aeb","0fe77aed","0fe77af3","0fe77af5")
 
 # add logic column to indicate presence at each location of interest 
 voyages_url$tema_general <- sapply(voyages_url$stop_anchorage_ids, function(x) {
-  any(strsplit(x, ",\\s*")[[1]] %in% general_port)
+  any(strsplit(x, ",\\s*")[[1]] %in% tema_general)
 })
 
 voyages_url$tema_fuel <- sapply(voyages_url$stop_anchorage_ids, function(x) {
-  any(strsplit(x, ",\\s*")[[1]] %in% fuel)
+  any(strsplit(x, ",\\s*")[[1]] %in% tema_fuel)
 })
 
 voyages_url$tema_fishing <- sapply(voyages_url$stop_anchorage_ids, function(x) {
-  any(strsplit(x, ",\\s*")[[1]] %in% fishing_port)
+  any(strsplit(x, ",\\s*")[[1]] %in% tema_fishing)
+})
+
+voyages_url$tema_offshore <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% tema_offshore)
 })
 
 voyages_url$takoradi_general <- sapply(voyages_url$stop_anchorage_ids, function(x) {
-  any(strsplit(x, ",\\s*")[[1]] %in% takoradi_gen)
+  any(strsplit(x, ",\\s*")[[1]] %in% takoradi_general)
+})
+
+voyages_url$takoradi_north <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% takoradi_north)
+})
+
+voyages_url$sekondi_takoradi <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% sekondi_takoradi)
+})
+
+voyages_url$takoradi_offshore <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% takoradi_offshore)
 })
 
 ```
@@ -600,7 +620,7 @@ voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, AIS_Flag= mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, prev_visit_timestamp, at_dock=dock, tema_general, tema_fuel, tema_fishing, takoradi_general, num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter, num_encounters, loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url) #, total_gap_hours)
+   end_port = end_port_label, prev_visit_timestamp, at_dock=dock, tema_general, tema_fuel, tema_fishing, tema_offshore, takoradi_general, takoradi_north, sekondi_takoradi, takoradi_offshore, num_fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter, num_encounters, loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url) #, total_gap_hours)
 
 # overwrite fishing_hs T/F
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
