@@ -841,7 +841,7 @@ month <- 'Q3'
 country <- 'SEN'
 
 # potential MMSIs to force in 
-missing_ssvids <- '""'
+missing_ssvids <- '"209882000", "311000791", "355855000", "412440796", "416004904"'
 
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_max.sen_q3_25_all_voyages_temp`'
@@ -938,11 +938,11 @@ end_date_url <- '2025-3-31'
 voyages_url <- bind_cols(merged_df, 
                          vv_url = paste('=HYPERLINK("',
                           base_string_p1,
-                          voyages_with_coverage$vessel_id, 
+                          merged_df$vessel_id, 
                           base_string_p2, 
-                          as.Date(format(voyages_with_coverage$trip_start, format='%Y-%m-%d'))-2, 
+                          as.Date(format(merged_df$trip_start, format='%Y-%m-%d'))-2, 
                           base_string_p3, 
-                          as.Date(format(voyages_with_coverage$trip_end, format='%Y-%m-%d'))+2,
+                          as.Date(format(merged_df$trip_end, format='%Y-%m-%d'))+2,
                           '")', sep=''))
 
 ```
@@ -1004,29 +1004,34 @@ write.csv(arrange(voyages_reformat, trip_end), here::here("data", "proactive", "
 
 ```{r make adjustments from TMT feedback in GHA, echo=F, warning=F, include=FALSE}
 
-# manual addition of missing vessel
-extra <- data.frame(
-  vessel_name = "LU QING YUAN YU 028",
-  MMSI = "412331033",
-  Flag = "CHN",
-  AIS_Flag = "CHN",
-  imo = "9748552",
-  vessel_class_cat = "fishing",
+# manual addition of missing vessels from TMT cross check 
+fegulus <- data.frame(
+  vessel_name = "FEGULUS",
+  MMSI = "311000644",
+  Flag = "BHS",
+  AIS_Flag = "BHS",
+  imo = "9055709",
+  vessel_class_cat = "carrier",
   vessel_class_confidence = "high",
-  vessel_class = "fishing",
-  vessel_type = "drifting_longline",
-  previous_port_country = "SEN",
-  previous_port = "DAKAR",
-  trip_start = as.POSIXct("2024-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S"),
-  trip_start_confidence = "2",
-  trip_end = as.POSIXct("2025-06-24 18:00:00", format = "%Y-%m-%d %H:%M:%S"),
-  trip_end_confidence = "2",
-  trip_duration_days = "0",
+  vessel_class = "carrier",
+  vessel_type = "carrier",
+  previous_port_country = "NLD",
+  previous_port = "VLISSINGEN",
+  trip_start = as.POSIXct("2024-08-28 19:10:00", format = "%Y-%m-%d %H:%M:%S"),
+  trip_start_confidence = "4",
+  trip_end = as.POSIXct("2025-09-04 17:21:00", format = "%Y-%m-%d %H:%M:%S"),
+  trip_end_confidence = "4",
+  trip_duration_days = "15",
   end_port = "DAKAR",
-  prev_visit_timestamp = as.POSIXct("2024-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S"),
-  at_dock = FALSE,
-  dak_general = FALSE,
+  prev_visit_timestamp = NA,
+  entrance = FALSE,
+  navy = FALSE,
+  west_basin = FALSE,
+  mid_basin = TRUE,
+  east_basin = FALSE,
+  container = FALSE,
   dak_fishing = FALSE,
+  dak_offshore = TRUE,
   fishing = NA,
   fishing_hours = FALSE,
   fishing_eez = NA,
@@ -1040,61 +1045,132 @@ extra <- data.frame(
   num_AISdisabling = NA,
   # Assuming this is the missing one
   percent_ais_voyage = 100,    # Placeholder, adjust if needed
-  vv_url = "https://globalfishingwatch.org/map/fishing-activity/default-public/vessel/d17a90f05-582a-0f22-9a98-386ccc7679ab?dvIn[0][id]=vessel-d17a90f05-582a-0f22-9a98-386ccc7679ab&dvIn[0][dvId]=fishing-map-vessel-track-v-3&dvIn[0][cfg][track]=~1&dvIn[0][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[0][cfg][events][0]=~3&dvIn[0][cfg][events][1]=~4&dvIn[0][cfg][events][2]=~5&dvIn[0][cfg][events][3]=~6&dvIn[0][cfg][events][4]=~7&dvIn[0][cfg][rVIs][0]=e44610c28-8936-0ab8-e62b-0d27b5af60a7&dvIn[0][cfg][rVIs][1]=2e9c4b3ee-e0bf-0b54-3230-d1be2a4e4dc1&dvIn[0][cfg][clr]=%23F95E5E&dvIn[0][cfg][vis]=true&dvIn[0][dT]=false&dvIn[1][id]=context-layer-eez&dvIn[1][cfg][vis]=true&dvIn[2][id]=basemap&dvIn[2][cfg][basemap]=satellite&dvIn[3][id]=ais&dvIn[3][cfg][vis]=false&dvIn[4][id]=vms&dvIn[4][cfg][vis]=false&longitude=-15.33487033843993&latitude=4.4160726735832725&zoom=5.073910462217206&bDV&tV=vessel&lTD=&fTD=&start=2024-10-01T00%3A00%3A00.000Z&end=2025-07-01T00%3A00%3A00.000Z&tk[0]=fishing-map-vessel-track-v-3&tk[1]=public-global-all-tracks%3Av3.0&tk[2]=public-global-vessel-identity%3Av3.0&tk[3]=public-global-fishing-events%3Av3.0&tk[4]=public-global-port-visits-events%3Av3.1&tk[5]=public-global-encounters-events%3Av3.0&tk[6]=public-global-loitering-events%3Av3.0&tk[7]=public-global-gaps-events%3Av3.0&vDi=public-global-vessel-identity%3Av3.0&vIs=registryInfo&vSRi=d17a90f05-582a-0f22-9a98-386ccc7679ab&vE[0]=encounter&vE[1]=port_visit&vRi=e942b534aa7a9b4cb0893cfb5328d666&vS=activity&vR=owners&trackCorrectionId="
+  vv_url = "https://globalfishingwatch.org/map/fishing-activity/default-public?latitude=14.962006446744125&longitude=-17.19591700382281&zoom=9.07680867070639&start=2025-08-26T00%3A00%3A00.000Z&end=2025-09-13T00%3A00%3A00.000Z&dvIn[0][id]=basemap&dvIn[0][cfg][basemap]=satellite&dvIn[1][id]=context-layer-high-seas&dvIn[1][cfg][vis]=false&dvIn[1][dvId]=high-seas&dvIn[2][id]=context-layer-mpa&dvIn[2][cfg][vis]=false&dvIn[2][dvId]=mpa&dvIn[3][id]=context-layer-rfmo&dvIn[3][cfg][vis]=false&dvIn[3][dvId]=tuna-rfmo-areas&dvIn[4][id]=context-layer-fao-areas&dvIn[4][cfg][vis]=false&dvIn[4][dvId]=fao-areas&dvIn[5][id]=context-layer-eez&dvIn[5][cfg][vis]=true&dvIn[5][dvId]=eez&dvIn[6][id]=context-layer-graticules&dvIn[6][cfg][vis]=false&dvIn[6][dvId]=graticules&dvIn[7][id]=vessel-6e068df88-8006-ba59-bfd0-b8ad1ac0fbe7&dvIn[7][dvId]=fishing-map-vessel-track-v-3&dvIn[7][cfg][track]=~1&dvIn[7][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[7][cfg][events][0]=~3&dvIn[7][cfg][events][1]=~4&dvIn[7][cfg][events][2]=~5&dvIn[7][cfg][events][3]=~6&dvIn[7][cfg][events][4]=~7&dvIn[7][cfg][rVIs][0]=783029bad-dc5a-cf78-c998-8897cf226a97&dvIn[7][cfg][rVIs][1]=232e60012-240b-d09b-3fd0-ae56fcd0ce4f&dvIn[7][cfg][clr]=%2333B679&dvIn[7][cfg][vis]=true&dvIn[7][dT]=false&dvIn[8][id]=vessel-689e79916-69d9-8c61-ac58-c321b6bc61e3&dvIn[8][dvId]=fishing-map-vessel-track-v-3&dvIn[8][cfg][track]=~1&dvIn[8][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[8][cfg][events][0]=~3&dvIn[8][cfg][events][1]=~4&dvIn[8][cfg][events][2]=~5&dvIn[8][cfg][events][3]=~6&dvIn[8][cfg][events][4]=~7&dvIn[8][cfg][rVIs][0]=1e56d3980-0915-2f1f-a3b4-c5e8488547ad&dvIn[8][cfg][rVIs][1]=288bb54a3-31ef-1072-0bf7-f8a131b854f9&dvIn[8][cfg][clr]=%23F95E5E&dvIn[8][dT]=false&dvIn[9][id]=ais&dvIn[9][cfg][vis]=false&dvIn[10][id]=vms&dvIn[10][cfg][vis]=false&bDV&lTD=&fTD=&tV=vessel&vDi=public-global-vessel-identity%3Av3.0&vIs=selfReportedInfo&vSRi=6e068df88-8006-ba59-bfd0-b8ad1ac0fbe7&vE[0]=loitering&vE[1]=encounter&vE[2]=port_visit&vS=areas&trackCorrectionId=&tk[0]=fishing-map-vessel-track-v-3&tk[1]=public-global-all-tracks%3Av3.0&tk[2]=public-global-vessel-identity%3Av3.0&tk[3]=public-global-fishing-events%3Av3.0&tk[4]=public-global-port-visits-events%3Av3.1&tk[5]=public-global-encounters-events%3Av3.0&tk[6]=public-global-loitering-events%3Av3.0&tk[7]=public-global-gaps-events%3Av3.0"
 )
 
-additions <- data.frame(rbind(voyages_reformat, extra))
+fyy7858 <- data.frame(
+  vessel_name = "FU YUAN YU NO.7858",
+  MMSI = "412440796",
+  Flag = "CHN",
+  AIS_Flag = "CHN",
+  imo = "9921037",
+  vessel_class_cat = "fishing",
+  vessel_class_confidence = "high",
+  vessel_class = "fishing",
+  vessel_type = "drifting_longline",
+  previous_port_country = "SEN",
+  previous_port = "DAKAR",
+  trip_start = as.POSIXct("2024-06-12 09:34:00", format = "%Y-%m-%d %H:%M:%S"),
+  trip_start_confidence = "4",
+  trip_end = as.POSIXct("2025-09-02 08:19:00", format = "%Y-%m-%d %H:%M:%S"),
+  trip_end_confidence = "4",
+  trip_duration_days = "82",
+  end_port = "DAKAR",
+  prev_visit_timestamp = as.POSIXct("2024-06-12 09:34:00", format = "%Y-%m-%d %H:%M:%S"),
+  entrance = FALSE,
+  navy = FALSE,
+  west_basin = FALSE,
+  mid_basin = FALSE,
+  east_basin = FALSE,
+  container = TRUE,
+  dak_fishing = TRUE,
+  dak_offshore = TRUE,
+  fishing = TRUE,
+  fishing_hours = 390,
+  fishing_eez = NA,
+  fishing_hs = TRUE,
+  fishing_rfmos = 'ICCAT',
+  encounter = FALSE,
+  num_encounters = 0,
+  loitering = FALSE,
+  num_loitering = 0,
+  AISdisabling =TRUE,
+  num_AISdisabling = 2,
+  # Assuming this is the missing one
+  percent_ais_voyage = 48,    # Placeholder, adjust if needed
+  vv_url = "https://globalfishingwatch.org/map/fishing-activity/default-public/vessel/2b3348d71-138e-ea60-d691-2e3e560e68d5?latitude=14.725195412451477&longitude=-17.283940637250033&zoom=10.07591326907632&start=2025-06-10T00%3A00%3A00.000Z&end=2025-09-05T00%3A00%3A00.000Z&dvIn[0][id]=vessel-2b3348d71-138e-ea60-d691-2e3e560e68d5&dvIn[0][dvId]=fishing-map-vessel-track-v-3&dvIn[0][cfg][track]=~1&dvIn[0][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[0][cfg][events][0]=~3&dvIn[0][cfg][events][1]=~4&dvIn[0][cfg][events][2]=~5&dvIn[0][cfg][events][3]=~6&dvIn[0][cfg][events][4]=~7&dvIn[0][cfg][rVIs][0]=e55037404-47c4-ca15-46ed-ac44d62f6ea3&dvIn[0][cfg][clr]=%23F95E5E&dvIn[0][cfg][vis]=true&dvIn[0][dT]=false&dvIn[1][id]=basemap&dvIn[1][cfg][basemap]=satellite&dvIn[2][id]=vessel-6e068df88-8006-ba59-bfd0-b8ad1ac0fbe7&dvIn[2][dvId]=fishing-map-vessel-track-v-3&dvIn[2][cfg][track]=~1&dvIn[2][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[2][cfg][events][0]=~3&dvIn[2][cfg][events][1]=~4&dvIn[2][cfg][events][2]=~5&dvIn[2][cfg][events][3]=~6&dvIn[2][cfg][events][4]=~7&dvIn[2][cfg][rVIs][0]=783029bad-dc5a-cf78-c998-8897cf226a97&dvIn[2][cfg][rVIs][1]=232e60012-240b-d09b-3fd0-ae56fcd0ce4f&dvIn[2][cfg][clr]=%2333B679&dvIn[2][cfg][vis]=false&dvIn[2][dT]=false&dvIn[3][id]=ais&dvIn[3][cfg][vis]=false&dvIn[4][id]=vms&dvIn[4][cfg][vis]=false&bDV&lTD=&fTD=&tV=vessel&vDi=public-global-vessel-identity%3Av3.0&vIs=selfReportedInfo&vSRi=2b3348d71-138e-ea60-d691-2e3e560e68d5&vE[0]=encounter&vE[1]=port_visit&vE[2]=fishing&vS=activity&trackCorrectionId=&vAm=voyage&vA=rfmo&tk[0]=fishing-map-vessel-track-v-3&tk[1]=public-global-all-tracks%3Av3.0&tk[2]=public-global-vessel-identity%3Av3.0&tk[3]=public-global-fishing-events%3Av3.0&tk[4]=public-global-port-visits-events%3Av3.1&tk[5]=public-global-encounters-events%3Av3.0&tk[6]=public-global-loitering-events%3Av3.0&tk[7]=public-global-gaps-events%3Av3.0"
+)
 
-# removals
-exclude_mmsi <- c(311000876, 311000958, 311001215, 412200985, 412331128,
-            412420879, 457900822, 563229800, 563237900, 563245700,
-            636013068, 273244100, 412420882, 412420883, 412420885,
-            412549196, 412549197)
+mf1 <- data.frame(
+  vessel_name = "MAAN FARN NO.1",
+  MMSI = "416004904",
+  Flag = "TWN",
+  AIS_Flag = "TWN",
+  imo = "9778284",
+  vessel_class_cat = "fishing",
+  vessel_class_confidence = "high",
+  vessel_class = "fishing",
+  vessel_type = "drifting_longline",
+  previous_port_country = "ZAF",
+  previous_port = "CAPE TOWN",
+  trip_start = as.POSIXct("2024-05-03 07:55:00", format = "%Y-%m-%d %H:%M:%S"),
+  trip_start_confidence = "4",
+  trip_end = as.POSIXct("2025-08-24 06:48:00", format = "%Y-%m-%d %H:%M:%S"),
+  trip_end_confidence = "4",
+  trip_duration_days = "113",
+  end_port = "DAKAR",
+  prev_visit_timestamp = NA,
+  entrance = FALSE,
+  navy = FALSE,
+  west_basin = FALSE,
+  mid_basin = FALSE,
+  east_basin = FALSE,
+  container = FALSE,
+  dak_fishing = TRUE,
+  dak_offshore = TRUE,
+  fishing = TRUE,
+  fishing_hours = 1387,
+  fishing_eez = NA,
+  fishing_hs = TRUE,
+  fishing_rfmos = 'ICCAT',
+  encounter = TRUE,
+  num_encounters = 2,
+  loitering = FALSE,
+  num_loitering = 0,
+  AISdisabling =TRUE,
+  num_AISdisabling = 2,
+  percent_ais_voyage = 85,    
+  vv_url = "https://globalfishingwatch.org/map/fishing-activity/default-public/vessel/3f9bee114-4cce-8e83-0d50-3b34aa6b2d37?latitude=-7.530544816329323&longitude=10.146738519540918&zoom=3.210656600190781&start=2025-05-01T00%3A00%3A00.000Z&end=2025-09-01T00%3A00%3A00.000Z&dvIn[0][id]=context-layer-high-seas&dvIn[0][cfg][vis]=false&dvIn[0][dvId]=high-seas&dvIn[1][id]=context-layer-mpa&dvIn[1][cfg][vis]=false&dvIn[1][dvId]=mpa&dvIn[2][id]=context-layer-rfmo&dvIn[2][cfg][vis]=false&dvIn[2][dvId]=tuna-rfmo-areas&dvIn[3][id]=context-layer-fao-areas&dvIn[3][cfg][vis]=false&dvIn[3][dvId]=fao-areas&dvIn[4][id]=context-layer-eez&dvIn[4][cfg][vis]=true&dvIn[4][dvId]=eez&dvIn[5][id]=context-layer-graticules&dvIn[5][cfg][vis]=false&dvIn[5][dvId]=graticules&dvIn[6][id]=vessel-3f9bee114-4cce-8e83-0d50-3b34aa6b2d37&dvIn[6][dvId]=fishing-map-vessel-track-v-3&dvIn[6][cfg][track]=~1&dvIn[6][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[6][cfg][events][0]=~3&dvIn[6][cfg][events][1]=~4&dvIn[6][cfg][events][2]=~5&dvIn[6][cfg][events][3]=~6&dvIn[6][cfg][events][4]=~7&dvIn[6][cfg][rVIs][0]=dc4940890-0883-9dd7-797b-ce8edfc33b2d&dvIn[6][cfg][rVIs][1]=b8ad97f4e-ef09-9c00-662c-6fdb99764e6f&dvIn[6][cfg][clr]=%23F09300&dvIn[6][cfg][vis]=true&dvIn[6][dT]=false&dvIn[7][id]=vessel-2b3348d71-138e-ea60-d691-2e3e560e68d5&dvIn[7][dvId]=fishing-map-vessel-track-v-3&dvIn[7][cfg][track]=~1&dvIn[7][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[7][cfg][events][0]=~3&dvIn[7][cfg][events][1]=~4&dvIn[7][cfg][events][2]=~5&dvIn[7][cfg][events][3]=~6&dvIn[7][cfg][events][4]=~7&dvIn[7][cfg][rVIs][0]=e55037404-47c4-ca15-46ed-ac44d62f6ea3&dvIn[7][cfg][clr]=%23F95E5E&dvIn[7][cfg][vis]=false&dvIn[7][dT]=false&dvIn[8][id]=basemap&dvIn[8][cfg][basemap]=satellite&dvIn[9][id]=vessel-6e068df88-8006-ba59-bfd0-b8ad1ac0fbe7&dvIn[9][dvId]=fishing-map-vessel-track-v-3&dvIn[9][cfg][track]=~1&dvIn[9][cfg][info]=public-global-vessel-identity%3Av3.0&dvIn[9][cfg][events][0]=~3&dvIn[9][cfg][events][1]=~4&dvIn[9][cfg][events][2]=~5&dvIn[9][cfg][events][3]=~6&dvIn[9][cfg][events][4]=~7&dvIn[9][cfg][rVIs][0]=783029bad-dc5a-cf78-c998-8897cf226a97&dvIn[9][cfg][rVIs][1]=232e60012-240b-d09b-3fd0-ae56fcd0ce4f&dvIn[9][cfg][clr]=%2333B679&dvIn[9][cfg][vis]=false&dvIn[9][dT]=false&dvIn[10][id]=ais&dvIn[10][cfg][vis]=false&dvIn[11][id]=vms&dvIn[11][cfg][vis]=false&bDV&lTD=&fTD=&tV=vessel&vDi=public-global-vessel-identity%3Av3.0&vIs=registryInfo&vSRi=3f9bee114-4cce-8e83-0d50-3b34aa6b2d37&vE[0]=encounter&vE[1]=port_visit&vE[2]=fishing&vS=areas&trackCorrectionId=&vAm=type&vA=eez&tk[0]=fishing-map-vessel-track-v-3&tk[1]=public-global-all-tracks%3Av3.0&tk[2]=public-global-vessel-identity%3Av3.0&tk[3]=public-global-fishing-events%3Av3.0&tk[4]=public-global-port-visits-events%3Av3.1&tk[5]=public-global-encounters-events%3Av3.0&tk[6]=public-global-loitering-events%3Av3.0&tk[7]=public-global-gaps-events%3Av3.0"
+)
 
-# filter out removals
-voyages_filtered <- voyages_reformat %>%
-  filter(!MMSI %in% as.character(exclude_mmsi))
-
-# make vessel type changes
-# fishing 
-fishing <- c(629009158, 412209195, 629009158, 224172000)
-voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(fishing)] <- 'unknown'
-voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(fishing)] <- 'fishing'
-
-# trawlers
-trawl <- c(412200998, 412209127, 412331133, 412440425, 412549093, 412201872, 412209123, 412209128, 412440259, 412549434, 617134000, 629009118, 412209122)
-voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(trawl)] <- 'trawlers'
-voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(trawl)] <- 'fishing'
-voyages_filtered$Flag[voyages_filtered$MMSI %in% c(617134000)] <- 'unkwown'
-
-# seiner 
-longline <- c(659019000, 659034000)
-voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(longline)] <- 'drifting_longlines'
-voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(longline)] <- 'fishing'
+additions <- data.frame(rbind(voyages_reformat, fegulus, fyy7858, mf1))
 
 # name correction
-voyages_filtered$vessel_name[voyages_filtered$MMSI %in% c(412331032)] <- 'LU QING YUAN YU 027'
+additions$vessel_name[additions$MMSI %in% c(412209172)] <- 'MENG XIN 22'
+additions$vessel_name[additions$MMSI %in% c(412209178)] <- 'MENG XIN 27'
+additions$vessel_name[additions$MMSI %in% c(629009232)] <- 'TWENTY'
+additions$vessel_name[additions$MMSI %in% c(412331032)] <- 'LU QING YUAN YU 027'
+additions$vessel_name[additions$MMSI %in% c(412420883)] <- 'MAME FARBA'
+additions$vessel_name[additions$MMSI %in% c(412209083)] <- 'JU RONG YU 1'
+additions$vessel_name[additions$MMSI %in% c(412420885)] <- 'SERIGNE SIDY NIANG'
 
 # flag correction
-voyages_filtered$Flag[voyages_filtered$MMSI %in% c(412209610)] <- 'CIV'
-
-# carriers added 
-carrier <- c(311001586, 311001159, 352351000)
-voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(carrier)] <- 'carrier'
-voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(carrier)] <- 'carrier'
-
-# add seiners 
-seiner <- c(312078000, 312360000, 312360000)
-voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(seiner)] <- 'tuna_purse_seines'
-voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(seiner)] <- 'fishing'
+additions$Flag[additions$MMSI %in% c(225995265, 224069140, 224175000)] <- 'ESP'
+additions$Flag[additions$MMSI %in% c(412209009, 412209168, 412331133, 412549434, 412209011)] <- 'CHN'
+additions$Flag[additions$MMSI %in% c(630124007)] <- 'GNB'
+additions$Flag[additions$MMSI %in% c(412420883, 412420885)] <- 'SEN'
 
 # debugging code
-table(voyages_filtered$vessel_type)
-table(voyages_filtered$vessel_class)
-filter(voyages_filtered, vessel_class=='seismic_vessel')
+table(additions$vessel_type)
+table(additions$vessel_class)
+filter(additions, vessel_type=='unknown')
+filter(additions, vessel_class=='Reefer containership')
 
 
-write.csv(voyages_filtered, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+# vessel_class corrections  
+additions$vessel_class[additions$MMSI %in% c(440257000)] <- 'carrier'
+additions$vessel_class[additions$MMSI %in% c(629100000)] <- 'fishing'
+
+# carrier <- c(311001586, 311001159, 352351000)
+# voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(carrier)] <- 'carrier'
+# voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(carrier)] <- 'carrier'
+# 
+# # add seiners 
+# seiner <- c(312078000, 312360000, 312360000)
+# voyages_filtered$vessel_type[voyages_filtered$MMSI %in% as.character(seiner)] <- 'tuna_purse_seines'
+# voyages_filtered$vessel_class[voyages_filtered$MMSI %in% as.character(seiner)] <- 'fishing'
+
+write.csv(additions, here::here("data", "proactive", "q3_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
 ```
 
 ```{r SEN pull in the fishing data, echo=F, warning=F, include=FALSE}
