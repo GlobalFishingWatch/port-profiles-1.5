@@ -57,18 +57,21 @@ year <- 2025
 country_iso3 <- "'CIV'"
 # port_name <- "'ABIDJAN'"
 
+# # when to look for previous visits
 prev_visit_search_date <- "'2024-07-01 00:00:00 UTC'" 
 
 # file names
 month <- 'Q3'
 country <- 'CIV'
 
-# # when to look for previous visits
-# prev_visit_search_date <- "'2020-01-01 00:00:00 UTC'" 
+# import QA vessel list from TMT for including potentially missed vessels
+tmt_masterlist <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v3_Q3_2025.csv"), header=T) 
+ssvid_master_include <- tmt_masterlist %>% filter(Include == "Yes") %>% pull(ssvid) %>% as.character(.)
+            
+# additional MMSIs to force in
+missing_ssvids_manual <- c('273254830', '311001555', '311001574', '311001580', '352005910', '352005985', '352274000')
 
-# potential MMSIs to force in 
-missing_ssvids <- '""'
-
+missing_ssvids <- c(missing_ssvids_manual, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_joef.civ_q3_25_all_voyages_temp`'
 ```
@@ -114,11 +117,10 @@ voyages_with_coverage <- fishwatchr::gfw_query(query = glue::glue(ais_cov_q,
 
 ```
 
-
 ## gear corrections
 ```{r gear type corrections from TMT data, echo=F, warning=F, include=FALSE}
 # import QA vessel list from TMT for identity corrections 
-civ_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v3_Q3_2025.csv"), header=T) 
+civ_ves <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v4_Q3_2025.csv"), header=T) 
 
 # reset ssvid to character
 civ_ves$ssvid <- as.character(civ_ves$ssvid)
@@ -230,13 +232,115 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
 voyages_reformat$fishing_hs <- voyages_reformat$fishing_hs >0
 
 # write out data for initial TMT QA 
-write.csv(voyages_reformat, here::here("data", "proactive", "q3_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+# write.csv(voyages_reformat, here::here("data", "proactive", "q3_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 
 ```
 
+## corrections
 ```{r make adjustments from TMT feedback, echo=F, warning=F, include=FALSE}
 
-write.csv(voyages_filtered, here::here("data", "proactive", "q2_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+# manual addition of missing vessels from TMT cross check 
+agios <- data.frame(
+  vessel_name = "AGIOS NIKOLAUS",
+  MMSI = "224933000",
+  Flag = "ESP",
+  AIS_Flag = "ESP",
+  imo = "8960517",
+  vessel_class_cat = "fishing",
+  vessel_class_confidence = "high",
+  vessel_class = "fishing",
+  vessel_type = "drifting_longlines",
+  previous_port_country = "CPV",
+  previous_port = "MINDELO",
+  trip_start = as.POSIXct("2025-05-24 16:59:32", format = "%Y-%m-%d %H:%M:%S"),
+  trip_start_confidence = "4",
+  trip_end = as.POSIXct("2025-07-10 09:19:41", format = "%Y-%m-%d %H:%M:%S"),
+  trip_end_confidence = "1",
+  trip_duration_days = "46.7",
+  end_port = "ABIDJAN",
+  prev_visit_timestamp = NA,
+  at_dock = FALSE,
+  abj_lagoon = FALSE,
+  abj_vridi = FALSE,
+  abj_cargo = FALSE,
+  abj_fishing = FALSE,
+  abj_offshore = TRUE,
+  fishing = NA,
+  fishing_hours = 721.19,
+  fishing_eez = NA,
+  fishing_hs = TRUE,
+  fishing_rfmos = "ICCAT, IWC, NAMMCO, ACAP",
+  encounter = FALSE,
+  num_encounters = 0,
+  loitering = TRUE,
+  num_loitering = 37,
+  AISdisabling = FALSE,
+  num_AISdisabling = 0,
+  # Assuming this is the missing one
+  percent_ais_voyage = 100,    # Placeholder, adjust if needed
+  vv_url = '=HYPERLINK("https://globalfishingwatch.org/map/vessel/8d82355f7-7afd-753e-ed9b-bd7d900110af?&start=2025-05-24&end=2025-07-10")'
+)
+
+frioforwin <- data.frame(
+  vessel_name = "FRIO FORWIN",
+  MMSI = "273379740",
+  Flag = "RUS",
+  AIS_Flag = "RUS",
+  imo = "9076260",
+  vessel_class_cat = "carrier",
+  vessel_class_confidence = "high",
+  vessel_class = "carrier",
+  vessel_type = "specialized_reefer",
+  previous_port_country = "SEN",
+  previous_port = "DAKAR",
+  trip_start = as.POSIXct("2025-07-29 20:21:08", format = "%Y-%m-%d %H:%M:%S"),
+  trip_start_confidence = "4",
+  trip_end = as.POSIXct("2025-08-03 06:12:39", format = "%Y-%m-%d %H:%M:%S"),
+  trip_end_confidence = "1",
+  trip_duration_days = "4.4",
+  end_port = "ABIDJAN",
+  prev_visit_timestamp = NA,
+  at_dock = FALSE,
+  abj_lagoon = FALSE,
+  abj_vridi = FALSE,
+  abj_cargo = FALSE,
+  abj_fishing = FALSE,
+  abj_offshore = TRUE,
+  fishing = NA,
+  fishing_hours = 0,
+  fishing_eez = NA,
+  fishing_hs = FALSE,
+  fishing_rfmos = NA,
+  encounter = FALSE,
+  num_encounters = 0,
+  loitering = FALSE,
+  num_loitering = 0,
+  AISdisabling = FALSE,
+  num_AISdisabling = 0,
+  # Assuming this is the missing one
+  percent_ais_voyage = 100,    # Placeholder, adjust if needed
+  vv_url = '=HYPERLINK("https://globalfishingwatch.org/map/vessel/da1cd7e1b-b8d0-539c-6581-2b3df8d0a6af?&start=2025-07-29&end=2025-08-03")'
+)
+
+additions <- data.frame(rbind(voyages_reformat, agios, frioforwin))
+
+# name correction
+additions$vessel_name[additions$MMSI %in% c(412209590)] <- 'HAI LU FENG 7'
+additions$vessel_name[additions$MMSI %in% c(412209620)] <- 'HAI LU FENG 8'
+additions$vessel_name[additions$MMSI %in% c(627255000)] <- 'PANOFI COMMANDER'
+
+# gear type corrections  
+additions$vessel_type[additions$MMSI %in% c(306142000)] <- 'purse_seine_support'
+additions$vessel_type[additions$MMSI %in% c(306881000)] <- 'purse_seine_support'
+additions$vessel_type[additions$MMSI %in% c(359082024)] <- 'purse_seine_support'
+
+# vessel_class corrections  
+additions$vessel_class[additions$MMSI %in% c(306881000)] <- 'support'
+
+# port stop corrections
+additions$
+
+write.csv(additions, here::here("data", "proactive", "q3_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 ## pull fishing data
