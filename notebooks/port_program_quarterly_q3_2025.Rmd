@@ -1161,7 +1161,7 @@ fyy7858 <- data.frame(
   vessel_class_cat = "fishing",
   vessel_class_confidence = "high",
   vessel_class = "fishing",
-  vessel_type = "drifting_longline",
+  vessel_type = "drifting_longlines",
   previous_port_country = "SEN",
   previous_port = "DAKAR",
   trip_start = as.POSIXct("2024-06-12 09:34:00", format = "%Y-%m-%d %H:%M:%S"),
@@ -1204,7 +1204,7 @@ mf1 <- data.frame(
   vessel_class_cat = "fishing",
   vessel_class_confidence = "high",
   vessel_class = "fishing",
-  vessel_type = "drifting_longline",
+  vessel_type = "drifting_longlines",
   previous_port_country = "ZAF",
   previous_port = "CAPE TOWN",
   trip_start = as.POSIXct("2024-05-03 07:55:00", format = "%Y-%m-%d %H:%M:%S"),
@@ -1282,7 +1282,7 @@ write.csv(additions, here::here("data", "proactive", "q3_2025", paste(country,'_
 q_confidence <- readr::read_file(here::here("queries","proactive", "proactive_fishing_locations.sql"))
 
 fishing <- fishwatchr::gfw_query(query = glue::glue(q_confidence,
-                                               voyages_table = "`world-fishing-827.scratch_joef.sen_q2_25_all_voyages_temp`" 
+                                               voyages_table = temp_table_voyages
                                                ),
                                  run_query = TRUE,
                                  con = con)$data
@@ -1295,12 +1295,12 @@ fishing %>%
                 max_date = max(event_end))
 
 # add gear from TMT review 
-gear <- distinct(dplyr::select(voyages_filtered, MMSI, Flag, vessel_type)) %>% 
+gear <- distinct(dplyr::select(additions, MMSI, Flag, vessel_type, vessel_name)) %>% 
   mutate(ssvid=as.character(MMSI))
 
 fishing_data <- left_join(fishing, gear, by = join_by(ssvid))
 
-
+table(fishing_data$vessel_type, fishing_data$vessel_name)
 ```
 
 ```{r SEN voyage activity longline maps, echo=F, warning=F, include=FALSE}
@@ -1311,10 +1311,21 @@ fishing_data$lon_bin <- round(fishing_data$lon_mean/0.5)*0.5
 
 table(fishing_data$vessel_type)
 
+ll <- filter(fishing_data, vessel_type %in% c('drifting_longlines', 'drifting_longline'))
+
+# look at activity which isn't in main distribution of longline vessels 
+likely_non_ll <- filter(ll,
+                        between(lat_mean, 11, 14),
+                        between(lon_mean, -18, -16))
+
+# remove vessel which appears to be trawler 
+ll_m <- filter(ll, vessel_name != c('ZHENYUANYU822', 'EIGHTEEN'))
+
+
 # count positions in each lat lon bin
 longline_raster <- 
   # filter out low speeds while vessel in port 
-  filter(fishing_data, vessel_type %in% c('drifting_longlines')) %>%
+  filter(ll_m, vessel_type %in% c('drifting_longlines', 'drifting_longline')) %>%
     group_by(lat_bin, lon_bin) %>%
       summarise(
         fishing_hours = sum(fishing_hours),
@@ -1333,7 +1344,7 @@ quantile(longline_raster$fishing_hours)
 best_proj <- "+proj=eqearth +lon_0=40 +wktext"
 
 # set plot limits bound on the data
-bounding_atl <- transform_box(xlim = c(-45, 0),
+bounding_atl <- transform_box(xlim = c(-50, 0),
                           ylim = c(15, -15),
                           output_crs = best_proj)
 
@@ -1380,10 +1391,10 @@ fishwatchr::add_little_globe(atl_full,
                              globe_just = 'inside',
                              globe_position = 'upperright')
 
-ggsave(filename = here::here('outputs', 'figures','q2_25_proactive', paste0(country,"_", month,"_", "longline_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave(filename = here::here('outputs', 'figures','q3_25_proactive', paste0(country,"_", month,"_", "longline_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
-       width = 15, 
-       height = 17,
+       width = 17, 
+       height = 16,
        bg = '#f7f7f7')
 
 ```
@@ -1459,10 +1470,10 @@ fishwatchr::add_little_globe(trawl_full,
                              globe_just = 'inside',
                              globe_position = 'upperright')
 
-ggsave(filename = here::here('outputs', 'figures', 'q2_25_proactive', paste0(country,"_", month,"_", "trawl_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave(filename = here::here('outputs', 'figures', 'q3_25_proactive', paste0(country,"_", month,"_", "trawl_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
-       width = 15, 
-       height = 17,
+       width = 12, 
+       height = 16,
        bg = '#f7f7f7')
 
 ```
