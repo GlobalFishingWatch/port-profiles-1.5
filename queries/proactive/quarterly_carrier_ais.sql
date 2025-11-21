@@ -32,7 +32,7 @@ q_voyages AS (
     end_port_iso3 AS end_iso3,
     end_port_label AS end_label,
     'quarter' AS colour
-  FROM `world-fishing-827.scratch_max.civ_q2_25_all_voyages_temp`
+  FROM {voyages_table}
   WHERE ssvid IN UNNEST(carrier_ids())
 ),
 
@@ -58,7 +58,7 @@ all_ves_voyages AS (
   SELECT DISTINCT
     *,
   FROM
-    `pipe_ais_v3_internal.voyages_c2`
+    `global-fishing-watch.pipe_ais_v3_published.voyages_c3`
   WHERE
     trip_end BETWEEN start_date() AND end_date()
     AND trip_start > start_date()
@@ -151,14 +151,14 @@ vessel_ais AS (
     lat,
     lon,
     timestamp
-  FROM `pipe_ais_v3_published.messages` a
+  FROM `global-fishing-watch.pipe_ais_v3_published.messages` a
   LEFT JOIN (
-      SELECT seg_id, vessel_id FROM `pipe_ais_v3_published.segment_info`) b
+      SELECT seg_id, vessel_id FROM `global-fishing-watch.pipe_ais_v3_published.segment_info`) b
   USING (seg_id)
   WHERE
     seg_id IN
       (SELECT seg_id
-      FROM `pipe_ais_v3_published.segs_activity`
+      FROM `global-fishing-watch.pipe_ais_v3_published.segs_activity`
       WHERE good_seg
       AND NOT overlapping_and_short)
     AND timestamp BETWEEN start_date() AND end_date()
