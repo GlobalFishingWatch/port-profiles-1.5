@@ -1,0 +1,652 @@
+---
+title: ""
+author: ""
+date: ""
+output:
+  html_document:
+    theme: united
+    highlight: tango
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      dev = "png",
+                      dpi = 300,
+                      cache = TRUE)
+```
+
+## load packages
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI", "glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "ggrepel", "tibble", "ggplot2",
+                             "purr", "readr", "dplyr", "feather") )
+
+# get fishwatch r independently 
+# if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+
+con <- DBI::dbConnect(bigrquery::bigquery(),
+  project = "world-fishing-827",
+  use_legacy_sql = FALSE
+)
+```
+
+## query/load data
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+# voyages_q <- readr::read_file(here::here("queries", "CHL", "CHL_voyages_query.sql"))
+# 
+# fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+#                                                     start_date = start_date,
+#                                                     end_date = end_date,
+#                                                     year = year,
+#                                                     missing_ssvids = missing_ssvids,
+#                                                     temp_table = temp_table_voyages,
+#                                                     port_iso = country_iso3,
+#                                                     prev_visit_search_date = prev_visit_search_date),
+#                                  run_query = TRUE,
+#                                  con = con)
+
+FCWC_ports_2025 <- fishwatchr::gfw_query(query = here::here("queries", "proactive", "regional_FCWC.sql"), run_query = TRUE, con = con)$data
+
+# set df to use in figures
+visits_df <- FCWC_ports_2025
+
+## filter to keep just reefers and specialized reefers for carriers, according to vessel info table
+visits_df <- visits_df %>% 
+              filter(vessel_class_best == "fishing" | vessel_class_best == "carrier" | vessel_class_best == "bunker") %>% 
+              filter(vessel_flag_best != "UNK")
+
+visits_df <- visits_df %>%
+  mutate(
+    month = month(trip_end),
+    month_year = format(trip_end, "%Y-%m")
+  )
+```
+
+## country lists
+
+```{r}
+country_map <- c(
+  "Benin", "Ghana", "Togo", "Cote d'Ivoire", "Nigeria", "Liberia"
+)
+
+names(country_map) <- c("BEN", "GHA", "TGO", "CIV", "NGA", "LBR")
+
+
+```
+
+### Port entry event from fishing vessels 
+
+Distribution of the total port entry events from fishing vessels in FCWC in Q4 2025
+```{r message=FALSE, warning=FALSE, include=TRUE, fig.width=6, fig.height=8}
+
+regional_fishing_portentries <- regional_port_map(visits_df, breaks_c = c(1, 10, 50, 100, 500),
+                  xlim = c(-15, 10),
+                  ylim = c(8, 2),
+                  vessel_type = "fishing")
+
+ggsave(filename = "regional_fishing_portentries.png", plot = regional_fishing_portentries, path = here("outputs/figures/regional_proactive")); regional_fishing_portentries
+```
+
+### Port entry event from carrier vessels
+
+Distribution of the total port entry events from fishing vessels in FCWC in focal Q
+
+```{r message=FALSE, warning=FALSE, include=TRUE, fig.width=6, fig.height=8}
+# regional_carrier_portentries <- regional_port_map(visits_df, breaks_c = c(1, 10, 50, 100, 500), 
+regional_carrier_portentries <- regional_port_map(visits_df, breaks_c = c(1, 5, 10, 20, 50), 
+                  xlim = c(-15, 10),
+                  ylim = c(9, -2),
+                  vessel_type = "carrier")
+ggsave(filename = "regional_carrier_portentries.png", plot = regional_carrier_portentries, path = here("outputs/figures")); regional_carrier_portentries
+
+```
+
+
+## Port analysis by entry event and by unique fishing vessels
+
+```{r message=FALSE, warning=FALSE, include=TRUE, fig.width=8, fig.height=5}
+fishing_visits <- port_entries_by_port_state_line(df = visits_df, vessel_type = "fishing")
+# fishing_mmsi <- unique_vessel_visits_by_port_state_line(df = visits_df, vessel_type = "fishing")
+
+merge_2_plots(fishing_visits, fishing_mmsi) %>% 
+  ggsave(filename = "fishing_visits_line.png", plot =., path = here("outputs/figures"), width = 6.5, height = 3.5, units="in")
+
+```
+
+## Port analysis by entry event and by unique carrier vessels
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+# carrier_visits <- port_entries_by_port_state_line(df = entry_port_allSA_c3, vessel_type = "carrier")
+carrier_visits <- port_entries_by_port_state_line(df = visits_df, vessel_type = "carrier")
+# carrier_mmsi <- unique_vessel_visits_by_port_state_line(df = entry_port_allSA_c3, vessel_type = "carrier")
+carrier_mmsi <- unique_vessel_visits_by_port_state_line(df = visits_df, vessel_type = "carrier")
+
+merge_2_plots(carrier_visits, carrier_mmsi) %>% 
+  ggsave(filename = "carrier_visits_line_samey.png", plot =., path = here("outputs/figures"), width = 6.5, height = 3.5, units="in")
+
+
+merge_2_plots(fishing_visits, carrier_visits)
+```
+
+
+##Port State Profiles #####################################################################################
+
+### Visits over Time by Foreign Fishing and Carrier Vessels by Port State
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+
+iso3s <- c("CHL")
+limits <- c(300)
+
+# purrr::map(
+purrr::map2(
+  .x = iso3s,
+  .y = limits,
+  .f = visits_by_portstate_line,
+  df = visits_df,
+  country_map = country_map
+)
+
+```
+
+### Visits over Time by Foreign Fishing Vessels by Flag State for each Port State
+
+```{r}
+safe_visits_to_portstate_by_flag_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_flag_bar,
+  otherwise = "Error"
+)
+limits <- c(400)
+
+purrr::map(
+  .x = iso3s,
+  # .y = limits,
+  .f = safe_visits_to_portstate_by_flag_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+```
+
+### Visits over Time by Foreign Carrier Vessels by Flag Sate for each Port State
+
+```{r}
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_flag_bar,
+  df = visits_df,
+  country_map = country_map,
+  vessel_type = "carrier"
+)
+
+```
+
+### Visits over Time by Foreign Fishing Vessels by Port for each Port State
+
+```{r}
+
+safe_visits_to_portstate_by_port_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_port_bar,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_port_bar,
+  df = visits_df,
+  country_map = country_map,
+  vessel_type = "fishing"
+)
+
+```
+
+### Visits over Time by Foreign Carrier Vessels by Port for each Port State
+
+```{r}
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_port_bar,
+  df = visits_df,
+  country_map = country_map,
+  vessel_type = "carrier"
+)
+
+```
+
+### Visits over Time by Foreign Fishing Vessels by Vessel Class for each Port State
+
+```{r}
+safe_visits_to_portstate_by_gear_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_gear_bar,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_gear_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+safe_visits_to_portstate_by_gear_donut <- purrr::possibly(
+  .f = visits_to_portstate_by_gear_donut,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_gear_donut,
+  df = visits_df,
+  country_map = country_map
+)
+
+```
+
+### Visits over Time by Foreign Fishing Vessels by Flag State by Vessel Class for each Port State
+
+```{r}
+
+# safe_visits_to_portstate_by_gear_flag_bar <- purrr::possibly(
+#   .f = visits_to_portstate_by_gear_flag_bar,
+#   otherwise = "Error"
+# )
+
+purrr::map(
+  .x = iso3s,
+  .f = visits_to_portstate_by_gear_flag_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+```
+
+## visits by gear type across all ETP countries (port state aggregated)
+
+```{r}
+# gear plot for all gear flags in the region OR port states
+visits_by_gear_flag_bar <- function(df, vessel_type = "fishing") {
+  # renaming so that facet can display in order and with proper titles, probably cleaner ways to do this...
+  df <- df %>% 
+            mutate(vessel_label = ifelse(vessel_label == "squid_jigger", "Squid Jiggers",
+                              ifelse(vessel_label == "trawlers", "Trawlers",
+                              ifelse(vessel_label == "tuna_purse_seines", "Tuna Purse Seines",
+                              ifelse(vessel_label == "drifting_longlines", "Drifting Longlines",
+                              ifelse(vessel_label == "other_purse_seines", "Other Purse Seines",
+                              ifelse(vessel_label == "fishing", "Fishing",
+                              ifelse(vessel_label == "set_longlines", "Set Longlines",
+                              ifelse(vessel_label == "pole_and_line", "Pole and Line",                            
+                              ifelse(vessel_label == "set_gillnets", "Set Gillnets",                            
+                              ifelse(vessel_label == "Others", "Others", NA)))))))))))   
+  
+  top_gear_v <- df %>%
+    filter(vessel_class == {{vessel_type}}) %>%
+    group_by(vessel_label) %>%
+    summarise(grand_total = n(), .groups = "drop") %>%
+    # filter(grand_total > 15) %>%
+    arrange(desc(grand_total)) %>%
+    filter(vessel_label %in% c(
+      "Squid Jiggers", "Trawlers", "Tuna Purse Seines", "Drifting Longlines", "Other Purse Seines", 
+       "Fishing", "Set Longlines", "Pole and Line", "Set Gillnets"
+      # "squid_jigger", "trawlers", "tuna_purse_seines",
+      # "drifting_longlines", "other_purse_seines", "fishing",
+      # "set_longlines", "pole_and_line", "set_gillnets"
+    )) %>%
+    pull(vessel_label)
+  
+    fishing_by_gear_flag_bar <- df %>%
+        filter(vessel_class == {{vessel_type}}) %>%
+        filter(vessel_label %in% top_gear_v) %>%
+        group_by(vessel_flag, vessel_label, year) %>%
+        # group_by(vessel_label, year) %>%
+        summarize(total = n(), .groups = "drop")
+      
+    top_flag_state_v <- fishing_by_gear_flag_bar %>%
+        group_by(vessel_flag) %>%
+        summarize(grand_total = sum(total, na.rm = TRUE), .groups = "drop") %>%
+        arrange(desc(grand_total)) %>%
+        slice_head(., n = 10) %>%
+        distinct(vessel_flag) %>%
+        pull(vessel_flag)
+      
+      others <- fishing_by_gear_flag_bar %>%
+        distinct(vessel_flag) %>%
+        filter(!vessel_flag %in% top_flag_state_v) %>%
+        pull(vessel_flag)
+      
+      fishing_by_gear_flag_bar <- fishing_by_gear_flag_bar %>%
+        mutate(plot_flag = ifelse(vessel_flag %in% top_flag_state_v, vessel_flag, "Others")) %>%
+        mutate(plot_flag = factor(plot_flag, levels = c(top_flag_state_v, "Others"))) %>% 
+        mutate(vessel_label = factor(vessel_label, levels = c(top_gear_v))) # %>% 
+        # mutate(vessel_label = ifelse(vessel_label == "squid_jigger", "Squid Jiggers",
+        #                       ifelse(vessel_label == "trawlers", "Trawlers",
+        #                       ifelse(vessel_label == "tuna_purse_seines", "Tuna Purse Seines",
+        #                       ifelse(vessel_label == "drifting_longlines", "Drifting Longlines",
+        #                       ifelse(vessel_label == "other_purse_seines", "Other Purse Seines",
+        #                       ifelse(vessel_label == "fishing", "Fishing",
+        #                       ifelse(vessel_label == "set_longlines", "Set Longlines",
+        #                       ifelse(vessel_label == "pole_and_line", "Pole and Line",                
+        #                       ifelse(vessel_label == "set_gillnets", "Set Gillnets",                  
+        #                       ifelse(vessel_label == "Others", "Others", NA)))))))))))
+        # rank labels by event # so facet orders correctly
+      
+      p <- ggplot() +
+        geom_col(
+          data = fishing_by_gear_flag_bar,
+          aes(
+            x = year,
+            y = total,
+            fill = plot_flag
+          )
+        ) +
+  scale_x_continuous(limits=c(2012.5,2022.5), breaks = c(2013:2022), expand=c(0,0.2)) +
+        scale_fill_manual(
+          breaks = c(top_flag_state_v, "Otros"),
+          values = c(
+            gfw_palettes$chart[1],
+            gfw_palettes$chart[8],
+            gfw_palettes$chart[7],
+            gfw_palettes$chart[6],
+            gfw_palettes$chart[4],
+            gfw_palettes$chart[3],
+            gfw_palettes$chart[2],
+            gfw_palettes$chart[5],
+            gfw_palettes$secondary[3],
+            gfw_palettes$chart[9],
+            "gray"
+          )
+        ) +
+        scale_color_manual(
+          breaks = c(top_flag_state_v, "Otros"),
+          values = c(
+            gfw_palettes$chart[1],
+            gfw_palettes$chart[8],
+            gfw_palettes$chart[7],
+            gfw_palettes$chart[6],
+            gfw_palettes$chart[4],
+            gfw_palettes$chart[3],
+            gfw_palettes$chart[2],
+            gfw_palettes$chart[5],
+            gfw_palettes$secondary[3],
+            gfw_palettes$chart[9],
+            "gray"
+          )
+        ) +
+        labs(
+            title = "Visits by foreign fishing vessel by class and flag across ETP (all port states combined)",
+          x = "",
+          y = "Number of entry events",
+          fill = "",
+          caption = glue::glue("Others: {paste0(others, collapse = ', ')}")
+        ) +
+        theme_gfw() +
+        theme(
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          plot.caption = element_text(size = 6, color = "grey45")
+        ) +
+        facet_wrap(facets = ~vessel_label, scales = "free_y", ncol = 2)
+        # facet_wrap(facets = ~reorder(vessel_title, -total), scales = "free_y", ncol = 2)
+        p
+    }
+
+visits_by_gear_flag_bar(visits_df) 
+
+```
+
+## visits by gear type across all port states
+
+```{r}
+# gear plot for all gear flags in the region OR port states
+visits_by_gear_port_bar <- function(df, vessel_type = "fishing") {
+  # renaming so that facet can display in order and with proper titles, probably cleaner ways to do this...
+  df <- df %>% 
+            mutate(vessel_label = ifelse(vessel_label == "squid_jigger", "Squid Jiggers",
+                              ifelse(vessel_label == "trawlers", "Trawlers",
+                              ifelse(vessel_label == "tuna_purse_seines", "Tuna Purse Seines",
+                              ifelse(vessel_label == "drifting_longlines", "Drifting Longlines",
+                              ifelse(vessel_label == "other_purse_seines", "Other Purse Seines",
+                              ifelse(vessel_label == "fishing", "Fishing",
+                              ifelse(vessel_label == "set_longlines", "Set Longlines",
+                              ifelse(vessel_label == "pole_and_line", "Pole and Line",                            
+                              ifelse(vessel_label == "set_gillnets", "Set Gillnets",                            
+                              ifelse(vessel_label == "Others", "Others", NA)))))))))))   
+  
+  top_gear_v <- df %>%
+    filter(vessel_class == {{vessel_type}}) %>%
+    group_by(vessel_label) %>%
+    summarise(grand_total = n(), .groups = "drop") %>%
+    # filter(grand_total > 15) %>%
+    arrange(desc(grand_total)) %>%
+    filter(vessel_label %in% c(
+      "Squid Jiggers", "Trawlers", "Tuna Purse Seines", "Drifting Longlines", "Other Purse Seines", 
+       "Fishing", "Set Longlines", "Pole and Line", "Set Gillnets"
+      # "squid_jigger", "trawlers", "tuna_purse_seines",
+      # "drifting_longlines", "other_purse_seines", "fishing",
+      # "set_longlines", "pole_and_line", "set_gillnets"
+    )) %>%
+    pull(vessel_label)
+  
+    fishing_by_gear_bar <- df %>%
+        filter(vessel_class == {{vessel_type}}) %>%
+        filter(vessel_label %in% top_gear_v) %>%
+        group_by(end_port_iso3, vessel_label, year) %>%
+        summarize(total = n(), .groups = "drop")
+      
+    top_port_state_v <- fishing_by_gear_bar %>%
+        group_by(end_port_iso3) %>%
+        summarize(grand_total = sum(total, na.rm = TRUE), .groups = "drop") %>%
+        arrange(desc(grand_total)) %>%
+        slice_head(., n = 10) %>%
+        distinct(end_port_iso3) %>%
+        pull(end_port_iso3)
+      
+      others <- fishing_by_gear_bar %>%
+        distinct(end_port_iso3) %>%
+        filter(!end_port_iso3 %in% top_port_state_v) %>%
+        pull(end_port_iso3)
+      
+      fishing_by_gear_bar <- fishing_by_gear_bar %>%
+        mutate(plot_flag = ifelse(end_port_iso3 %in% top_port_state_v, end_port_iso3, "Others")) %>%
+        mutate(plot_flag = factor(plot_flag, levels = c(top_port_state_v, "Others"))) %>% 
+        mutate(vessel_label = factor(vessel_label, levels = c(top_gear_v))) 
+      
+      p <- ggplot() +
+        geom_col(
+          data = fishing_by_gear_bar,
+          aes(
+            x = year,
+            y = total,
+            fill = plot_flag
+          )
+        ) +
+  scale_x_continuous(limits=c(2012.5,2022.5), breaks = c(2013:2022), expand=c(0,0.2)) +
+        scale_fill_manual(
+          breaks = c(top_port_state_v, "Others"),
+          values = c(
+            gfw_palettes$chart[1],
+            gfw_palettes$chart[8],
+            gfw_palettes$chart[7],
+            gfw_palettes$chart[6],
+            gfw_palettes$chart[4],
+            gfw_palettes$chart[3],
+            gfw_palettes$chart[2],
+            gfw_palettes$chart[5],
+            gfw_palettes$secondary[3],
+            gfw_palettes$chart[9],
+            "gray"
+          )
+        ) +
+        scale_color_manual(
+          breaks = c(top_port_state_v, "Others"),
+          values = c(
+            gfw_palettes$chart[1],
+            gfw_palettes$chart[8],
+            gfw_palettes$chart[7],
+            gfw_palettes$chart[6],
+            gfw_palettes$chart[4],
+            gfw_palettes$chart[3],
+            gfw_palettes$chart[2],
+            gfw_palettes$chart[5],
+            gfw_palettes$secondary[3],
+            gfw_palettes$chart[9],
+            "gray"
+          )
+        ) +
+        labs(
+          title = "Visits by foreign fishing vessel by class and port state across ETP",
+          x = "",
+          y = "Number of entry events",
+          fill = "",
+          caption = glue::glue("Others: {paste0(others, collapse = ', ')}")
+        ) +
+        theme_gfw() +
+        theme(
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          plot.caption = element_text(size = 6, color = "grey45")
+        ) +
+        facet_wrap(facets = ~vessel_label, scales = "free_y", ncol = 2)
+        # facet_wrap(facets = ~reorder(vessel_title, -total), scales = "free_y", ncol = 2)
+        p
+    }
+
+visits_by_gear_port_bar(visits_df) 
+
+```
+
+### Visits over Time by Foreign Fishing Vessels by Vessel Class by Port for each Port State
+
+```{r}
+
+safe_visits_to_portstate_by_port_gear_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_port_gear_bar,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_port_gear_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+```
+
+### Visits over Time by Foreign Fishing Vessels by Flag State by Port for each Port State
+
+```{r}
+
+safe_visits_to_portstate_by_port_flagstate_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_port_flagstate_bar,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = visits_to_portstate_by_port_flagstate_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+```
+
+
+## CHN only
+```{r}
+# set df to use in figures
+visits_df_chn <- CHL_ports_2015_25 %>% 
+  filter(year > 2015) %>% 
+  filter(vessel_flag_best == 'CHN') %>% 
+  filter(vessel_class_best == "fishing")
+  
+
+country_map <- c("Chile")
+names(country_map) <- c("CHL")
+
+
+safe_visits_to_portstate_by_flag_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_flag_bar,
+  otherwise = "Error"
+)
+limits <- c(400)
+purrr::map(
+  .x = iso3s,
+  # .y = limits,
+  .f = safe_visits_to_portstate_by_flag_bar,
+  df = visits_df,
+  country_map = country_map
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_flag_bar,
+  df = visits_df_chn,
+  country_map = country_map,
+  vessel_type = "carrier"
+)
+
+## visits by port
+safe_visits_to_portstate_by_port_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_port_bar,
+  otherwise = "Error"
+)
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_port_bar,
+  df = visits_df_chn,
+  country_map = country_map,
+  vessel_type = "fishing"
+)
+
+## visits by vessel class
+safe_visits_to_portstate_by_gear_bar <- purrr::possibly(
+  .f = visits_to_portstate_by_gear_bar,
+  otherwise = "Error"
+)
+
+purrr::map(
+  .x = iso3s,
+  .f = safe_visits_to_portstate_by_gear_bar,
+  df = visits_df_chn,
+  country_map = country_map
+)
+```
+
+
+## some 
+```{r}
+visits_df_chn %>% 
+  filter(end_port_label != c('PUNTA ARENAS'))
+  # filter(!end_port_label %in% c('PUNTA ARENAS', 'TALCAHUANO', 'VALPARAISO'))
+  mutate(month = floor_date(trip_end, unit = "month")) %>% 
+  mutate(semester = semester(trip_end)) %>% 
+  group_by(year, semester) %>%
+  summarise(total_visits = n(), .groups = "drop") %>% View()
+
+visits_df_chn %>% 
+  # filter(end_port_label != c('PUNTA ARENAS'))
+  filter(!end_port_label %in% c('PUNTA ARENAS', 'TALCAHUANO', 'VALPARAISO')) %>% 
+  distinct(shipname) %>% View()
+
+```
+
+
