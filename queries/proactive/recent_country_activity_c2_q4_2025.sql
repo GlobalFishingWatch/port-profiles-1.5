@@ -199,8 +199,8 @@ fishing_voyages AS (
         *,
         EXTRACT(year FROM trip_end) AS year
       FROM
-         --`pipe_ais_v3_internal.voyages_c2`
-         `global-fishing-watch.pipe_ais_v4_published.voyages_c3`
+        `gfw-int-pipe-v3.pipe_ais_v3_internal.voyages_c2`
+        --`global-fishing-watch.pipe_ais_v4_published.voyages_c3`
       WHERE
         trip_end BETWEEN start_date() AND end_date()
         AND trip_start < end_date()
@@ -328,7 +328,8 @@ fishing_voyages AS (
           *,
           EXTRACT(year FROM trip_end) AS year
         FROM
-         `world-fishing-827.pipe_ais_v3_internal.voyages_c2`
+         `gfw-int-pipe-v3.pipe_ais_v3_internal.voyages_c2`
+         -- `global-fishing-watch.pipe_ais_v4_published.voyages_c3`
       WHERE
         trip_end BETWEEN start_date() AND end_date()
         AND trip_start < end_date()
