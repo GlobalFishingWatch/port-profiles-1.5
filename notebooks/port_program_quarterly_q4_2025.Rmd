@@ -575,9 +575,14 @@ country_iso3 <- "'GHA'"
 month <- 'Q4'
 country <- 'GHA'
 
+# import QA vessel list from TMT for including potentially missed vessels
+tmt_masterlist <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v4_Q3_2025.csv"), header=T) 
+ssvid_master_include <- tmt_masterlist %>% filter(Include == "Yes") %>% pull(ssvid) %>% as.character(.)
+            
 # potential MMSIs to force in 
 missing_ssvids <- '"311062300", "355855000", "352002156", "311001574", "306883000", "355295000", "311000855", "312177000", "412800000"'
 
+missing_ssvids <- c(missing_ssvids_manual, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_joef.gha_q4_25_all_voyages_temp`'
 ```
@@ -627,9 +632,9 @@ merged_df <- left_join(voyages_with_coverage_gha, TMT_qa_ves, by = "ssvid", suff
 # update columns when they aren't NA 
 # map columns to update
 column_mapping <- list(
-  vessel_flag_best = "CurrentFlag_tmt",
-  vessel_class_best  = "VesselType_tmt",
-  geartype_best = "GearType_tmt"            
+  vessel_flag_best = "CurrentFlag",
+  vessel_class_best  = "VesselType",
+  geartype_best = "GearType"            
 )
 
 # Replace values in gfw_df with tmt_df values (if not NA)
@@ -643,12 +648,9 @@ for (main_col in names(column_mapping)) {
     merged_df[[update_col]] <- NULL
   }
 }
-
 # filter out the values from the master spreadsheet we shouldn't include
-merged_df_inc <- filter(merged_df, Include == 'Yes' | is.na(Include))
+merged_df <- filter(merged_df, Include == 'Yes' | is.na(Include))
 
-# how many rows drop out
-nrow(merged_df) - nrow(merged_df_inc)
 ```
 
 ## add urls
@@ -664,14 +666,14 @@ end_date_url <- '2025-3-31'
 #format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
 
 # paste string components together using vessel id, trip start and trip end from data 
-voyages_url <- bind_cols(merged_df_inc, 
+voyages_url <- bind_cols(merged_df, 
                          vv_url = paste('=HYPERLINK("',
                           base_string_p1,
-                          merged_df_inc$vessel_id, 
+                          merged_df$vessel_id, 
                           base_string_p2, 
-                          as.Date(format(merged_df_inc$trip_start, format='%Y-%m-%d'))-2, 
+                          as.Date(format(merged_df$trip_start, format='%Y-%m-%d'))-2, 
                           base_string_p3, 
-                          as.Date(format(merged_df_inc$trip_end, format='%Y-%m-%d'))+2,
+                          as.Date(format(merged_df$trip_end, format='%Y-%m-%d'))+2,
                           '")', sep=''))
 
 ```
@@ -976,8 +978,14 @@ country_iso3 <- "'SEN'"
 month <- 'Q4'
 country <- 'SEN'
 
+# import QA vessel list from TMT for including potentially missed vessels
+tmt_masterlist <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v4_Q3_2025.csv"), header=T) 
+ssvid_master_include <- tmt_masterlist %>% filter(Include == "Yes") %>% pull(ssvid) %>% as.character(.)
+            
 # potential MMSIs to force in 
 missing_ssvids <- '"209882000", "311000791", "355855000", "412440796", "416004904"'
+
+missing_ssvids <- c(missing_ssvids_manual, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
 
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_joef.sen_q4_25_all_voyages_temp`'
@@ -1139,7 +1147,7 @@ write.csv(arrange(voyages_reformat, trip_end), here::here("data", "proactive", "
 ```
 
 ## some vessels here present in Q4 but didn't run code for edits in this block yet
-```{r make adjustments from TMT feedback in GHA, echo=F, warning=F, include=FALSE}
+```{r make adjustments from TMT feedback in SEN, echo=F, warning=F, include=FALSE}
 
 # manual addition of missing vessels from TMT cross check 
 # fegulus <- data.frame(
@@ -1532,6 +1540,14 @@ country_iso3 <- "'GIN'"
 month <- 'Q4'
 country <- 'GIN'
 
+# import QA vessel list from TMT for including potentially missed vessels
+tmt_masterlist <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v4_Q3_2025.csv"), header=T) 
+ssvid_master_include <- tmt_masterlist %>% filter(Include == "Yes") %>% pull(ssvid) %>% as.character(.)
+            
+# additional MMSIs to force in
+missing_ssvids_manual <- c('')
+
+missing_ssvids <- c(missing_ssvids_manual, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
 
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_joef.gin_q4_25_all_voyages_temp`'
@@ -1636,14 +1652,40 @@ voyages_url <- bind_cols(merged_df,
 
 ```
 
+## add port info
+```{r add in port information for Ghana using anchorage stops}
+# s2ids for port features of interest 
+conakry_offshore <- c("0f1cc579", "0f1cc57d", "0f1cc57f", "0f1ccf81",
+"0f1ccf87")
+conakry_nearshore <- c("0f1cd011", "0f1cd015", "0f1cd063", "0f1cd065", "0f1cd067", "0f1cd071", "0f1cd073", "0f1cd07b", "0f1cd07d")
+conakry_container_term <- c("0f1cd09b", "0f1cd09d")
+
+
+# add logic column to indicate presence at each location of interest 
+voyages_url$conakry_offshore <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% conakry_offshore)
+})
+
+voyages_url$conakry_nearshore <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% conakry_nearshore)
+})
+
+voyages_url$conakry_container_term <- sapply(voyages_url$stop_anchorage_ids, function(x) {
+  any(strsplit(x, ",\\s*")[[1]] %in% conakry_container_term)
+})
+
+
+```
 ## formatting
 ```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
 # change colnames to be sensible for an externally shared document 
-voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
+voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, MMSI=ssvid,
    Flag=vessel_flag_best, AIS_Flag= ais_mmsi_flag, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
    vessel_type=geartype_best,  previous_port_country = start_port_iso3,
    previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
-   end_port = end_port_label, prev_visit_timestamp, at_dock=dock, fishing=fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= encounter, num_encounters=num_encounters, loitering=loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url)
+   end_port = end_port_label, prev_visit_timestamp, at_dock=dock, 
+   conakry_offshore, conakry_nearshore, conakry_container_term,
+   fishing=fishing, fishing_hours, fishing_eez=eezs, fishing_hs =high_seas, fishing_rfmos = rfmos, encounter= encounter, num_encounters=num_encounters, loitering=loitering, num_loitering, AISdisabling, num_AISdisabling, percent_ais_voyage=percent_ais_voyage, vv_url)
    #gaps=1, num_gaps, total_gap_hours)
 
 # overwrite fishing_hs T/F
