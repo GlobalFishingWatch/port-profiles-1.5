@@ -1,17 +1,3 @@
-  -- Query to quantify foreign fishing and carrier vessel visits to
-  --  ports of interest.
-  --  Adapted from Joe Fader port profile code by Max Schofield 17Oct2024
-  --
-  --  NOTE This script doesn't have the Panama canal voyage connector to try have the AIS coverage run in the same script
-  --  NOTE this script does not include bunker vessel which could be PSMA relevant
-  --
-  -- This code starts with identifying vessels which are relevant for carrier and fishing vessels
-  -- Then identifying foreign flagged voyages to the focal point
-  -- Then identifying the activity (fishing, loitering, encounters)
-  -- Then identifying AIS coverage on the voyage
-  --
-
-
 ## set time frame of interest
 CREATE TEMP FUNCTION  start_date() AS (TIMESTAMP({start_date}));
 CREATE TEMP FUNCTION  end_date() AS (TIMESTAMP({end_date}));
@@ -22,11 +8,6 @@ CREATE TEMP FUNCTION  end_year() AS ({end_year});
 ## set port and country (iso) of interest
 CREATE TEMP FUNCTION port_iso() AS (CAST({port_iso} AS STRING));
 
-CREATE TEMP FUNCTION extra_ids()
-RETURNS ARRAY<STRING> AS (
-    [{missing_ssvids}]
-);
-
 CREATE OR REPLACE TABLE {temp_table}
 OPTIONS (
   expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
@@ -35,411 +16,9 @@ OPTIONS (
 WITH
 
 ----------------------------------------------------------
--- add in vessels missing from analysis e.g. identified by TMT QA or local partner insights
+-- start with manual CTE of voyages
 ----------------------------------------------------------
-
-   additional_vessels AS(
-     SELECT DISTINCT
-       ssvid,
-       year,
-       IFNULL(IFNULL(gfw_best_flag, registry_flag), ais_mmsi_flag) AS vessel_iso3,
-       '4' as class_confidence,
-       'added_TMT' AS vessel_class,
-       prod_geartype AS gear_type
-      FROM
-       `global-fishing-watch.pipe_ais_identity_v4_published.product_vessel_info_summary`
-      WHERE
-       year >= start_year() AND year <= end_year()
-       AND ssvid IN UNNEST(extra_ids()) -- add additional vessels here
-      ),
-
-----------------------------------------------------------
--- Define lists of high/med/low confidence for all fishing-related vessels
--- and join each list to voyages within the time period of interest
-----------------------------------------------------------
-
-----------------------------------------------------------
--- high/med/low confidence fishing vessels
-----------------------------------------------------------
-
--- HIGH: MMSI in the fishing_vessels_ssvid table.
--- These are vessels on our best fishing list and that have reliable AIS data
-
-  high_conf_fishing AS (
-     SELECT DISTINCT
-       ssvid,
-       year,
-      --  best_flag AS vessel_iso3,
-      IFNULL(IFNULL(gfw_best_flag, registry_flag), ais_mmsi_flag) AS vessel_iso3,
-       '1' as class_confidence,
-       'fishing' AS vessel_class,
-       prod_geartype AS gear_type
-     FROM
-      `global-fishing-watch.pipe_ais_identity_v4_published.product_vessel_info_summary` --
-     WHERE
-      year >= start_year() AND year <= end_year()
-      AND prod_shiptype IN ("fishing")
-      AND on_fishing_list_best
-     ),
-
--- MED: All MMSI on our best fishing list not included in the high category.
--- These are likely fishing vessels that primarily get excluded due to data issues
--- (e.g. spoofing, offsetting, low activity)
-
-  med_conf_fishing AS (
-    SELECT DISTINCT
-      ssvid,
-      year,
-      -- IFNULL(best.best_flag, ais_identity.flag_mmsi) AS vessel_iso3,
-      IFNULL(IFNULL(gfw_best_flag, registry_flag), ais_mmsi_flag) AS vessel_iso3,
-      '2' as class_confidence,
-      'fishing' AS vessel_class,
-      prod_geartype AS gear_type
-    FROM
-      `global-fishing-watch.pipe_ais_identity_v4_published.product_vessel_info_summary` AS vi_table
-    WHERE
-    year >= start_year() AND year <= end_year()
-    AND prod_shiptype IN ("fishing")
-    AND on_fishing_list_sr
-    AND
-    -- anti join to get vessels that don't match high conf list by ssvid or year:
-    NOT EXISTS (
-      SELECT ssvid, year
-      FROM high_conf_fishing
-      WHERE vi_table.ssvid = high_conf_fishing.ssvid AND vi_table.year = high_conf_fishing.year
-    )
-    ),
-
-
--- LOW: MMSI that are on one of our three source fishing lists (registry, neural net, self-reported)
--- but not included in either the med or high list. These are MMSI for which we have minimal
--- or conflicting evidence that they are a fishing vessel.
-
-   low_conf_fishing AS (
-    SELECT DISTINCT
-      ssvid,
-      year,
-      IFNULL(IFNULL(gfw_best_flag, registry_flag), ais_mmsi_flag) AS vessel_iso3,
-      '3' as class_confidence,
-      'fishing' AS vessel_class,
-      prod_geartype AS gear_type
-    FROM
-      `global-fishing-watch.pipe_ais_identity_v4_published.product_vessel_info_summary` AS vi_table
-    WHERE (
-      prod_shiptype = 'fishing'
-      OR prod_shiptype = 'discrepancy'
-      OR potential_fishing
-      OR on_fishing_list_sr
-      )
-      AND (year >= start_year() AND year <= end_year())
-    -- anti joins to get vessels that don't match high/med conf list by ssvid or year:
-    AND NOT EXISTS (
-      SELECT ssvid, year
-      FROM high_conf_fishing
-      WHERE vi_table.ssvid = high_conf_fishing.ssvid AND vi_table.year = high_conf_fishing.year
-    )
-    AND NOT EXISTS (
-      SELECT ssvid, year
-      FROM med_conf_fishing
-      WHERE vi_table.ssvid = med_conf_fishing.ssvid AND vi_table.year = med_conf_fishing.year
-    )
-    ),
-
-
-----------------------------------------------------------
--- combined fishing vessel table info
-----------------------------------------------------------
-  fishing_vessels AS (
-     SELECT
-       *
-     FROM
-       additional_vessels
-     UNION ALL
-
-    SELECT
-      *
-    FROM
-      high_conf_fishing
-    UNION ALL
-
-    SELECT
-      *
-    FROM
-      med_conf_fishing
-    UNION ALL
-
-    SELECT
-      *
-    FROM
-      low_conf_fishing
-  ),
-----------------------------------------------------------
--- voyages for all identified fishing vessels
-----------------------------------------------------------
-fishing_voyages AS (
-    SELECT
-      voyages.ssvid,
-      voyages.year,
-      voyages.vessel_id,
-      voyages.trip_start,
-      voyages.trip_end,
-      voyages.trip_start_anchorage_id,
-      voyages.trip_end_anchorage_id,
-      voyages.trip_start_visit_id,
-      voyages.trip_end_visit_id,
-      voyages.trip_start_confidence,
-      voyages.trip_end_confidence,
-      voyages.trip_id,
-      fv.vessel_iso3,
-      fv.class_confidence,
-      fv.vessel_class,
-      fv.gear_type
-    FROM (
-      SELECT
-        *,
-        EXTRACT(year FROM trip_end) AS year
-      FROM
-        `gfw-int-pipe-v3.pipe_ais_v3_internal.voyages_c2`
-        --`global-fishing-watch.pipe_ais_v4_published.voyages_c3`
-      WHERE
-        trip_end BETWEEN start_date() AND end_date()
-        AND trip_start < end_date()
-        ) voyages
-    INNER JOIN fishing_vessels fv
-    USING
-      (ssvid, year)
-      ),
-
-
----------------------------------------------------------------
--- List of carriers according to vessel registries - high confidence
----------------------------------------------------------------
-  reg_carriers AS (
-    SELECT DISTINCT -- generics for flag and gear as there are duplicates in v database which will duplicate voyages
-      ssvid,
-      'flag' AS vessel_iso3,
-      '1' AS class_confidence,
-      'carrier' AS vessel_class,
-      'geartype' AS gear_type,
-      first_timestamp,
-      last_timestamp
-    FROM
-      `global-fishing-watch.pipe_ais_identity_v4_published.identity_core`
-    WHERE
-      TIMESTAMP(first_timestamp) <= end_date() AND
-      TIMESTAMP(last_timestamp) >= start_date() AND
-      is_carrier = TRUE AND
-      geartype IN ("reefer","specialized_reefer") AND
-      n_shipname IS NOT NULL AND
-      flag IS NOT NULL
-  ),
-
----------------------------------------------------------------
--- nn carriers capable of transshipping at sea - not included in is_carrier
----------------------------------------------------------------
-  nn_carriers_med_confidence AS (
-    SELECT DISTINCT
-      ssvid,
-      best.best_flag AS vessel_iso3,
-      '2' AS class_confidence,
-      'carrier' AS vessel_class,
-      best.best_vessel_class AS gear_type,
-      activity.first_timestamp,
-      activity.last_timestamp
-    FROM
-      `global-fishing-watch.pipe_ais_identity_v4_published.vi_ssvid_byyear`
-    WHERE
-      TIMESTAMP(activity.first_timestamp) <= end_date() AND
-      TIMESTAMP(activity.last_timestamp) >= start_date() AND
-      best.best_vessel_class IN ("specialized_reefer", "reefer") AND
-      ssvid NOT IN(SELECT ssvid FROM reg_carriers)
-  ),
-
----------------------------------------------------------------
--- other carriers not included in is_carrier
----------------------------------------------------------------
-  nn_carriers_low_confidence AS (
-    SELECT DISTINCT
-      ssvid,
-      best.best_flag AS vessel_iso3,
-      '3' AS class_confidence,
-      'carrier' AS vessel_class,
-      best.best_vessel_class AS gear_type,
-      activity.first_timestamp,
-      activity.last_timestamp
-    FROM
-      `global-fishing-watch.pipe_ais_identity_v4_published.vi_ssvid_byyear`
-    WHERE
-      TIMESTAMP(activity.first_timestamp) <= end_date() AND
-      TIMESTAMP(activity.last_timestamp) >= start_date() AND
-      best.best_vessel_class IN ("container_reefer", "cargo_or_reefer") AND
-      ssvid NOT IN (SELECT ssvid FROM reg_carriers) AND
-      ssvid NOT IN (SELECT ssvid FROM nn_carriers_med_confidence)
-  ),
-
-----------------------------------------------------------
--- combined carrier table info
-----------------------------------------------------------
-  carrier_vessels AS (
-    SELECT
-      *
-    FROM
-      reg_carriers
-    UNION ALL
-
-    SELECT
-      *
-    FROM
-      nn_carriers_med_confidence
-    UNION ALL
-
-    SELECT
-      *
-    FROM
-      nn_carriers_low_confidence
-  ),
-
-----------------------------------------------------------
--- voyages for all identified carriers
-----------------------------------------------------------
-  carrier_voyages AS (
-    SELECT
-      *
-    FROM (
-      SELECT DISTINCT
-        voyages.ssvid,
-        voyages.year,
-        voyages.vessel_id,
-        voyages.trip_start,
-        voyages.trip_end,
-        voyages.trip_start_anchorage_id,
-        voyages.trip_end_anchorage_id,
-        voyages.trip_start_visit_id,
-        voyages.trip_end_visit_id,
-        voyages.trip_start_confidence,
-        voyages.trip_end_confidence,
-        voyages.trip_id,
-        carriers.vessel_iso3,
-        carriers.class_confidence,
-        carriers.vessel_class,
-        carriers.gear_type
-      FROM (
-        SELECT
-          *,
-          EXTRACT(year FROM trip_end) AS year
-        FROM
-         `gfw-int-pipe-v3.pipe_ais_v3_internal.voyages_c2`
-         -- `global-fishing-watch.pipe_ais_v4_published.voyages_c3`
-      WHERE
-        trip_end BETWEEN start_date() AND end_date()
-        AND trip_start < end_date()
-          ) voyages
-    INNER JOIN carrier_vessels AS carriers
-      ON voyages.ssvid = carriers.ssvid
-      -- filtering for trips that end within active phase of vessel id
-      -- note that if end_date of period of interest is less than 2 months past vi_ssvid date, some voyages will be missed due to GFW dataset timing
-      -- AND voyages.trip_end >= carriers.first_timestamp AND voyages.trip_end <= carriers.last_timestamp
-        )
-        ),
-
---------------------------------------
--- Combine fishing, bunker, and carrier voyages
---------------------------------------
-  initial_voyages AS (
-    SELECT
-      *
-    FROM
-      fishing_voyages
-    UNION ALL
-
-    SELECT
-      *
-    FROM
-      carrier_voyages
-  ),
-
---------------------------------------
--- Remove any duplicates between categories (fishing, bunker, carrier) by
--- selecting duplicate vessel with the higher confidence level
--- note if vessels have the same conf level, (arbitrarily) selecting fishing, then carrier, then bunker...
---------------------------------------
-  total_voyages AS(
-    SELECT DISTINCT
-      year,
-      ssvid,
-      vessel_id,
-      FIRST_VALUE (vessel_iso3) OVER (
-        PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class DESC) AS vessel_iso3,
-      FIRST_VALUE (class_confidence) OVER (
-        PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class DESC) AS class_confidence,
-      FIRST_VALUE (vessel_class) OVER (
-        PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class DESC) AS vessel_class,
-      FIRST_VALUE (gear_type) OVER (
-        PARTITION BY trip_id
-        ORDER BY class_confidence ASC, vessel_class DESC) AS gear_type,
-      trip_id,
-      trip_start,
-      trip_end,
-      trip_start_anchorage_id,
-      trip_end_anchorage_id,
-      trip_start_visit_id,
-      trip_end_visit_id,
-      trip_start_confidence,
-      trip_end_confidence,
-  FROM initial_voyages
-  ),
-
---------------------------------------
--- Anchorage names
---------------------------------------
-  anchorage_names AS (
-  SELECT
-    s2id,
-    label,
-    iso3
-  FROM
-    `global-fishing-watch.anchorages.named_anchorages_v20240117`
-    ),
-
---------------------------------------
--- Add names to voyages (start and end)
---------------------------------------
-  named_voyages AS (
-  SELECT
-    * EXCEPT(s2id, label, iso3),
-    c.label AS end_label,
-    c.iso3 AS end_iso3
-  FROM (
-    SELECT
-      * EXCEPT(s2id, label, iso3),
-      b.label AS start_label,
-      b.iso3 AS start_iso3
-    FROM
-      total_voyages
-    LEFT JOIN
-      anchorage_names b
-    ON
-      trip_start_anchorage_id = s2id)
-  LEFT JOIN
-    anchorage_names c
-  ON
-    trip_end_anchorage_id = s2id
-  WHERE c.iso3 = port_iso()),
-
-----------------------------------------------------------
--- add in CTE of manual voyages if applicable
-----------------------------------------------------------
--- {manual_voyage_cte},
-
-plus_manual_voyages AS (
-  SELECT *
-  FROM named_voyages
---  UNION ALL
---  SELECT * FROM manual_voyage_data
-),
+{manual_voyage_cte},
 
 --------------------------------------
 -- Identify how many encounters occurred on each voyage
@@ -468,7 +47,7 @@ num_encounters AS (
         trip_start,
         trip_end
       FROM
-        plus_manual_voyages) voyages
+        manual_voyage_data) voyages
     USING (vessel_id)
       WHERE event_start BETWEEN trip_start AND trip_end
       AND  product_shiptype != 'gear' AND enc_product_shiptype != 'gear'
@@ -511,7 +90,7 @@ num_encounters AS (
         trip_start,
         trip_end
       FROM
-        plus_manual_voyages) b
+        manual_voyage_data) b
     USING
       (vessel_id)
     WHERE
@@ -556,7 +135,7 @@ num_encounters AS (
         trip_start,
         trip_end
       FROM
-        plus_manual_voyages)
+        manual_voyage_data)
     USING
       (vessel_id)
     WHERE
@@ -587,7 +166,7 @@ num_encounters AS (
         trip_start,
         trip_end
       FROM
-        plus_manual_voyages)
+        manual_voyage_data)
     USING
       (vessel_id)
     WHERE
@@ -607,7 +186,7 @@ num_encounters AS (
     IF
       (b.num_encounters > 0, TRUE, FALSE) AS encounter
     FROM
-      plus_manual_voyages AS a
+      manual_voyage_data AS a
     LEFT JOIN
       num_encounters b
     USING
@@ -702,22 +281,13 @@ num_encounters AS (
     FROM (
       SELECT
         *,
-        CASE
-          WHEN CONCAT(start_label, start_iso3) != CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 1 THEN TRUE
-          WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3)
-          AND (encounter IS TRUE
-          OR loitering IS TRUE
-          OR fishing IS TRUE)
-          AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 2 THEN TRUE
-          WHEN CONCAT(start_label, start_iso3) = CONCAT(end_label, end_iso3) AND TIMESTAMP_DIFF(trip_end, trip_start, SECOND)/3600 > 3 THEN TRUE
-        ELSE
-        FALSE
-      END
-        AS true_voyage
+        -- change to set all to true for manual voyage adds
+        true AS true_voyage
       FROM
         add_gaps)
     WHERE
-      true_voyage IS TRUE ),
+      true_voyage IS TRUE
+      ),
 
 --------------------------------------
 -- Identify vessel ids with less than
@@ -741,9 +311,9 @@ num_encounters AS (
       `global-fishing-watch.pipe_ais_v4_published.vessel_info` ),
 
 --------------------------------------
--- Filter the voyages to those that
--- involve 'good' vessel_ids, and
--- end between time range of interest
+-- option to filter to 'good' vessel_ids
+-- ending in time range of interest, but changed
+-- for manual voyage adds to select all
 --------------------------------------
   good_vessel_voyages AS (
     SELECT
@@ -758,7 +328,7 @@ num_encounters AS (
       AND EXTRACT(YEAR
       FROM
         trip_end) <= end_year()
- -- changed to include all vessels
+-- changed to include all vessels for manual voyage adds
 --      AND vessel_id IN (
 --      SELECT
 --        vessel_id
@@ -790,26 +360,27 @@ num_encounters AS (
 --------------------------------------
 -- create list of anchorages where the vessel has stopped in the visit
 --------------------------------------
-  anchorage_stops AS (
+
+anchorage_stops AS (
+  SELECT
+    v.*,
+    s.stop_anchorage_ids
+  FROM
+    add_visit_end_1 v
+  LEFT JOIN (
+  -- 1. Aggregate ALL port stops by visit_id (set time something before period of interest)
     SELECT
-      v.*,
-      s.stop_anchorage_ids
+      visit_id AS trip_end_visit_id,
+      STRING_AGG(DISTINCT e.anchorage_id, ', ') AS stop_anchorage_ids
     FROM
-      add_visit_end_1 v
-    LEFT JOIN (
-    -- 1. Aggregate ALL port stops by visit_id (set time something before period of interest)
-      SELECT
-        visit_id AS trip_end_visit_id,
-        STRING_AGG(DISTINCT e.anchorage_id, ', ') AS stop_anchorage_ids
-      FROM
-        `global-fishing-watch.pipe_ais_v4_published.port_visits`,
-        UNNEST(events) AS e
-      WHERE
-        end_timestamp > start_date()
-    -- 2. join to visits table - note REMOVED the 'IN (SELECT...)' filter here from previous approach
-      GROUP BY visit_id
-    ) s ON v.trip_end_visit_id = s.trip_end_visit_id
-  ),
+      `global-fishing-watch.pipe_ais_v4_published.port_visits`,
+      UNNEST(events) AS e
+    WHERE
+      end_timestamp > TIMESTAMP("2025-07-01")
+  -- 2. join to visits table - note REMOVED the 'IN (SELECT...)' filter here from previous approach
+    GROUP BY visit_id
+  ) s ON v.trip_end_visit_id = s.trip_end_visit_id
+),
 
 --------------------------------------
 -- Add end timestamp to end port visits
@@ -819,7 +390,7 @@ num_encounters AS (
       *
     FROM
       anchorage_stops
-    LEFT JOIN (
+    INNER JOIN (
       SELECT
         visit_id AS trip_end_visit_id,
         start_timestamp AS start_portvisit_timestamp,
@@ -840,6 +411,7 @@ num_encounters AS (
       ),
 
 --------------------------------------
+-----turning this off to ensure manual voyage adds included
 -- List of visits that have at least a
 -- minimum event duration
 -- Used to remove visits where the port
@@ -929,44 +501,19 @@ num_encounters AS (
     --     trip_end_visit_id
     --   FROM
     --     has_long_enough_event)
+
         ),
 
+
+--- don't need to filter for foreign visits so eliminating EU and foreign visit code chunks
 --------------------------------------
 -- label EU boats
 --------------------------------------
-  is_eu_iso3 AS (
-    SELECT
-      DISTINCT iso3
-    FROM
-      `world-fishing-827.gfw_research.country_codes`
-    WHERE
-      is_EU ),
 
 --------------------------------------
 -- Only include truly foreign visits - EU visiting EU is not foreign
 -- and select port(s) of interest
 --------------------------------------
-  foreign_voyages AS (
-    SELECT
-      *
-    FROM
-      all_voyages
-    WHERE
-      end_port_iso3 != vessel_iso3
-      AND NOT (end_port_iso3 IN (
-        SELECT
-          iso3
-        FROM
-          is_eu_iso3)
-        AND vessel_iso3 IN (
-        SELECT
-          iso3
-        FROM
-          is_eu_iso3))
-  -- filter for ports of interest
-      --AND end_port_label IN UNNEST(port_label()) -- using parameters set at top of code for port and iso
-      AND end_port_iso3 IN (port_iso())
-      ),
 
 --------------------------------------
 -- add vessel info from all_vessels table
@@ -1015,7 +562,7 @@ num_encounters AS (
       eezs,
       rfmos,
       fishing_hours
-    FROM foreign_voyages )
+    FROM all_voyages )
     JOIN (
       SELECT
         vessel_id,
@@ -1106,7 +653,7 @@ num_encounters AS (
     FROM add_vessel_info),
 
 --------------------------------------
--- pull voyages ending in port visit in POI
+-- little more cleaning, previously used to filter by port as well..
 -- comment this block out if want vessel info/list
 --------------------------------------
 POI_visits AS(
@@ -1157,8 +704,8 @@ POI_visits AS(
     rfmos,
     CASE WHEN fishing_hours IS NULL THEN 0 ELSE fishing_hours END AS fishing_hours
   FROM clean_info
-  WHERE
-    ais_mmsi_flag != port_iso()
+  -- WHERE
+    -- ais_mmsi_flag != port_iso()
     --vessel_flag_best != port_iso()
   ),
 
@@ -1182,7 +729,7 @@ port_events AS (
   ) AS manual_ssvids ON p.ssvid = manual_ssvids.ssvid
   WHERE
     p.end_timestamp > prev_visit_search_date()
-    ),
+),
 
 --------------------------------------
 -- Add names to all port events
@@ -1194,7 +741,12 @@ name_events AS(
     c.iso3 AS end_iso3
   FROM port_events
   LEFT JOIN
-    anchorage_names c
+      (SELECT
+        s2id,
+        label,
+        iso3
+      FROM
+        `global-fishing-watch.anchorages.named_anchorages_v20240117`) c
   ON
     end_anchorage_id = s2id
   ),
@@ -1278,8 +830,7 @@ SELECT DISTINCT
   rfmos,
   fishing_hours,
   FIRST_VALUE (prev_visit_ts) OVER (
-    PARTITION BY trip_id
+    PARTITION BY ssvid, trip_id
     ORDER BY prev_visit_ts DESC) AS prev_visit_timestamp,
 FROM join_visits
-
 
