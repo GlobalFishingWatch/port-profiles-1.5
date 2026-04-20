@@ -432,13 +432,13 @@ fishing_voyages AS (
 ----------------------------------------------------------
 -- add in CTE of manual voyages if applicable
 ----------------------------------------------------------
--- {manual_voyage_cte},
+ {manual_voyage_cte},
 
 plus_manual_voyages AS (
   SELECT *
   FROM named_voyages
---  UNION ALL
---  SELECT * FROM manual_voyage_data
+  UNION ALL
+  SELECT * FROM manual_voyage_data
 ),
 
 --------------------------------------
@@ -1281,5 +1281,3 @@ SELECT DISTINCT
     PARTITION BY trip_id
     ORDER BY prev_visit_ts DESC) AS prev_visit_timestamp,
 FROM join_visits
-
-

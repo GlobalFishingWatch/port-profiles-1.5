@@ -142,7 +142,7 @@ row1 <- data.frame(
   class_confidence = "1",
   vessel_class = "Carrier vessel",
   gear_type = "",
-  trip_id = "manual_add",
+  trip_id = "manual_add_1",
   trip_start = as.POSIXct("2025-09-27 17:17:50", tz = "UTC"),
   trip_end = as.POSIXct("2025-10-08 08:11:21", tz = "UTC"),
   trip_start_anchorage_id = "47db6389",
@@ -167,7 +167,7 @@ row2 <- data.frame(
   class_confidence = "1",
   vessel_class = "Fishing vessel",
   gear_type = "tuna_purse_seines",
-  trip_id = "manual_add",
+  trip_id = "manual_add_2",
   trip_start = as.POSIXct("2025-12-11 09:31:21", tz = "UTC"),
   trip_end = as.POSIXct("2026-01-13 07:37:00", tz = "UTC"), ## estimated from map
   trip_start_anchorage_id = "102070ab",
@@ -183,7 +183,32 @@ row2 <- data.frame(
     stringsAsFactors = FALSE
 )
 
-missing_voyages_df <- bind_rows(row1, row2)
+# LU QING YUAN YU 028 - bad voyages bc duplicate ids - need to delete extra after running
+row3 <- data.frame(
+  year = 2025,
+  ssvid = "412331033",
+  vessel_id = "e44610c28-8936-0ab8-e62b-0d27b5af60a7",
+  vessel_iso3 = "CHN",
+  class_confidence = "1",
+  vessel_class = "Fishing vessel",
+  gear_type = "drifting_longlines",
+  trip_id = "manual_add_3",
+  trip_start = as.POSIXct("2025-11-07 16:11:24", tz = "UTC"),
+  trip_end = as.POSIXct("2025-11-24 16:11:42", tz = "UTC"), ## estimated from map
+  trip_start_anchorage_id = "0f04c3f3",
+  trip_end_anchorage_id = "0fc1ef6b",
+  trip_start_visit_id = "a8c3a96270d196a06b13823e200938dc",
+  trip_end_visit_id = "aca692a13ce695f7741532f76a556eba",
+  trip_start_confidence = 4,
+  trip_end_confidence = 4,
+  start_label = "FREETOWN",
+  start_iso3 = "SLE",
+  end_label = "PORT BOUET ANCHORAGE",
+  end_iso3 = "CIV",
+    stringsAsFactors = FALSE
+)
+
+missing_voyages_df <- bind_rows(row1, row2, row3)
 
 # Convert to SQL string
 manual_voyage_cte <- manual_voyage_fxn(missing_voyages_df, cte_name = "manual_voyage_data")
@@ -343,12 +368,15 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
 voyages_reformat$fishing_hs <- voyages_reformat$fishing_hs >0
 
 # write out data for initial TMT QA - SKIP for second round corrections
-write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+# write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 
 ```
 
 ## round 2 corrections
 ```{r make adjustments from TMT feedback, echo=F, warning=F, include=FALSE}
+
+# remove any domestic vessels (use stripped string of country variable)
+voyages_reformat <- voyages_reformat %>% filter(Flag != gsub("'", "", !!country_iso3))
 
 # name corrections
 voyages_reformat$vessel_name[voyages_reformat$MMSI %in% c(412329513)] <- 'LU RONG YUAN YU 215'
@@ -786,6 +814,8 @@ write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(cou
 ## round 2 corrections
 ```{r make adjustments from TMT feedback in GHA, echo=F, warning=F, include=FALSE}
 
+# remove any domestic vessels (use stripped string of country variable)
+voyages_reformat <- voyages_reformat %>% filter(Flag != gsub("'", "", !!country_iso3))
 
 write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
 
@@ -1020,7 +1050,7 @@ country <- 'SEN'
 # potential MMSIs to force in 
 missing_ssvids <- ''
 
-missing_ssvids <- c(missing_ssvids_manual, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
+missing_ssvids <- c(missing_ssvids, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
 
 # create a temp table for query 
 temp_table_voyages <- '`world-fishing-827.scratch_joef.sen_q4_25_all_voyages_temp`'
@@ -1039,7 +1069,7 @@ row1 <- data.frame(
   class_confidence = "1",
   vessel_class = "Fishing vessel",
   gear_type = "",
-  trip_id = "manual_add",
+  trip_id = "manual_add_1",
   trip_start = as.POSIXct("2025-12-12 22:55:05", tz = "UTC"),
   trip_end = as.POSIXct("2025-12-29 18:30:22", tz = "UTC"),
   trip_start_anchorage_id = "0ea1b22b",
@@ -1064,7 +1094,7 @@ row2 <- data.frame(
   class_confidence = "1",
   vessel_class = "Fishing vessel",
   gear_type = "drifting_longlines",
-  trip_id = "manual_add",
+  trip_id = "manual_add_2",
   trip_start = as.POSIXct("2025-09-04 15:58:18", tz = "UTC"),
   trip_end = as.POSIXct("2026-01-31 13:59:59", tz = "UTC"),
   trip_start_anchorage_id = "0ec1741b",
@@ -1080,7 +1110,57 @@ row2 <- data.frame(
     stringsAsFactors = FALSE
 )
 
-missing_voyages_df <- bind_rows(row1, row2)
+# FU YUAN YU 7857 - long voyage bc of duplicate vessel_ids - need to delete extra
+row3 <- data.frame(
+  year = 2025,
+  ssvid = "412440842",
+  vessel_id = "37d18a147-79f8-1fdc-3e0d-2baa5b6f4631",
+  vessel_iso3 = "CHN",
+  class_confidence = "1",
+  vessel_class = "Fishing vessel",
+  gear_type = "drifting_longlines",
+  trip_id = "manual_add_3",
+  trip_start = as.POSIXct("2025-10-28 02:43:53", tz = "UTC"),
+  trip_end = as.POSIXct("2025-12-28 07:49:15", tz = "UTC"),
+  trip_start_anchorage_id = "0ec173af",
+  trip_end_anchorage_id = "0ec1741b",
+  trip_start_visit_id = "a8f1f85cc14d9d356fb2e23ae41e262a",
+  trip_end_visit_id = "4a94277860e0297049f858b7eb997d63",
+  trip_start_confidence = 4,
+  trip_end_confidence = 4,
+  start_label = "DAKAR",
+  start_iso3 = "SEN",
+  end_label = "DAKAR",
+  end_iso3 = "SEN",
+    stringsAsFactors = FALSE
+)
+
+# SHENGHANG808 - not a clear departure before the one recorded to make voyage, although 2 dakar visits in Q4 (diff vessel_ids)
+# row4 <- data.frame(
+#   year = 2025,
+#   ssvid = "412209211",
+#   vessel_id = "37d18a147-79f8-1fdc-3e0d-2baa5b6f4631",
+#   vessel_iso3 = "CHN",
+#   class_confidence = "1",
+#   vessel_class = "Fishing vessel",
+#   gear_type = "drifting_longlines",
+#   trip_id = "manual_add_4",
+#   trip_start = as.POSIXct("2025-10-28 02:43:53", tz = "UTC"),
+#   trip_end = as.POSIXct("2025-12-28 07:49:15", tz = "UTC"),
+#   trip_start_anchorage_id = "0ec173af",
+#   trip_end_anchorage_id = "0ec1741b",
+#   trip_start_visit_id = "a8f1f85cc14d9d356fb2e23ae41e262a",
+#   trip_end_visit_id = "4a94277860e0297049f858b7eb997d63",
+#   trip_start_confidence = 4,
+#   trip_end_confidence = 4,
+#   start_label = "DAKAR",
+#   start_iso3 = "SEN",
+#   end_label = "DAKAR",
+#   end_iso3 = "SEN",
+#     stringsAsFactors = FALSE
+# )
+
+missing_voyages_df <- bind_rows(row1, row2, row3)
 
 # Convert to SQL string
 manual_voyage_cte <- manual_voyage_fxn(missing_voyages_df, cte_name = "manual_voyage_data")
@@ -1235,7 +1315,7 @@ voyages_reformat <- dplyr::select(port_stops, vessel_name=shipname, MMSI=ssvid,
 voyages_reformat$fishing_hs <- ifelse(is.na(voyages_reformat$fishing_hs), FALSE, TRUE)
 
 # write out data for initial TMT QA - SKIP for follow up round
-write.csv(arrange(voyages_reformat, trip_end), here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
+# write.csv(arrange(voyages_reformat, trip_end), here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),".csv", sep='')), row.names=F)
 ```
 
 ## round 2 corrections
@@ -1247,19 +1327,23 @@ voyages_reformat <- voyages_reformat %>% filter(Flag != gsub("'", "", !!country_
 # name corrections
 voyages_reformat$vessel_name[voyages_reformat$MMSI %in% c(412200985)] <- 'LUQINGYUANYU 056'
 
+# write out v2 dataset
 write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
 ```
 
-
+## LL figs
 ```{r SEN pull in the fishing data, echo=F, warning=F, include=FALSE}
 
-q_confidence <- readr::read_file(here::here("queries","proactive", "proactive_fishing_locations.sql"))
+q_confidence <- readr::read_file(here::here("queries", "proactive", "proactive_fishing_locations.sql"))
 
 fishing <- fishwatchr::gfw_query(query = glue::glue(q_confidence,
                                                voyages_table = temp_table_voyages
                                                ),
                                  run_query = TRUE,
                                  con = con)$data
+
+# deduplicate (possible with manual voyages)
+fishing <- fishing %>% distinct()
 
 # sense check the data 
 fishing %>%
@@ -1268,11 +1352,13 @@ fishing %>%
                 min_date = min(event_start), 
                 max_date = max(event_end))
 
-# add gear from TMT review 
-gear <- distinct(dplyr::select(additions, MMSI, Flag, vessel_type, vessel_name)) %>% 
-  mutate(ssvid=as.character(MMSI))
+# add gear from TMT review - filter to only fishing vessels included in proactive analysis
+gear <- distinct(dplyr::select(voyages_reformat, MMSI, Flag, vessel_class_cat, vessel_class, vessel_type)) %>% 
+            mutate(ssvid=as.character(MMSI)) %>% 
+            filter(grepl("fishing", vessel_class, ignore.case = TRUE))
 
-fishing_data <- left_join(fishing, gear, by = join_by(ssvid))
+# inner join to only include fishing events by fishing vessels
+fishing_data <- inner_join(fishing, gear, by = join_by(ssvid))
 
 table(fishing_data$vessel_type, fishing_data$vessel_name)
 ```
@@ -1285,21 +1371,20 @@ fishing_data$lon_bin <- round(fishing_data$lon_mean/0.5)*0.5
 
 table(fishing_data$vessel_type)
 
-ll <- filter(fishing_data, vessel_type %in% c('drifting_longlines', 'drifting_longline'))
+# select the longline events only
+# ll <- filter(fishing_data, vessel_type %in% c('drifting_longlines', 'drifting_longline', 'Longline', 'set_longlines'))
+ll <- fishing_data %>% filter(grepl("longline", vessel_type, ignore.case = TRUE))
 
 # look at activity which isn't in main distribution of longline vessels 
 likely_non_ll <- filter(ll,
                         between(lat_mean, 11, 14),
                         between(lon_mean, -18, -16))
 
-# remove vessel which appears to be trawler 
-ll_m <- filter(ll, vessel_name != c('ZHENYUANYU822', 'EIGHTEEN'))
-
-
 # count positions in each lat lon bin
 longline_raster <- 
-  # filter out low speeds while vessel in port 
-  filter(ll_m, vessel_type %in% c('drifting_longlines', 'drifting_longline')) %>%
+  # filter out low speeds while vessel in port (? - not doing this it seems..)
+  # filter(ll, vessel_type %in%  c('drifting_longlines', 'drifting_longline', 'Longline', 'set_longlines')) %>% don't need this as filtered above
+  ll %>% 
     group_by(lat_bin, lon_bin) %>%
       summarise(
         fishing_hours = sum(fishing_hours),
@@ -1318,8 +1403,8 @@ quantile(longline_raster$fishing_hours)
 best_proj <- "+proj=eqearth +lon_0=40 +wktext"
 
 # set plot limits bound on the data
-bounding_atl <- transform_box(xlim = c(-50, 0),
-                          ylim = c(15, -15),
+bounding_atl <- transform_box(xlim = c(-40, 20),
+                          ylim = c(15, -30),
                           output_crs = best_proj)
 
 # map for atlantic longline 
@@ -1365,7 +1450,7 @@ fishwatchr::add_little_globe(atl_full,
                              globe_just = 'inside',
                              globe_position = 'upperright')
 
-ggsave(filename = here::here('outputs', 'figures','q3_25_proactive', paste0(country,"_", month,"_", "longline_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave(filename = here::here('outputs', 'figures','q4_25_proactive', paste0(country,"_", month,"_", "longline_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
        width = 17, 
        height = 16,
@@ -1373,7 +1458,7 @@ ggsave(filename = here::here('outputs', 'figures','q3_25_proactive', paste0(coun
 
 ```
 
-
+## trawl figs
 ```{r SEN voyage activity trawl maps, echo=F, warning=F, include=FALSE}
 # add a different lat lon bin 
 fishing_data$lat_bin <- round(fishing_data$lat_mean/0.1)*0.1
@@ -1383,7 +1468,7 @@ fishing_data$lon_bin <- round(fishing_data$lon_mean/0.1)*0.1
 # count positions in each lat lon bin
 trawl_raster <- 
   # filter out low speeds while vessel in port 
-  filter(fishing_data, vessel_type %in% c('trawlers')) %>%
+  filter(fishing_data, vessel_type %in% c('trawlers', 'Trawl')) %>%
     group_by(lat_bin, lon_bin) %>%
       summarise(
         fishing_hours = sum(fishing_hours),
@@ -1398,9 +1483,10 @@ new_center <- 17
 # set proj for bounding box
 best_proj <- "+proj=eqearth +lon_0=17 +wktext"
 
+
 # set plot limits bound on the data
 bounding_wa <- transform_box(xlim = c(-20, -14),
-                          ylim = c(16, 8.5),
+                          ylim = c(18, 8.5),
                           output_crs = best_proj)
 
 # trawl map 
@@ -1440,11 +1526,11 @@ trawl_full <- trawl_raster %>%
 
 fishwatchr::add_little_globe(trawl_full,
                              main_box = bounding_wa,
-                             globe_rel_size = '0.25',
+                             globe_rel_size = '0.5',
                              globe_just = 'inside',
-                             globe_position = 'upperright')
+                             globe_position = 'upperleft')
 
-ggsave(filename = here::here('outputs', 'figures', 'q3_25_proactive', paste0(country,"_", month,"_", "trawl_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+ggsave(filename = here::here('outputs', 'figures', 'q4_25_proactive', paste0(country,"_", month,"_", "trawl_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
        units = 'cm', 
        width = 12, 
        height = 16,
@@ -1653,10 +1739,225 @@ write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(cou
 ## round 2 corrections
 ```{r make adjustments from TMT feedback in GHA, echo=F, warning=F, include=FALSE}
 
+# remove any domestic vessels (use stripped string of country variable)
+voyages_reformat <- voyages_reformat %>% filter(Flag != gsub("'", "", !!country_iso3))
+
 # name corrections
 voyages_reformat$vessel_name[voyages_reformat$MMSI %in% c(228240000)] <- 'CHRIST DA 2'
 
 
 write.csv(voyages_reformat, here::here("data", "proactive", "q4_2025", paste(country,'_', month,'_', year,'_', Sys.Date(),"_v2.csv", sep='')), row.names=F)
+
+```
+
+## plot gin fishing
+```{r import voyage ais data for voyages, echo=F, include=F, warning=F}
+
+q_fishing_events <- readr::read_file(here::here("queries","proactive", "proactive_fishing_locations.sql"))
+
+fishing_gin <- fishwatchr::gfw_query(query = glue::glue(q_fishing_events,
+                                               voyages_table = "`world-fishing-827.scratch_joef.gin_q4_25_all_voyages_temp`" 
+                                               ),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+
+# sense check the data 
+fishing_gin %>%
+    group_by(ssvid) %>%
+      summarise(positions = n(), 
+                min_date = min(event_start), 
+                max_date = max(event_end))
+
+# add gear from TMT review - filter to only fishing vessels included in proactive analysis
+gear_gin <- distinct(dplyr::select(voyages_reformat, MMSI, Flag, vessel_class_cat, vessel_class, vessel_type)) %>% 
+            mutate(ssvid=as.character(MMSI)) %>% 
+            filter(grepl("fishing", vessel_class, ignore.case = TRUE))
+
+# inner join to only include fishing events by fishing vessels
+fishing_data_gin <- inner_join(fishing_gin, gear_gin, by = join_by(ssvid))
+
+table(fishing_data_gin$vessel_type)
+
+# bin the data
+fishing_data_gin$lat_bin <- round(fishing_data_gin$lat_mean/0.05)*0.05
+fishing_data_gin$lon_bin <- round(fishing_data_gin$lon_mean/0.05)*0.05
+
+
+# count positions in each lat lon bin
+gin_fish_raster <- 
+  # filter out low speeds while vessel in port 
+  fishing_data_gin %>%
+    group_by(lat_bin, lon_bin) %>%
+      summarise(
+        fishing_hours = sum(fishing_hours),
+        vessels = n_distinct(ssvid)
+      )
+
+# look at data distribution
+quantile(gin_fish_raster$fishing_hours)
+
+# set upper limit
+up_lim <- 300 
+#set plot center 
+new_center <- 40
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=40 +wktext"
+
+# set plot limits bound on the data
+bounding_atl <- transform_box(xlim = c(-20, -10),
+                          ylim = c(13, 6),
+                          output_crs = best_proj)
+
+# map for atlantic purse seine 
+atl_full <- gin_fish_raster %>%
+  recenter_raster(raster_df = .,
+                  res = 1,
+                  x_lab = 'lon_bin',
+                  y_lab = 'lat_bin',
+                  fill_lab = 'fishing_hours',
+                  center = new_center) %>% 
+  ggplot()+
+  geom_gfw_outline(center = new_center, theme = "dark") +
+  geom_raster(aes(x= lon_bin, y=lat_bin, fill = fishing_hours)) +
+    geom_gfw_eez(theme = 'dark', alpha = 0.9, center = new_center) +
+    geom_gfw_land(theme = 'dark', center = new_center) +
+    # geom_sf(pipa, fill=NA, colour='green')+
+    scale_fill_gradientn(colors = gfw_palette('map_effort_dark'),
+                      limits = c(0,up_lim),
+                       oob = scales::squish,
+                       na.value = NA) +   
+    coord_sf(xlim = c(bounding_atl$box_out[['xmin']], bounding_atl$box_out[['xmax']]),
+      ylim = c(bounding_atl$box_out[['ymin']], bounding_atl$box_out[['ymax']]),
+      crs = bounding_atl$out_crs) +
+    # scale_x_continuous(breaks = custom_breaks, labels = custom_labels)+
+    labs(fill = 'Fishing Hours') +
+    theme_gfw_map(theme = 'light') +
+    theme(legend.text = element_text(family = 'Roboto',
+                                 color = '#848b9b',
+                                 size = 6),
+        legend.title = element_text(family = 'Roboto',
+                                  face = 'bold',
+                                  color = '#363c4c',
+                                  size = 6),
+      legend.position = 'bottom',
+      legend.box = 'vertical',
+      legend.key.height = unit(2, 'mm'),
+      legend.key.width = unit(15,'mm'))
+
+
+fishwatchr::add_little_globe(atl_full,
+                             main_box = bounding_atl,
+                             globe_rel_size = '0.25',
+                             globe_just = 'inside',
+                             globe_position = 'upperright')
+
+ggsave(filename = here::here('outputs', 'figures','q4_25_proactive', paste0(country,"_", month,"_", "ps_map-",str_replace_all(Sys.Date(), '-','_'),".png")), 
+       units = 'cm', 
+       width = 15, 
+       height = 17,
+       bg = '#f7f7f7')
+
+```
+
+## plot gin carriers
+```{r import voyage ais data for gin voyages, echo=F, include=F, warning=F}
+
+start_date <- "'2025-10-01 00:00:00 UTC'"
+end_date <- "'2026-02-01 00:00:00 UTC'"
+voyages_table <- "`world-fishing-827.scratch_joef.gin_q4_25_all_voyages_temp`"
+
+table(voyages_reformat$vessel_type)
+
+# get list of carriers from TMT review - use grepl as vessel class text can vary
+carrier_ssvids <- ###unique(filter(voyages_reformat, vessel_class == 'carrier')$MMSI)
+voyages_reformat %>% 
+  filter(grepl("carrier", vessel_class, ignore.case = TRUE)) %>% 
+  select(MMSI) %>% 
+  distinct()
+
+# reformat to put into BQ
+carrier_ssvids <-paste(paste0("'", carrier_ssvids, "'"), collapse = ", ")
+
+# carrier_ssvids <- 
+  
+voyages_ais_q <- readr::read_file(here::here("queries","proactive", "quarterly_carrier_ais.sql"))
+
+voyage_ais_gin <- fishwatchr::gfw_query(query = glue::glue(voyages_ais_q, 
+                                    start_date = start_date,
+                                    end_date = end_date,
+                                    voyage_table = voyages_table, 
+                                    carrier_ssvids = carrier_ssvids),
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
+
+```{r Make a gha voyage line plot map, echo=F, warning=F}
+
+#set plot center to centre of IO
+new_center <- -15
+
+# set proj for bounding box
+best_proj <- "+proj=eqearth +lon_0=-15 +wktext"
+
+# set plot limits for Atlantic 
+# bounding_atlan <- transform_box(xlim = c(-70, 20),
+#                           ylim = c(-55, 55),
+#                           output_crs = best_proj)
+
+bounding_atlan <- transform_box(xlim = c(-30, -10),
+                          ylim = c(5, 20),
+                          output_crs = best_proj)
+# bounding_atlan <- transform_box(xlim = c(-65, 20),
+#                           ylim = c(-55, 50),
+#                           output_crs = best_proj)
+
+# rename voyage ais legend
+# voyage_ais$colour[voyage_ais$colour == 'port_profile'] <- 'q2_voyage'
+voyage_ais_gin$colour[voyage_ais_gin$colour == 'quarter'] <- 'q3_voyage'
+
+#voyage_ais$colour[voyage_ais$colour == ''] <-
+  
+# make track into sf object 
+voyage_ais_line <- voyage_ais_gin %>%
+  dplyr::select(trip_id,colour, timestamp, lat, lon) %>%
+  sf::st_as_sf(., 
+               coords = c("lon", "lat"), 
+               crs = 4326) %>%
+  group_by(trip_id, colour) %>%
+  arrange(timestamp) %>%
+  summarize(do_union = FALSE) %>%
+  sf::st_cast(., "LINESTRING") %>%
+  fishwatchr::recenter_sf(., center = new_center, buffer=0)
+
+# make make   
+q_carrier_map <- 
+  ggplot() +
+  geom_gfw_land(theme = 'dark', center = new_center) +
+  geom_gfw_eez(theme = 'dark', alpha = 0.4, center = new_center) +
+  geom_sf(data = voyage_ais_line, aes(colour=colour), alpha=0.2, linewidth = 1.5) +
+  scale_colour_manual(values=rev(gfw_palettes[['primary']])) +
+  theme_gfw_map(theme = "dark") +
+  theme(legend.position="right") +
+  labs(colour = 'MMSI') +
+  coord_sf(xlim = c(bounding_atlan$box_out[['xmin']], bounding_atlan$box_out[['xmax']]),
+           ylim = c(bounding_atlan$box_out[['ymin']], bounding_atlan$box_out[['ymax']]),
+           crs = bounding_atlan$out_crs) 
+
+# add globe# add globevalues()
+q_carrier_map_glob <- fishwatchr::add_little_globe(q_carrier_map,
+                             main_box = bounding_atlan,
+                             globe_rel_size = 0.25,
+                             globe_just = 'inside',
+                             globe_position = 'upperright')  
+  
+# save object 
+ggsave(q_carrier_map_glob, 
+       filename = here::here('outputs','figures','q4_25_proactive',
+                             paste('GIN_q4_carrier_lines_highres_v',Sys.Date(),'.png', sep='')), 
+       width = 8, 
+       height = 10)
 
 ```
