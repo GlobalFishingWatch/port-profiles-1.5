@@ -1078,10 +1078,10 @@ fishing_ben <- fishwatchr::gfw_query("
 
 ```
 
-```{r Port Catchment Map Conakry, echo=F, warning=F}
+```{r Port Catchment Map Cotonou, echo=F, warning=F}
 # set bounding box limits 
 bbox <- transform_box(
-  xlim = c(-2, 5),
+  xlim = c(-1, 5),
   ylim = c(2, 7),
   output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
 )
@@ -1092,7 +1092,7 @@ bbox <- transform_box(
   fishwatchr::recenter_sf(.) %>%
 ggplot() +
   geom_sf(alpha = 1, 
-          size = 0.2, 
+          size = 0.5, 
           shape = 21,
           fill = NA,
           color = fishwatchr::gfw_palettes$tracks[9]) +
@@ -1213,19 +1213,25 @@ fishing_tog <- fishwatchr::gfw_query("
 
 ```{r Port Catchment Map Lome, echo=F, warning=F}
 # set bounding box limits 
+# bbox <- transform_box(
+#   xlim = c(-4, 4),
+#   ylim = c(2, 7),
+#   output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
+# )
+
 bbox <- transform_box(
-  xlim = c(-4, 4),
-  ylim = c(2, 7),
+  xlim = c(-8, 15),
+  ylim = c(-25, 7),
   output_crs = fishwatchr::gfw_projections("Equal Earth")$proj_string
 )
 
 # produce port catchment map
-(lome_fishing_catchment <- fishing_tog %>%
+(lome_fishing_catchment <- filter(fishing_tog, vessel_flag_best != 'TGO') %>%
   sf::st_as_sf(., coords = c('lon_mean','lat_mean'), crs = 4326) %>%
   fishwatchr::recenter_sf(.) %>%
 ggplot() +
   geom_sf(alpha = 1, 
-          size = 0.2, 
+          size = 0.5, 
           shape = 21,
           fill = NA,
           color = fishwatchr::gfw_palettes$tracks[9]) +
@@ -1279,7 +1285,7 @@ table(fishing_tog$shipname)
 # only eight vessel make a combined heatmap
 
 # check limits
-test_lim <- fishing_tog %>%
+test_lim <- filter(fishing_tog, vessel_flag_best != 'TGO') %>%
     group_by(lat_bin, lon_bin) %>%
     summarize(fishing_hours = sum(event_duration_hrs, na.rm = TRUE), .groups = 'drop')
 quantile(test_lim$fishing_hours)
@@ -1289,7 +1295,7 @@ upper <- 500
 
 
 fishing_heatmap <- 
-  fishing_tog %>%
+  filter(fishing_tog, vessel_flag_best != 'TGO') %>%
     group_by(lat_bin, lon_bin) %>%
     summarize(fishing_hours = sum(event_duration_hrs, na.rm = TRUE), .groups = 'drop') %>%
     filter(fishing_hours > 0) %>%
