@@ -58,7 +58,7 @@ all_ves_voyages AS (
   SELECT DISTINCT
     *,
   FROM
-    `global-fishing-watch.pipe_ais_v3_published.voyages_c3`
+    `global-fishing-watch.pipe_ais_v4_published.voyages_c3`
   WHERE
     trip_end BETWEEN start_date() AND end_date()
     AND trip_start > start_date()
@@ -151,14 +151,14 @@ vessel_ais AS (
     lat,
     lon,
     timestamp
-  FROM `global-fishing-watch.pipe_ais_v3_published.messages` a
+  FROM `global-fishing-watch.pipe_ais_v4_published.messages` a
   LEFT JOIN (
-      SELECT seg_id, vessel_id FROM `global-fishing-watch.pipe_ais_v3_published.segment_info`) b
+      SELECT seg_id, vessel_id FROM `global-fishing-watch.pipe_ais_v4_published.segment_info`) b
   USING (seg_id)
   WHERE
     seg_id IN
       (SELECT seg_id
-      FROM `global-fishing-watch.pipe_ais_v3_published.segs_activity`
+      FROM `global-fishing-watch.pipe_ais_v4_published.segs_activity`
       WHERE good_seg
       AND NOT overlapping_and_short)
     AND timestamp BETWEEN start_date() AND end_date()

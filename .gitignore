@@ -3,3 +3,10 @@
 .Rdata
 .httr-oauth
 .DS_Store
+
+# Data (do not track raw data)
+data/
+*.csv
+*.rds
+*.geojson
+*.gpkg

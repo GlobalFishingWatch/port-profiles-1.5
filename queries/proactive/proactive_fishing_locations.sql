@@ -16,6 +16,7 @@ WITH trips AS (
 fishing AS(
   SELECT
     vessel_id,
+    event_id,
     ssvid,
     vessel_class_best,
     event_start,
@@ -26,6 +27,7 @@ fishing AS(
   FROM (
     SELECT
       vessel_id,
+      event_id,
       event_start,
       event_end,
       high_sea,
@@ -34,7 +36,7 @@ fishing AS(
       ISO_TER1,
       lat_mean,
       lon_mean,
-  FROM `global-fishing-watch.pipe_ais_v3_published.fishing_events`
+  FROM `global-fishing-watch.pipe_ais_v4_published.product_events_fishing`
     LEFT JOIN UNNEST (regions_mean_position.high_seas) AS high_sea
     LEFT JOIN UNNEST (regions_mean_position.rfmo) AS rfmo
     LEFT JOIN UNNEST (regions_mean_position.eez) AS eez
@@ -54,7 +56,7 @@ fishing AS(
   WHERE
     event_start BETWEEN trip_start AND trip_end
   GROUP BY
-    vessel_id, trip_id, vessel_class_best, ssvid, lat_mean, lon_mean, event_start,
+    vessel_id, event_id, trip_id, vessel_class_best, ssvid, lat_mean, lon_mean, event_start,
     event_end
     )
 

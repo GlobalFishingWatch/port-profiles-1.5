@@ -1,0 +1,164 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(dplyr)
+library(glue)
+library(purrr)
+
+manual_voyage_fxn <- function(df, cte_name = "manual_voyage_data") {
+  
+  # 1. Format the data based on BigQuery types
+  # Strings get quotes, Timestamps get TIMESTAMP('...'), NAs get NULL
+  formatted_df <- df %>%
+    dplyr::mutate(
+      # trip_start / trip_end get the TIMESTAMP('...') wrapper
+      across(any_of(c("trip_start", "trip_end")), 
+             ~ ifelse(is.na(.x), "NULL", paste0("TIMESTAMP('", as.character(.x), "')"))),
+      
+      # Numbers (year, confidence, etc.) - keep as plain text (no quotes)
+      # exclude the timestamp columns we just handled
+      across(where(is.numeric) & !any_of(c("trip_start", "trip_end")), 
+             ~ ifelse(is.na(.x), "NULL", as.character(.x))),
+      
+      # Booleans - lowercase true/false (no quotes)
+      # across(where(is.logical), 
+      #        ~ ifelse(is.na(.x), "NULL", tolower(as.character(.x)))),
+      
+      # Everything else (Strings) - wrap in single quotes
+      # Again, excluding the timestamp columns to avoid double-formatting
+      across(where(is.character) & !any_of(c("trip_start", "trip_end")), 
+             ~ ifelse(is.na(.x), "NULL", paste0("'", .x, "'")))
+    )
+
+  # 2. Build the rows: (val1, val2, ...)
+  rows <- apply(formatted_df, 1, function(x) paste0("(", paste(x, collapse = ", "), ")"))
+  all_rows <- paste(rows, collapse = ",\n    ")
+  # 3. Define the Schema for the STRUCT
+  # This ensures BigQuery doesn't guess the types incorrectly
+  col_names <- colnames(df)
+  
+  # Mapping R names to BQ Types for the STRUCT definition
+  schema_definition <- map_chr(col_names, ~ {
+    if (.x %in% c("trip_start", "trip_end")) {
+      return(paste(.x, "TIMESTAMP"))
+    }
+    # if (.x %in% c("year")) {
+    #       return(paste(.x, "INT64"))
+    #     }    
+    return(paste(.x, "STRING"))
+  }) %>% paste(collapse = ", ")
+
+  # 4. Wrap it in the CTE syntax
+  glue::glue("
+    {cte_name} AS (
+      SELECT * FROM UNNEST([
+        STRUCT<{schema_definition}>
+        {all_rows}
+      ])
+    )")
+}
+```
+
+```{r}
+# Your manually entered missing data
+# Cure
+row1 <- data.frame(
+  year = 2025,
+  ssvid = "629009188",
+  vessel_id = "ae51bd83f-f41a-8f60-712e-499e3e4ef2c1",
+  vessel_iso3 = "GMB",
+  class_confidence = "1",
+  vessel_class = "Fishing vessel",
+  gear_type = "",
+  trip_id = "manual_add",
+  trip_start = as.POSIXct("2025-12-12 22:55:05", tz = "UTC"),
+  trip_end = as.POSIXct("2025-12-29 18:30:22", tz = "UTC"),
+  trip_start_anchorage_id = "0ea1b22b",
+  trip_end_anchorage_id = "0ec17255",
+  trip_start_visit_id = "85bfdf501f5b7ee54f74a9767ccd7997",
+  trip_end_visit_id = "6f590e2d2c359a2868ef7781608e7c61",
+  trip_start_confidence = 2,
+  trip_end_confidence = 3,
+  start_label = "NOUADHIBOU",
+  start_iso3 = "MRT",
+  end_label = "DAKAR",
+  end_iso3 = "SEN",
+    stringsAsFactors = FALSE
+)
+
+# LUQINGYUANYU199 
+row2 <- data.frame(
+  year = 2025,
+  ssvid = "412371178",
+  vessel_id = "4816d2eaa-a8ef-d96e-585b-5262e7324dac",
+  vessel_iso3 = "CHN",
+  class_confidence = "1",
+  vessel_class = "Fishing vessel",
+  gear_type = "drifting_longlines",
+  trip_id = "manual_add",
+  trip_start = as.POSIXct("2025-09-04 15:58:18", tz = "UTC"),
+  trip_end = as.POSIXct("2026-01-31 13:59:59", tz = "UTC"),
+  trip_start_anchorage_id = "0ec1741b",
+  trip_end_anchorage_id = "0ea1b22b",
+  trip_start_visit_id = "7d4d51bdc8d0021c6d64c49cece608f8",
+  trip_end_visit_id = "7efd20a943ff6e51fae18ad6b29b49d8",
+  trip_start_confidence = 4,
+  trip_end_confidence = 3,
+  start_label = "DAKAR",
+  start_iso3 = "SEN",
+  end_label = "DAKAR",
+  end_iso3 = "SEN",
+    stringsAsFactors = FALSE
+)
+
+missing_voyages_df <- bind_rows(row1, row2)
+
+# Convert to SQL string
+manual_voyage_cte <- manual_voyage_fxn(missing_voyages_df, cte_name = "manual_voyage_data")
+
+# create a temp table for query 
+temp_table_voyages <- '`world-fishing-827.scratch_joef.civ_q4_25_manual_voyages_temp`'
+
+# load query
+manual_voyages_q <- readr::read_file(here::here("queries","proactive", "manual_voyage_query.sql"))
+
+# Execute via fishwatchr
+manual_voyages <- 
+fishwatchr::gfw_query(query = glue::glue(manual_voyages_q, 
+                                         manual_voyage_cte = manual_voyage_cte, # manual voyage 
+                                         start_date = start_date,
+                                         end_date = end_date,
+                                         year = year,
+                                         start_year = start_year,
+                                         end_year = end_year,
+                                         temp_table = temp_table_manual,
+                                         missing_ssvids = missing_ssvids,
+                                         port_iso = country_iso3),
+                                 run_query = TRUE,
+                                 con = con)
+
+voyages_with_coverage <- fishwatchr::gfw_query(
+  query = glue::glue(ais_cov_q, 
+                     manual_cte = manual_voyage_cte, # Your new parameter
+                     temp_table = temp_table_voyages,
+                     start_date = start_date,
+                     end_date = end_date),
+  run_query = TRUE,
+  con = con
+)$data
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
