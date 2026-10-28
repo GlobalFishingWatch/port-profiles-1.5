@@ -1,0 +1,107 @@
+---
+title: "Gabon Port Profile)"
+author: "joe F"
+date: "2026-10"
+output: html_document
+---
+
+```{=html}
+<style>
+body {
+text-align: left}
+</style>
+```
+
+# Setup 
+
+## Load packages
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, echo=F, warning=F, include=FALSE}
+load_or_install_libraries <- function(x){
+  for( i in x ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+
+#  Then try/install packages...
+load_or_install_libraries( c("tidyverse" , "bigrquery" ,"devtools", "DBI","glue", "lubridate", "here", "sf", "extrafont", "patchwork", "terra", "rgeos", "ggspatial", "ggrepel", "tibble", "purrr", "stringr") )
+
+# get fishwatch r independently 
+if (!require("fishwatchr")) {devtools::install_github("GlobalFishingWatch/fishwatchr")}
+library(fishwatchr)
+```
+
+```{r connection to BQ, echo=F, warning=F, include=FALSE}
+con <- DBI::dbConnect(drv = bigrquery::bigquery(), 
+                      project = "world-fishing-827", 
+                      use_legacy_sql = FALSE)
+```
+
+## Set global parameters
+```{r}
+
+start_date <- "'2025-09-01 00:00:00 UTC'" 
+end_date <- "'2025-12-31 23:59:59 UTC'"
+start_year <- 2025 ## 
+end_year <- 2025 ## 
+year <- 2025
+
+# # when to look for previous visits
+prev_visit_search_date <- "'2024-10-01 00:00:00 UTC'" 
+
+# import QA vessel list from TMT for including potentially missed vessels
+# tmt_masterlist <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v5_march2026.csv"), header=T) 
+# ssvid_master_include <- tmt_masterlist %>% filter(Include == "Yes") %>% pull(ssvid) %>% as.character(.)
+        
+```
+
+## set parameters for analysis 
+```{r set date and port parameters, echo=F, warning=F, include=FALSE}
+
+country_iso3 <- "'GAB'"
+# port_name <- "'ABIDJAN'"
+
+# file names
+month <- 'Q4'
+country <- 'CIV'
+
+# additional MMSIs to force in
+missing_ssvids_manual <- c('')
+
+missing_ssvids <- c(missing_ssvids_manual, ssvid_master_include) %>% paste0("'", ., "'", collapse = ", ")
+missing_ssvids <- c('')
+
+```
+
+## run voyage query
+```{r voyages all, echo=F, warning=F, include=FALSE}
+
+# create a temp table for query 
+voyage_table <- '`world-fishing-827.PortsProgramme.GAB_voyages_2023-25`'
+
+# load query
+voyages_q <- readr::read_file(here::here("queries", "GAB", "GAB_voyages_query_pipe5.sql"))
+
+voyages_test <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+                                                    start_date = start_date,
+                                                    end_date = end_date,
+                                                    start_year = start_year,
+                                                    end_year = end_year,
+                                                    missing_ssvids = missing_ssvids,
+                                                    voyage_table = voyage_table,
+                                                    port_iso = country_iso3,
+                                                    prev_visit_search_date = prev_visit_search_date),
+                                                    # manual_voyage_cte = manual_voyage_cte, # manual voyage 
+                                 run_query = TRUE,
+                                 con = con)$data
+
+```
