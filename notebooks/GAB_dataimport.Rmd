@@ -49,14 +49,13 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
 ## Set global parameters
 ```{r}
 
-start_date <- "'2025-09-01 00:00:00 UTC'" 
+start_date <- "'2023-01-01 00:00:00 UTC'" 
 end_date <- "'2025-12-31 23:59:59 UTC'"
-start_year <- 2025 ## 
+start_year <- 2023 ## 
 end_year <- 2025 ## 
-year <- 2025
 
 # # when to look for previous visits
-prev_visit_search_date <- "'2024-10-01 00:00:00 UTC'" 
+prev_visit_search_date <- "'2021-01-01 00:00:00 UTC'" 
 
 # import QA vessel list from TMT for including potentially missed vessels
 # tmt_masterlist <- read.csv(here::here("data","TMT_qa_vessel_list", "Master_list_v5_march2026.csv"), header=T) 
@@ -71,8 +70,7 @@ country_iso3 <- "'GAB'"
 # port_name <- "'ABIDJAN'"
 
 # file names
-month <- 'Q4'
-country <- 'CIV'
+# country <- 'GAB'
 
 # additional MMSIs to force in
 missing_ssvids_manual <- c('')
@@ -82,22 +80,35 @@ missing_ssvids <- c('')
 
 ```
 
+## add manual voyages if needed (see proactive notebook for function/method)
+```{r}
+
+### add manual voyage and vessel details - skip in voyage query if not relevant
+
+missing_voyages_df <- ""
+
+# Convert to SQL string
+# manual_voyage_cte <- ""
+#   manual_voyage_fxn(missing_voyages_df, cte_name = "manual_voyage_data")
+
+```
+
 ## run voyage query
 ```{r voyages all, echo=F, warning=F, include=FALSE}
 
 # create a temp table for query 
-voyage_table <- '`world-fishing-827.PortsProgramme.GAB_voyages_2023-25`'
+# voyage_table <- '`world-fishing-827.PortsProgramme.GAB_voyages_2023-25`'
 
 # load query
 voyages_q <- readr::read_file(here::here("queries", "GAB", "GAB_voyages_query_pipe5.sql"))
 
-voyages_test <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
+voyages <- fishwatchr::gfw_query(query = glue::glue(voyages_q, 
                                                     start_date = start_date,
                                                     end_date = end_date,
                                                     start_year = start_year,
                                                     end_year = end_year,
                                                     missing_ssvids = missing_ssvids,
-                                                    voyage_table = voyage_table,
+                                                    # voyage_table = voyage_table,
                                                     port_iso = country_iso3,
                                                     prev_visit_search_date = prev_visit_search_date),
                                                     # manual_voyage_cte = manual_voyage_cte, # manual voyage 
@@ -105,3 +116,77 @@ voyages_test <- fishwatchr::gfw_query(query = glue::glue(voyages_q,
                                  con = con)$data
 
 ```
+
+## add urls
+```{r add gfw hyperlink for voyage, echo=F, warning=F, include=FALSE}
+
+# base componenets for VV string to accompany port profiles 
+base_string_p1 <- 'https://globalfishingwatch.org/map/vessel/'
+base_string_p2 <- '?&start='
+base_string_p3 <- '&end='
+start_date_url <- '2025-01-01'
+end_date_url <- '2025-3-31'
+
+#format(voyages_with_coverage$trip_start, format='%Y-%m-%d')
+
+# paste string components together using vessel id, trip start and trip end from data 
+voyages_url <- bind_cols(voyages, 
+                         vv_url = paste('=HYPERLINK("',
+                          base_string_p1,
+                          voyages$vessel_id, 
+                          base_string_p2, 
+                          as.Date(format(voyages$trip_start, format='%Y-%m-%d'))-2, 
+                          base_string_p3, 
+                          as.Date(format(voyages$trip_end, format='%Y-%m-%d'))+2,
+                          '")', sep=''))
+
+# write.csv(voyages_url, here::here("data","proactive", paste('GHA_Q2_test','-', Sys.Date(),".csv", sep='')), row.names=F)
+
+```
+
+## formatting
+```{r format the data to TMT format, echo=F, warning=F, include=FALSE}
+# change colnames to be sensible for an externally shared document 
+voyages_reformat <- dplyr::select(voyages_url, vessel_name=shipname, mmsi=ssvid, vessel_id, callsign,
+   vessel_flag=vessel_flag_best, imo, vessel_class_cat=vessel_class_initial, vessel_class_confidence = class_confidence_initial, vessel_class=vessel_class_best,
+   vessel_type=geartype_best,  previous_port_country = start_port_iso3,
+   previous_port = start_port_label, trip_start, trip_start_confidence, trip_end, trip_end_confidence, trip_duration_days,
+   end_port = end_port_label, prev_visit_timestamp, at_dock, fishing=fishing, fishing_hours, fishing_eez=eezs, fishing_hs = high_seas, fishing_rfmos = rfmos, encounter= encounter, num_encounters, loitering=loitering, num_loitering, AISdisabling, num_AISdisabling, vv_url)
+   #gaps=1, num_gaps, total_gap_hours)
+
+# overwrite fishing_hs T/F
+voyages_reformat$fishing_hs <- voyages_reformat$fishing_hs >0
+
+# write out data for initial TMT QA - SKIP for second round corrections
+write.csv(voyages_reformat, here::here("data", "GAB", paste(country,'_',start_year,'_',end_year,'_',Sys.Date(),".csv", sep='')), row.names=F)
+
+```
+
+
+```{r}
+unique_vessels_GAB <- voyages_reformat %>%
+  group_by(
+    mmsi, 
+    vessel_name, 
+    vessel_flag, 
+    callsign, 
+    imo, 
+    vessel_class, 
+    vessel_type, 
+    vessel_class_cat, 
+    vessel_class_confidence
+  ) %>%
+  summarise(
+    visits_in_timeperiod = n(),
+    previous_countries   = paste(unique(na.omit(previous_port_country)), collapse = ", "),
+    most_recent_visit    = max(trip_end, na.rm = TRUE),
+    total_fishing_hrs    = sum(fishing_hours, na.rm = TRUE),
+    total_encounters     = sum(num_encounters, na.rm = TRUE),
+    total_loitering      = sum(num_loitering, na.rm = TRUE),
+    total_AISdisabling   = sum(num_AISdisabling, na.rm = TRUE),
+    .groups = "drop"
+  )
+write.csv(unique_vessels_GAB, here::here("data", "GAB", paste(country,'_',start_year,'_',end_year,'_',Sys.Date(),"vessels",".csv", sep='')), row.names=F)
+
+```
+

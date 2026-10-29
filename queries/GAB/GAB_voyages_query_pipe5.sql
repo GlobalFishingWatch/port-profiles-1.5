@@ -799,10 +799,21 @@ additional_vessels AS(
     GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
   ),
 
+----------------------------------------------------------
+-- add in CTE of manual voyages if applicable
+----------------------------------------------------------
+-- manual_voyage_cte, -- note can't comment out, one bracket to include manual voyage (and uncomment in next subquery)
+
+plus_manual_voyages AS (
+  SELECT *
+  FROM named_voyages
+--  UNION ALL
+--  SELECT * FROM manual_voyage_data
+),
+
 --------------------------------------
 -- Identify how many encounters occurred on each voyage
 --------------------------------------
--- pipe 3
 num_encounters AS (
   SELECT
     vessel_id,
@@ -819,28 +830,26 @@ num_encounters AS (
       JSON_EXTRACT_SCALAR(event_vessels, "$[1].id") as enc_product_vessel_id,
       JSON_EXTRACT_SCALAR(event_vessels, "$[1].ssvid") as enc_product_ssvid,
       start_distance_from_port_km
-    FROM `global-fishing-watch.pipe_ais_v5_published.product_events_encounter`) enc
-  INNER JOIN (
-    SELECT
-      vessel_id,
-      trip_id,
-      trip_start,
-      trip_end
-    FROM
-      updated_pan_voyages) voyages
+    FROM `global-fishing-watch.pipe_ais_v4_published.product_events_encounter`) enc
+    INNER JOIN (
+      SELECT
+        vessel_id,
+        trip_id,
+        trip_start,
+        trip_end
+      FROM
+        plus_manual_voyages) voyages
     USING (vessel_id)
-    WHERE
-      event_start BETWEEN trip_start AND trip_end
-        AND  product_shiptype != 'gear' AND enc_product_shiptype != 'gear'
-        AND start_distance_from_port_km > 10
-      GROUP BY
-        vessel_id, trip_id
+      WHERE event_start BETWEEN trip_start AND trip_end
+      AND  product_shiptype != 'gear' AND enc_product_shiptype != 'gear'
+      AND start_distance_from_port_km > 10 -- matches map
+    GROUP BY
+       vessel_id, trip_id
     ),
 
 --------------------------------------
 -- Identify how many loitering events occurred on each voyage
 --------------------------------------
-  -- pipe3
   num_loitering AS (
     SELECT
       vessel_id,
@@ -852,13 +861,13 @@ num_encounters AS (
         event_start,
         event_end,
       FROM
-        `global-fishing-watch.pipe_ais_v5_published.product_events_loitering`
+        `global-fishing-watch.pipe_ais_v4_published.product_events_loitering`
       WHERE
         seg_id IN (
         SELECT
           seg_id
         FROM
-            `global-fishing-watch.pipe_ais_v5_published.segs_activity`
+          `global-fishing-watch.pipe_ais_v4_published.segs_activity`
         WHERE
           good_seg IS TRUE
           AND overlapping_and_short IS FALSE)
@@ -870,10 +879,9 @@ num_encounters AS (
         vessel_id,
         trip_id,
         trip_start,
-        trip_end,
-        pan_crossing
+        trip_end
       FROM
-        updated_pan_voyages) b
+        plus_manual_voyages) b
     USING
       (vessel_id)
     WHERE
@@ -886,19 +894,31 @@ num_encounters AS (
 --------------------------------------
 -- Identify how many fishing events occurred on each voyage
 --------------------------------------
--- pipe3
+
   num_fishing AS(
     SELECT
       vessel_id,
       trip_id,
-      COUNT(*) AS num_fishing
+      STRING_AGG(DISTINCT high_seas, ', ') as high_seas,
+      STRING_AGG(DISTINCT rfmo,', ') as rfmos,
+      STRING_AGG(DISTINCT ISO_TER1,', ') as eezs,
+      COUNT(*) AS num_fishing,
+      SUM(TIMESTAMP_DIFF(event_end, event_start, SECOND) / 3600) AS fishing_hours,
     FROM (
       SELECT
         vessel_id,
         event_start,
-        event_end
+        event_end,
+        high_seas,
+        rfmo,
+        eez,
+        ISO_TER1,
       FROM
-        `global-fishing-watch.pipe_ais_v5_published.product_events_fishing`)
+        `global-fishing-watch.pipe_ais_v4_published.product_events_fishing`
+      LEFT JOIN UNNEST (regions_mean_position.high_seas) AS high_seas
+      LEFT JOIN UNNEST (regions_mean_position.rfmo) AS rfmo
+      LEFT JOIN UNNEST (regions_mean_position.eez) AS eez
+      LEFT JOIN (SELECT MRGID, ISO_TER1 FROM `world-fishing-827.ocean_shapefiles_all_purpose.marine_regions_v11`) ON (eez=CAST(MRGID AS string)))
     INNER JOIN (
       SELECT
         vessel_id,
@@ -906,7 +926,7 @@ num_encounters AS (
         trip_start,
         trip_end
       FROM
-        updated_pan_voyages)
+        plus_manual_voyages)
     USING
       (vessel_id)
     WHERE
@@ -916,7 +936,7 @@ num_encounters AS (
       ),
 
 --------------------------------------
--- Identify how many gaps occurred on each voyage
+-- Identify how many intentional disabling events occurred on each voyage
 --------------------------------------
   num_gaps AS(
     SELECT
@@ -929,7 +949,7 @@ num_encounters AS (
         event_start,
         event_end
       FROM
-        `global-fishing-watch.pipe_ais_v5_published.product_events_proto_ais_disabling`) a
+        `global-fishing-watch.pipe_ais_v4_published.product_events_proto_ais_disabling`) a
     INNER JOIN (
       SELECT
         vessel_id,
@@ -937,7 +957,7 @@ num_encounters AS (
         trip_start,
         trip_end
       FROM
-        updated_pan_voyages)
+        plus_manual_voyages)
     USING
       (vessel_id)
     WHERE
@@ -993,7 +1013,11 @@ num_encounters AS (
   add_fishing AS (
     SELECT
       e.*,
+      f.high_seas,
+      f.rfmos,
+      f.eezs,
       f.num_fishing,
+      f.fishing_hours,
     IF
       (f.num_fishing > 0, TRUE, FALSE) AS fishing
     FROM
@@ -1004,7 +1028,7 @@ num_encounters AS (
       (vessel_id,
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29),
 
 --------------------------------------
 -- label voyage if it had at least one gap event
@@ -1023,7 +1047,7 @@ num_encounters AS (
       (vessel_id,
         trip_id)
     GROUP BY
-      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27),
+      1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),
 
 --------------------------------------
 -- label if voyages represents a 'real' voyage
@@ -1124,11 +1148,35 @@ num_encounters AS (
         s2id AS trip_end_anchorage_id,
         sublabel AS end_port_sublabel,
         distance_from_shore_m,
-        at_dock AS dock
+        at_dock
       FROM
         `global-fishing-watch.anchorages.named_anchorages` )
     USING
       (trip_end_anchorage_id)),
+
+--------------------------------------
+-- create list of anchorages where the vessel has stopped in the visit
+--------------------------------------
+  anchorage_stops AS (
+    SELECT
+      v.*,
+      s.stop_anchorage_ids
+    FROM
+      add_visit_end_1 v
+    LEFT JOIN (
+    -- 1. Aggregate ALL port stops by visit_id (set time something before period of interest)
+      SELECT
+        visit_id AS trip_end_visit_id,
+        STRING_AGG(DISTINCT e.anchorage_id, ', ') AS stop_anchorage_ids
+      FROM
+        `global-fishing-watch.pipe_ais_v5_published.port_visits`,
+        UNNEST(events) AS e
+      WHERE
+        end_timestamp > start_date()
+    -- 2. join to visits table - note REMOVED the 'IN (SELECT...)' filter here from previous approach
+      GROUP BY visit_id
+    ) s ON v.trip_end_visit_id = s.trip_end_visit_id
+  ),
 
 --------------------------------------
 -- Add end timestamp to end port visits
@@ -1137,7 +1185,7 @@ num_encounters AS (
     SELECT
       *
     FROM
-      add_visit_end_1
+      anchorage_stops
     INNER JOIN (
       SELECT
         visit_id AS trip_end_visit_id,
@@ -1164,35 +1212,35 @@ num_encounters AS (
 -- Used to remove visits where the port
 -- stop or port gap are not long enough
 --------------------------------------
-  has_long_enough_event AS (
-    SELECT
-      trip_end_visit_id,
-      MAX(event_duration_hr) AS longest_event
-    FROM (
-      SELECT
-        *,
-        TIMESTAMP_DIFF(next_timestamp, timestamp, SECOND)/3600 AS event_duration_hr
-      FROM (
-        SELECT
-          visit_id AS trip_end_visit_id,
-          event_type,
-          timestamp,
-          LEAD(timestamp) OVER(PARTITION BY visit_id ORDER BY timestamp) AS next_timestamp
-        FROM
-        `global-fishing-watch.pipe_ais_v5_published.port_visits`,
-          UNNEST(events)
-        WHERE
-          EXTRACT(YEAR
-          FROM
-            end_timestamp) >= start_year()
-          AND event_type NOT IN ('PORT_ENTRY') )
-      WHERE
-        event_type IN ('PORT_STOP_BEGIN',
-          'PORT_GAP_BEGIN') )
-    GROUP BY
-      1
-    HAVING
-      longest_event > 0 ),
+  -- has_long_enough_event AS (
+  --   SELECT
+  --     trip_end_visit_id,
+  --     MAX(event_duration_hr) AS longest_event
+  --   FROM (
+  --     SELECT
+  --       *,
+  --       TIMESTAMP_DIFF(next_timestamp, timestamp, SECOND)/3600 AS event_duration_hr
+  --     FROM (
+  --       SELECT
+  --         visit_id AS trip_end_visit_id,
+  --         event_type,
+  --         timestamp,
+  --         LEAD(timestamp) OVER(PARTITION BY visit_id ORDER BY timestamp) AS next_timestamp
+  --       FROM
+  --       `global-fishing-watch.pipe_ais_v4_published.port_visits`,
+  --         UNNEST(events)
+  --       WHERE
+  --         EXTRACT(YEAR
+  --         FROM
+  --           end_timestamp) >= start_year()
+  --         AND event_type NOT IN ('PORT_ENTRY') )
+  --     WHERE
+  --       event_type IN ('PORT_STOP_BEGIN',
+  --         'PORT_GAP_BEGIN') )
+  --   GROUP BY
+  --     1
+  --   HAVING
+  --     longest_event > 0 ),
 
 --------------------------------------
 -- all qualifying voyages
@@ -1222,8 +1270,9 @@ num_encounters AS (
       end_portvisit_timestamp,
       ROUND(TIMESTAMP_DIFF(end_portvisit_timestamp, start_portvisit_timestamp, minute)/60/24, 1) AS port_event_duration_days,
       distance_from_shore_m,
-      dock,
+      at_dock,
       trip_end_visit_id,
+      stop_anchorage_ids,
       start_latitude,
       start_longitude,
       num_encounters,
@@ -1233,15 +1282,20 @@ num_encounters AS (
       encounter,
       loitering,
       fishing,
-      AISdisabling
+      AISdisabling,
+      high_seas,
+      eezs,
+      rfmos,
+      fishing_hours,
     FROM
       add_visit_end_2
-    WHERE
-      trip_end_visit_id IN (
-      SELECT
-        trip_end_visit_id
-      FROM
-        has_long_enough_event)
+-- turning the below off to ensure any manual added voyage included
+    -- WHERE
+    --   trip_end_visit_id IN (
+    --   SELECT
+    --     trip_end_visit_id
+    --   FROM
+    --     has_long_enough_event)
         ),
 
 --------------------------------------
@@ -1276,10 +1330,8 @@ num_encounters AS (
           iso3
         FROM
           is_eu_iso3)))
-      AND ssvid NOT IN ("334455660","100001001","721","23456","345","100000016","100000008") -- wrong MMSI number associate with Peru
       -- AND end_port_label IN (port_label()) -- using parameters set at top of code for port and iso
       AND end_port_iso3 IN (port_iso())
-      AND vessel_iso3 NOT IN ("UNK")
       ),
 
 --------------------------------------
@@ -1312,8 +1364,9 @@ num_encounters AS (
       end_portvisit_timestamp,
       port_event_duration_days,
       distance_from_shore_m,
-      dock,
+      at_dock,
       trip_end_visit_id,
+      stop_anchorage_ids,
       start_latitude,
       start_longitude,
       num_encounters,
@@ -1323,7 +1376,11 @@ num_encounters AS (
       encounter,
       loitering,
       fishing,
-      AISdisabling
+      AISdisabling,
+      high_seas,
+      eezs,
+      rfmos,
+      fishing_hours
     FROM foreign_voyages )
     JOIN (
       SELECT
@@ -1391,8 +1448,9 @@ num_encounters AS (
       end_portvisit_timestamp,
       port_event_duration_days,
       distance_from_shore_m,
-      dock,
+      at_dock,
       trip_end_visit_id,
+      stop_anchorage_ids,
       start_latitude,
       start_longitude,
       num_encounters,
@@ -1402,13 +1460,17 @@ num_encounters AS (
       encounter,
       loitering,
       fishing,
-      AISdisabling
-    FROM add_vessel_info)
+      AISdisabling,
+      high_seas,
+      eezs,
+      rfmos,
+      fishing_hours
+    FROM add_vessel_info),
 
 --------------------------------------
--- pull final voyages (optional to pull from anchorage list)
+-- pull final voyages (optional to add anchorage list)
 --------------------------------------
--- pull_by_anchorage AS(
+clean_voyages AS(
   SELECT
     vessel_id,
     ssvid,
@@ -1437,21 +1499,150 @@ num_encounters AS (
     end_portvisit_timestamp,
     port_event_duration_days,
     distance_from_shore_m,
-    dock,
+    at_dock,
     trip_end_visit_id,
+    stop_anchorage_ids,
     start_latitude,
     start_longitude,
-    num_encounters,
-    num_loitering,
-    num_fishing,
-    num_AISdisabling
-  FROM clean_info
+    CASE WHEN num_encounters IS NULL THEN 0 ELSE num_encounters END AS num_encounters,
+    CASE WHEN num_loitering IS NULL THEN 0 ELSE num_loitering END AS num_loitering,
+    CASE WHEN num_fishing IS NULL THEN 0 ELSE num_fishing END AS num_fishing,
+    CASE WHEN num_AISdisabling IS NULL THEN 0 ELSE num_AISdisabling END AS num_AISdisabling,
+    encounter,
+    loitering,
+    fishing,
+    AISdisabling,
+    high_seas,
+    eezs,
+    rfmos,
+    CASE WHEN fishing_hours IS NULL THEN 0 ELSE fishing_hours END AS fishing_hours
+  FROM clean_info),
 --  WHERE trip_end_anchorage_id IN(
 --    SELECT
 --      s2id
 --    FROM `scratch_joef.MDG_anchorages_reviewed`
 --  )
 -- )
+
+--------------------------------------
+-- add last known visit to same port
+-- first pull all port visits for vessel_ids in voyages table
+-- changed to join approach from using ssvid IN
+--------------------------------------
+port_events AS (
+  SELECT DISTINCT
+    p.visit_id,
+    p.ssvid,
+    p.vessel_id,
+    p.end_timestamp,
+    p.end_anchorage_id
+  FROM `global-fishing-watch.pipe_ais_v5_published.port_visits` AS p
+  -- This replaces the "ssvid IN (...)" subquery
+  INNER JOIN (
+    SELECT DISTINCT ssvid
+    FROM clean_voyages
+  ) AS manual_ssvids ON p.ssvid = manual_ssvids.ssvid
+  WHERE
+    p.end_timestamp > prev_visit_search_date()
+    ),
+
+--------------------------------------
+-- Add names to all port events
+--------------------------------------
+name_events AS(
+  SELECT
+    * EXCEPT(s2id, label, iso3),
+    c.label AS end_label,
+    c.iso3 AS end_iso3
+  FROM port_events
+  LEFT JOIN
+    anchorage_names c
+  ON
+    end_anchorage_id = s2id
+  ),
+
+--------------------------------------
+-- inner join all visits for same vessel_id in time period
+-- set any in future to null to allow sorting in next step
+--------------------------------------
+join_visits AS(
+  SELECT
+    *,
+    IF (end_timestamp >= end_portvisit_timestamp, NULL, end_timestamp) AS prev_visit_ts
+  FROM
+  (SELECT *
+    FROM clean_voyages AS voyages
+    LEFT JOIN
+      (SELECT
+        -- visit_id,
+        vessel_id as ves_id,
+        ssvid as visits_ssvid,
+        end_anchorage_id,
+        end_label,
+        end_iso3,
+        end_timestamp
+      FROM name_events
+      WHERE end_iso3 = port_iso()) AS visits
+      --ON voyages.vessel_id = visits.ves_id
+      ON voyages.ssvid = visits.visits_ssvid
+      AND voyages.end_port_label = visits.end_label
+    )
+)
+
+--------------------------------------
+-- collapse back down to each individual voyage,
+-- keeping just most recent previous visit to same port label
+--------------------------------------
+SELECT DISTINCT
+  vessel_id,
+  ssvid,
+  year,
+  shipname,
+  vessel_flag_best,
+  callsign,
+  imo,
+  vessel_class_best,
+  geartype_best,
+  vessel_class_initial,
+  class_confidence_initial,
+  trip_id,
+  trip_start,
+  start_port_iso3,
+  start_port_label,
+  trip_start_confidence,
+  trip_end,
+  end_port_iso3,
+  end_port_label,
+  end_port_sublabel,
+  trip_end_anchorage_id,
+  trip_end_confidence,
+  trip_duration_days,
+  start_portvisit_timestamp,
+  end_portvisit_timestamp,
+  port_event_duration_days,
+  distance_from_shore_m,
+  at_dock,
+  trip_end_visit_id,
+  stop_anchorage_ids,
+  start_latitude,
+  start_longitude,
+  num_encounters,
+  num_loitering,
+  num_fishing,
+  num_AISdisabling,
+  encounter,
+  loitering,
+  fishing,
+  AISdisabling,
+  high_seas,
+  eezs,
+  rfmos,
+  fishing_hours,
+  FIRST_VALUE (prev_visit_ts) OVER (
+    PARTITION BY trip_id
+    ORDER BY prev_visit_ts DESC) AS prev_visit_timestamp,
+FROM join_visits
+
 
 /*
 --------------------------------------
