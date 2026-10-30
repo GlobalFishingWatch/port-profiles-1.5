@@ -39,7 +39,7 @@ RETURNS ARRAY<STRING> AS (
 );
 
 ## save table
--- CREATE OR REPLACE TABLE {voyage_table}
+-- CREATE OR REPLACE TABLE voyage_table
 --OPTIONS (
 --  expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
 --)
@@ -223,6 +223,75 @@ additional_vessels AS(
 ----------------------------------------------------------
 -- Define lists of high/med/low confidence bunker vessels
 ----------------------------------------------------------
+--  high_conf_bunker AS (
+--    SELECT DISTINCT -- generics for flag and gear to avoid duplicates
+--      ssvid,
+--      'flag' AS vessel_iso3,
+--      '1' AS class_confidence,
+--      'bunker' AS vessel_class,
+--      'bunker' AS gear_type,
+--      first_timestamp,
+--      last_timestamp
+--    FROM `global-fishing-watch.pipe_ais_identity_v5_published.identity_core`
+--    WHERE
+--      TIMESTAMP(first_timestamp) <= end_date() AND
+--      TIMESTAMP(last_timestamp) >= start_date() AND
+--      is_bunker = TRUE
+--      AND
+--      (geartype LIKE ("%bunker%") OR geartype LIKE ("%tanker%"))
+--  ),
+--
+---- med conf carrier - capturing all with gear type or class from registry or product as bunker/tanker and rfmo registered
+--  med_conf_bunker AS (
+--     SELECT DISTINCT
+--      ssvid,
+--      IFNULL(IFNULL(gfw_best_flag, registry_flag), self_reported_mmsi_flag) AS vessel_iso3,
+--      '2' as class_confidence,
+--      'bunker' AS vessel_class,
+--      'bunker' AS gear_type,
+--      TIMESTAMP(DATETIME(CAST(year AS INT64), 1, 1, 0, 0, 0)) AS first_timestamp,
+--      TIMESTAMP(DATETIME(CAST(year AS INT64), 12, 31, 23, 59, 59)) AS last_timestamp
+--     FROM
+--      `global-fishing-watch.pipe_ais_identity_v5_published.product_vessel_info_summary` AS vi_table
+--     WHERE
+--      year >= start_year() AND year <= end_year()
+--      AND (registry_is_bunker
+--      OR vi_ssvid_registry_class LIKE ("%bunker%") OR registry_geartype LIKE ("%bunker%")
+--      OR vi_ssvid_registry_class LIKE ("%tanker%") OR registry_geartype LIKE ("%tanker%")
+--      OR prod_shiptype LIKE ("%bunker%") OR prod_geartype LIKE ("%bunker%")
+--      OR prod_shiptype LIKE ("%tanker%") OR prod_geartype LIKE ("%tanker%")
+--      )
+--      AND self_reported_imo IN(
+--        SELECT imo FROM `global-fishing-watch.pipe_ais_identity_v4_published.identity_authorization`
+--      )
+--      AND ssvid NOT IN (SELECT ssvid FROM high_conf_bunker)
+--  ),
+--
+---- low conf carrier -
+--  low_conf_bunker AS (
+--     SELECT DISTINCT
+--      ssvid,
+--      IFNULL(IFNULL(gfw_best_flag, registry_flag), self_reported_mmsi_flag) AS vessel_iso3,
+--      '1' as class_confidence,
+--      'bunker' AS vessel_class,
+--      'bunker' AS gear_type,
+--      TIMESTAMP(DATETIME(CAST(year AS INT64), 1, 1, 0, 0, 0)) AS first_timestamp,
+--      TIMESTAMP(DATETIME(CAST(year AS INT64), 12, 31, 23, 59, 59)) AS last_timestamp
+--     FROM
+--      `global-fishing-watch.pipe_ais_identity_v5_published.product_vessel_info_summary` AS vi_table
+--     WHERE
+--      year >= start_year() AND year <= end_year()
+--      AND (registry_is_bunker -- all registry_is_bunkers that aren't in identity_authorization, OR bunker/tankers that match rf bunker/tanker
+--      OR ((vi_ssvid_registry_class LIKE ("%bunker%") OR registry_geartype LIKE ("%bunker%")
+--      OR vi_ssvid_registry_class LIKE ("%tanker%") OR registry_geartype LIKE ("%tanker%")
+--      OR prod_shiptype LIKE ("%bunker%") OR prod_geartype LIKE ("%bunker%")
+--      OR prod_shiptype LIKE ("%tanker%") OR prod_geartype LIKE ("%tanker%"))
+--      AND (rf_vessel_class IN ("bunker", "bunker_or_tanker") OR rf_atomic_class IN ("bunker", "bunker_or_tanker")))
+--      )
+--      AND ssvid NOT IN (SELECT ssvid FROM high_conf_bunker)
+--      AND ssvid NOT IN (SELECT ssvid FROM med_conf_bunker)
+--  ),
+
   high_conf_bunker AS (
     SELECT DISTINCT -- generics for flag and gear to avoid duplicates
       ssvid,
@@ -236,12 +305,13 @@ additional_vessels AS(
     WHERE
       TIMESTAMP(first_timestamp) <= end_date() AND
       TIMESTAMP(last_timestamp) >= start_date() AND
-      is_bunker = TRUE
-      AND
-      (geartype LIKE ("%bunker%") OR geartype LIKE ("%tanker%"))
-  ),
+      ((is_bunker = TRUE OR geartype LIKE ("%bunker%") OR geartype LIKE ("%tanker%"))
+      AND (
+        imo IN(SELECT imo FROM `global-fishing-watch.pipe_ais_identity_v4_published.identity_authorization`)
+      OR ssvid IN(SELECT ssvid FROM `global-fishing-watch.pipe_ais_identity_v4_published.identity_authorization`)
+      ))),
 
--- med conf carrier - capturing all with gear type or class from registry or product as bunker/tanker and rfmo registered
+-- med conf carrier - capturing all registry_is_bunker + gear type or class as bunker/tanker and rfmo registered
   med_conf_bunker AS (
      SELECT DISTINCT
       ssvid,
@@ -256,14 +326,12 @@ additional_vessels AS(
      WHERE
       year >= start_year() AND year <= end_year()
       AND (registry_is_bunker
-      OR vi_ssvid_registry_class LIKE ("%bunker%") OR registry_geartype LIKE ("%bunker%")
-      OR vi_ssvid_registry_class LIKE ("%tanker%") OR registry_geartype LIKE ("%tanker%")
-      OR prod_shiptype LIKE ("%bunker%") OR prod_geartype LIKE ("%bunker%")
-      OR prod_shiptype LIKE ("%tanker%") OR prod_geartype LIKE ("%tanker%")
-      )
-      AND self_reported_imo IN(
-        SELECT imo FROM `global-fishing-watch.pipe_ais_identity_v4_published.identity_authorization`
-      )
+      OR ((vi_ssvid_registry_class LIKE ("%bunker%") OR registry_geartype LIKE ("%bunker%")
+          OR vi_ssvid_registry_class LIKE ("%tanker%") OR registry_geartype LIKE ("%tanker%")
+          OR prod_shiptype LIKE ("%bunker%") OR prod_geartype LIKE ("%bunker%")
+          OR prod_shiptype LIKE ("%tanker%") OR prod_geartype LIKE ("%tanker%"))
+      AND (self_reported_imo IN(SELECT imo FROM `global-fishing-watch.pipe_ais_identity_v4_published.identity_authorization`)
+                    OR ssvid IN(SELECT ssvid FROM `global-fishing-watch.pipe_ais_identity_v4_published.identity_authorization`))))
       AND ssvid NOT IN (SELECT ssvid FROM high_conf_bunker)
   ),
 
@@ -281,13 +349,11 @@ additional_vessels AS(
       `global-fishing-watch.pipe_ais_identity_v5_published.product_vessel_info_summary` AS vi_table
      WHERE
       year >= start_year() AND year <= end_year()
-      AND (registry_is_bunker -- all registry_is_bunkers that aren't in identity_authorization, OR bunker/tankers that match rf bunker/tanker
-      OR ((vi_ssvid_registry_class LIKE ("%bunker%") OR registry_geartype LIKE ("%bunker%")
+      AND ((vi_ssvid_registry_class LIKE ("%bunker%") OR registry_geartype LIKE ("%bunker%")
       OR vi_ssvid_registry_class LIKE ("%tanker%") OR registry_geartype LIKE ("%tanker%")
       OR prod_shiptype LIKE ("%bunker%") OR prod_geartype LIKE ("%bunker%")
       OR prod_shiptype LIKE ("%tanker%") OR prod_geartype LIKE ("%tanker%"))
       AND (rf_vessel_class IN ("bunker", "bunker_or_tanker") OR rf_atomic_class IN ("bunker", "bunker_or_tanker")))
-      )
       AND ssvid NOT IN (SELECT ssvid FROM high_conf_bunker)
       AND ssvid NOT IN (SELECT ssvid FROM med_conf_bunker)
   ),
