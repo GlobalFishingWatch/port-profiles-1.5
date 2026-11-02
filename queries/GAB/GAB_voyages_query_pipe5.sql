@@ -340,7 +340,7 @@ additional_vessels AS(
      SELECT DISTINCT
       ssvid,
       IFNULL(IFNULL(gfw_best_flag, registry_flag), self_reported_mmsi_flag) AS vessel_iso3,
-      '1' as class_confidence,
+      '3' as class_confidence,
       'bunker' AS vessel_class,
       'bunker' AS gear_type,
       TIMESTAMP(DATETIME(CAST(year AS INT64), 1, 1, 0, 0, 0)) AS first_timestamp,
@@ -473,7 +473,7 @@ additional_vessels AS(
      SELECT DISTINCT
       ssvid,
       IFNULL(IFNULL(gfw_best_flag, registry_flag), self_reported_mmsi_flag) AS vessel_iso3,
-      '1' as class_confidence,
+      '3' as class_confidence,
       'carrier' AS vessel_class,
       'carrier' AS gear_type,
       TIMESTAMP(DATETIME(CAST(year AS INT64), 1, 1, 0, 0, 0)) AS first_timestamp,
